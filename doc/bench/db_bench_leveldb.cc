@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <iostream>
 #include "db/db_impl.h"
 #include "db/version_set.h"
 #include "leveldb/cache.h"
@@ -436,6 +437,7 @@ class Benchmark {
 
   void Run() {
     PrintHeader();
+    std::cout << " Run() " << std::endl;
     Open();
 
     const char* benchmarks = FLAGS_benchmarks;
@@ -552,20 +554,13 @@ class Benchmark {
           delete db_;
           db_ = NULL;
           DestroyDB(FLAGS_db, Options());
+	  std::cout << " frehs_db==> DestroyDB" << std::endl;
           Open();
         }
       }
 
       if (method != NULL) {
         RunBenchmark(num_threads, name, method);
-	if (method == &Benchmark::WriteSeq ||
-	    method == &Benchmark::WriteRandom) {
-	  char cmd[200];
-	  std::string test_dir;
-	  Env::Default()->GetTestDirectory(&test_dir);
-	  sprintf(cmd, "du %s", test_dir.c_str());
-	  system(cmd);
-	}
       }
     }
   }
@@ -736,6 +731,7 @@ class Benchmark {
     options.block_cache = cache_;
     options.write_buffer_size = FLAGS_write_buffer_size;
     options.filter_policy = filter_policy_;
+    std::cout << "Create database " << FLAGS_db << std::endl;
     Status s = DB::Open(options, FLAGS_db, &db_);
     if (!s.ok()) {
       fprintf(stderr, "open error: %s\n", s.ToString().c_str());
