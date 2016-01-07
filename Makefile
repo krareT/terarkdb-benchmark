@@ -63,7 +63,7 @@ TESTS = \
 
 PROGRAMS = db_bench $(TESTS)
 BENCHMARKS = db_bench_bdb db_bench_leveldb db_bench_mdb db_bench_sqlite3 \
-	     db_bench_tree_db db_bench_wiredtiger db_bench_rocksdb
+	     db_bench_tree_db db_bench_wiredtiger db_bench_rocksdb db_bench_redis
 
 LIBRARY = libleveldb.a
 MEMENVLIBRARY = libmemenv.a
