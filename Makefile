@@ -9,9 +9,9 @@ INSTALL_PATH ?= $(CURDIR)
 # Uncomment exactly one of the lines labelled (A), (B), and (C) below
 # to switch between compilation modes.
 
-OPT ?= -O2 -DNDEBUG       # (A) Production use (optimized mode)
-# OPT ?= -g2              # (B) Debug mode, w/ full line-level debugging symbols
-# OPT ?= -O2 -g2 -DNDEBUG # (C) Profiling mode: opt, but w/debugging symbols
+#OPT ?= -O2 -DNDEBUG       # (A) Production use (optimized mode)
+#OPT ?= -g2              # (B) Debug mode, w/ full line-level debugging symbols
+OPT ?= -O2 -g2 -DNDEBUG # (C) Profiling mode: opt, but w/debugging symbols
 #-----------------------------------------------
 
 # detect what platform we're building on
@@ -22,14 +22,14 @@ include build_config.mk
 ROCKDB_INCLUDE_PATH=/home/nark/experiment/rocksdb-2.5.fb/include
 #librocksdb.so 
 
-REDIS_INCLUDE_PATH=
+REDIS_INCLUDE_PATH=/home/nark/experiment/hiredis-0.13.3
 
 WIREDTIGER_INCLUDE_PATH=/usr/wiredtiger/include 
 #libwiredtiger-2.7.0.so, libbwiredtiger_snappy.so
 
 
 CFLAGS += -I. -I./include $(PLATFORM_CCFLAGS) $(OPT)
-CXXFLAGS += -I. -I./include -I$(ROCKDB_INCLUDE_PATH) -I$(WIREDTIGER_INCLUDE_PATH) $(PLATFORM_CXXFLAGS) $(OPT) -std=gnu++0x
+CXXFLAGS += -I. -I./include -I$(ROCKDB_INCLUDE_PATH) -I$(WIREDTIGER_INCLUDE_PATH) -I$(REDIS_INCLUDE_PATH) $(PLATFORM_CXXFLAGS) $(OPT) -std=gnu++0x
 
 
 LDFLAGS += $(PLATFORM_LDFLAGS)
@@ -130,6 +130,9 @@ db_bench_wiredtiger: doc/bench/db_bench_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL)
 
 db_bench_rocksdb: doc/bench/db_bench_rocksdb.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/bench/db_bench_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb
+
+db_bench_redis: doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lhiredis
 
 arena_test: util/arena_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) util/arena_test.o $(LIBOBJECTS) $(TESTHARNESS) -o $@ $(LDFLAGS)

@@ -2,7 +2,7 @@ This the test framework based on leveldb db_bench.
 The framework will support storage engines as follows:
 LevelDB		(Done)		version 1.5
 Rocksdb		(Done) 		version 2.5
-Redis		(Todo highest)  version 3.0.6
+Redis		(Done)  	version 3.0.6
 Wiredtiger	(Done) 		version 2.7.0
 Narkdb		(Todo highest)  version 1.0
 Bdb		
