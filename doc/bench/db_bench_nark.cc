@@ -19,7 +19,6 @@
 #include "util/random.h"
 #include "util/testutil.h"
 
-#include "hiredis.h"
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -883,27 +882,26 @@ class Benchmark {
   void DoDelete(ThreadState* thread, bool seq) {
     fprintf(stderr, "DoDelete not supported\n");
     return;
+/*
     RandomGenerator gen;
+    WriteBatch batch;
     Status s;
     for (int i = 0; i < num_; i += entries_per_batch_) {
+      batch.Clear();
       for (int j = 0; j < entries_per_batch_; j++) {
         const int k = seq ? i+j : (thread->rand.Next() % FLAGS_num);
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
-	redisReply* r = (redisReply*)redisCommand(db_, "DEL %s", key);
-	if(NULL == r) {
-                std::cout << "Execut command1 failure" << std::endl;
-                return;
-        }
-        if(!(r->type == REDIS_REPLY_STATUS && strcasecmp(r->str,"OK")==0)) {
-                std::cout << "Failed to execute command" << std::endl;
-                freeReplyObject(r);
-                return;
-        }
-
+        batch.Delete(key);
         thread->stats.FinishedSingleOp();
       }
+      s = db_->Write(write_options_, &batch);
+      if (!s.ok()) {
+        fprintf(stderr, "del error: %s\n", s.ToString().c_str());
+        exit(1);
+      }
     }
+*/
   }
 
   void DeleteSeq(ThreadState* thread) {
