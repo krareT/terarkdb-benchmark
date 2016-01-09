@@ -19,6 +19,13 @@
 #include "util/random.h"
 #include "util/testutil.h"
 
+#include "stdafx.h"
+#include <nark/db/db_table.hpp>
+#include <nark/io/MemStream.hpp>
+#include <nark/io/DataIO.hpp>
+#include <nark/io/RangeStream.hpp>
+#include <nark/lcast.hpp>
+
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -118,6 +125,7 @@ static bool FLAGS_use_existing_db = false;
 
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
+static const char* FLAGS_db_table = NULL;
 
 static int *shuff = NULL;
 
@@ -316,11 +324,27 @@ struct ThreadState {
   }
 };
 
+struct TestRow {
+	std::string key;
+	std::string value;
+	std::string others;
+	DATA_IO_LOAD_SAVE(TestRow,
+			&key
+			&value
+			&nark::RestAll(others)
+			)
+};
+
+
+
 }  // namespace
 
 class Benchmark {
  private:
-  redisContext* db_;
+
+  nark::db::CompositeTablePtr tab;
+  nark::db::DbContextPtr ctx;
+
   int num_;
   int value_size_;
   int entries_per_batch_;
@@ -406,7 +430,9 @@ class Benchmark {
 
  public:
   Benchmark()
-  : db_(NULL),
+  : tab(NULL),
+    ctx(NULL),
+
     num_(FLAGS_num),
     value_size_(FLAGS_value_size),
     entries_per_batch_(1),
@@ -425,7 +451,6 @@ class Benchmark {
   }
 
   ~Benchmark() {
-     redisFree(db_);	
   }
 
   void Run() {
@@ -542,10 +567,10 @@ class Benchmark {
         if (FLAGS_use_existing_db) {
           fprintf(stdout, "%-12s : skipped (--use_existing_db is true)\n",
                   name.ToString().c_str());
-          method = NULL;
+	  method = NULL;
         } else {
-	  redisFree(db_);	
-          db_ = NULL;
+          tab = NULL;
+	  ctx = NULL;
 	  std::cout << " frehs_db==> DestroyDB" << std::endl;
           Open();
         }
@@ -717,15 +742,13 @@ class Benchmark {
   }
 
   void Open() {
-    assert(db_ == NULL);
+    assert(tab == NULL && ctx == NULL);
     std::cout << "Create database " << FLAGS_db << std::endl;
-    db_ = redisConnect("127.0.0.1", 6379);
-    if (db_->err) {
-                redisFree(db_);
-                std::cout << "Connect to redisServer faile" << std::endl;
-                return ;
-    }
-  //  std::cout << "Connect to redisServer Success" << std::endl;
+    
+    tab = nark::db::CompositeTable::createTable(FLAGS_db_table);
+    tab->load(FLAGS_db);
+    nark::db::DbContextPtr ctx = tab->createDbContext();
+
   }
 
   void WriteSeq(ThreadState* thread) {
@@ -743,27 +766,33 @@ class Benchmark {
       thread->stats.AddMessage(msg);
     }
 
-	if (!seq)
-	  thread->rand.Shuffle(shuff, num_);
+    if (!seq)
+	thread->rand.Shuffle(shuff, num_);
     RandomGenerator gen;
     int64_t bytes = 0;
+
+    nark::NativeDataOutput<nark::AutoGrownMemIO> rowBuilder;
+    TestRow recRow;
+   
+
     for (int i = 0; i < num_; i += entries_per_batch_) {
       for (int j = 0; j < entries_per_batch_; j++) {
         const int k = seq ? i+j : shuff[i+j];
-        char key[100];
-        snprintf(key, sizeof(key), "%016d", k);
-	redisReply* r = (redisReply*)redisCommand(db_, "SET %s %s", key, gen.Generate(value_size_).ToString().c_str());
-	if(NULL == r) {
-                std::cout << "Execut command1 failure" << std::endl;
-                return;
-        }
-        if(!(r->type == REDIS_REPLY_STATUS && strcasecmp(r->str,"OK")==0)) {
-                std::cout << "Failed to execute command" << std::endl;
-                freeReplyObject(r);
-                return;
-        }
-  
-        bytes += value_size_ + strlen(key);
+        char kk[100];
+        snprintf(kk, sizeof(kk), "%016d", k);
+	recRow.key = kk;
+	recRow.value = gen.Generate(value_size_).ToString() + kk;
+ 	
+	rowBuilder.rewind();
+	rowBuilder << recRow;
+	nark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+        if (ctx->insertRow(binRow) < 0) {
+		printf("Insert failed: %s\n", ctx->errMsg.c_str());
+		exit(-1);	
+	}
+ 
+        bytes += value_size_ + strlen(kk);
         thread->stats.FinishedSingleOp();
       }
     }
@@ -805,22 +834,19 @@ class Benchmark {
   }
 
   void ReadRandom(ThreadState* thread) {
+/*
     std::string value;
     int found = 0;
     for (int i = 0; i < reads_; i++) {
       char key[100];
       const int k = thread->rand.Next() % FLAGS_num;
       snprintf(key, sizeof(key), "%016d", k);
-      redisReply* r = (redisReply*)redisCommand(db_, "GET %s", key);
-      if(r->type == REDIS_REPLY_STRING) {
-	found++;
-      }
-      freeReplyObject(r);
       thread->stats.FinishedSingleOp();
     }
     char msg[100];
     snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
     thread->stats.AddMessage(msg);
+*/
   }
 
   void ReadMissing(ThreadState* thread) {
@@ -913,6 +939,7 @@ class Benchmark {
   }
 
   void ReadWhileWriting(ThreadState* thread) {
+/*
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
@@ -930,23 +957,13 @@ class Benchmark {
         const int k = thread->rand.Next() % FLAGS_num;
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
-	redisReply* r = (redisReply*)redisCommand(db_, "SET %s %s", key, gen.Generate(value_size_).data());
-	if(NULL == r) {
-                std::cout << "Execut command1 failure" << std::endl;
-                // redisFree(db_);
-                return;
-        }
-        if(!(r->type == REDIS_REPLY_STATUS && strcasecmp(r->str,"OK")==0)) {
-                std::cout << "Failed to execute command" << std::endl;
-                freeReplyObject(r);
-                // redisFree(db_);
-                return;
-        }
+	
       }
 
       // Do not count any of the preceding work/delay in stats.
       thread->stats.Start();
     }
+*/
   }
 
   void Compact(ThreadState* thread) {
@@ -997,6 +1014,7 @@ int main(int argc, char** argv) {
   FLAGS_write_buffer_size = leveldb::Options().write_buffer_size;
   FLAGS_open_files = leveldb::Options().max_open_files;
   std::string default_db_path;
+  std::string default_db_table;
 
   for (int i = 1; i < argc; i++) {
     double d;
@@ -1030,6 +1048,8 @@ int main(int argc, char** argv) {
       FLAGS_open_files = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
+    } else if (strncmp(argv[i], "--dbtable=", 10) == 0) {
+      FLAGS_db_table = argv[i] + 10;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);
@@ -1041,6 +1061,11 @@ int main(int argc, char** argv) {
       leveldb::Env::Default()->GetTestDirectory(&default_db_path);
       default_db_path += "/dbbench";
       FLAGS_db = default_db_path.c_str();
+  }
+
+  if (FLAGS_db_table == NULL) {
+      default_db_table += "dbbenchtable";
+      FLAGS_db_table = default_db_table.c_str();
   }
 
   shuff = (int *)malloc(FLAGS_num * sizeof(int));
