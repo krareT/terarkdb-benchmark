@@ -19,7 +19,7 @@
 #include "util/random.h"
 #include "util/testutil.h"
 
-#include "stdafx.h"
+//#include "stdafx.h"
 #include <nark/db/db_table.hpp>
 #include <nark/io/MemStream.hpp>
 #include <nark/io/DataIO.hpp>
@@ -794,7 +794,7 @@ class Benchmark {
       }
     }
     thread->stats.AddBytes(bytes);
-    //nark::db::CompositeTable::syncFinishWriting();
+    tab->syncFinishWriting();
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -832,11 +832,9 @@ class Benchmark {
   }
 
   void ReadRandom(ThreadState* thread) {
-    
 	  nark::valvec<nark::byte> keyHit, val;
 	  nark::valvec<nark::llong> idvec;
     	  int found = 0;
-
 	  for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
 		  nark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
 		  const nark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
@@ -855,11 +853,7 @@ class Benchmark {
 					  break;
 			  }
 			  idvec.resize(0);
-			  std::string keyJson = indexSchema.toJsonStr(keyData);
-			  fflush(stdout);
 			  nark::llong recId;
-			  if (i == 0x002d && indexId == 1)
-				  i = i;
 			  int ret = indexIter->seekLowerBound(keyData, &recId, &keyHit);
 			  if (ret == 0) { // found exact key
 				  idvec.push_back(recId);

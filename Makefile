@@ -35,6 +35,7 @@ CXXFLAGS += -I. -I./include $(ROCKDB_INCLUDE_PATH) $(WIREDTIGER_INCLUDE_PATH) $(
 
 
 LDFLAGS += $(PLATFORM_LDFLAGS)
+LDFLAGS += -L/opt/lib
 
 LIBOBJECTS = $(SOURCES:.cc=.o)
 MEMENVOBJECTS = $(MEMENV_SOURCES:.cc=.o)
@@ -138,7 +139,7 @@ db_bench_redis: doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lhiredis
 
 db_bench_nark: doc/bench/db_bench_nark.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/bench/db_bench_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-4.9-r -lnark-NarkDB-g++-4.9-r -lboost_system -lboost_filesystem
+	$(CXX) doc/bench/db_bench_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-4.9-r -lnark-NarkDB-g++-4.9-r -lboost_system -lboost_filesystem -lwiredtiger
 
 arena_test: util/arena_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) util/arena_test.o $(LIBOBJECTS) $(TESTHARNESS) -o $@ $(LDFLAGS)
