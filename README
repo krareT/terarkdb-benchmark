@@ -1,15 +1,18 @@
 This the test framework based on leveldb db_bench.
 The framework will support storage engines as follows:
-LevelDB		(Done)		version 1.5
-Rocksdb		(Done) 		version 2.5
-Redis		(Done)  	version 3.0.6
-Wiredtiger	(Done) 		version 2.7.0
-Narkdb		(Todo highest)  version 1.0
-Bdb		
-Mdb
-Tree_db
-Sqlite3
+LevelDB		(Done)		version 1.5  test
+Rocksdb		(Done) 		version 2.5  test
+Redis		(Done)  	version 3.0.6 test
+Wiredtiger	(Done) 		version 2.7.0 test
+Narkdb		(Done)  	version ??    test
+Bdb		(Done)			     untest
+Mdb		(Done)			     untest
+Tree_db		(Done)			     untest
+Sqlite3		(Done)			     untest
 
 These test codes are in doc/bench/
+
+Now, the test framework supports fillrandom and readrandom benchmarks for the each dbs, and next step, we will implement other benchmarks.
+
 
 

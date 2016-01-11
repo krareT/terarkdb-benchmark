@@ -121,7 +121,7 @@ static int FLAGS_bloom_bits = -1;
 // If true, do not destroy the existing database.  If you set this
 // flag and also specify a benchmark that wants a fresh database, that
 // benchmark will fail.
-static bool FLAGS_use_existing_db = false;
+static bool FLAGS_use_existing_db = true;
 
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
@@ -327,15 +327,12 @@ struct ThreadState {
 struct TestRow {
 	std::string key;
 	std::string value;
-	std::string others;
+	
 	DATA_IO_LOAD_SAVE(TestRow,
-			&key
-			&value
-			&nark::RestAll(others)
+			&nark::db::Schema::StrZero(key)
+			&nark::db::Schema::StrZero(value)
 			)
 };
-
-
 
 }  // namespace
 
@@ -565,13 +562,14 @@ class Benchmark {
 
       if (fresh_db) {
         if (FLAGS_use_existing_db) {
+/*
           fprintf(stdout, "%-12s : skipped (--use_existing_db is true)\n",
                   name.ToString().c_str());
 	  method = NULL;
+*/
         } else {
           tab = NULL;
 	  ctx = NULL;
-	  std::cout << " frehs_db==> DestroyDB" << std::endl;
           Open();
         }
       }
@@ -747,7 +745,7 @@ class Benchmark {
     
     tab = nark::db::CompositeTable::createTable(FLAGS_db_table);
     tab->load(FLAGS_db);
-    nark::db::DbContextPtr ctx = tab->createDbContext();
+    ctx = tab->createDbContext();
 
   }
 
@@ -772,17 +770,16 @@ class Benchmark {
     int64_t bytes = 0;
 
     nark::NativeDataOutput<nark::AutoGrownMemIO> rowBuilder;
-    TestRow recRow;
-   
 
     for (int i = 0; i < num_; i += entries_per_batch_) {
       for (int j = 0; j < entries_per_batch_; j++) {
+    	TestRow recRow;
         const int k = seq ? i+j : shuff[i+j];
-        char kk[100];
-        snprintf(kk, sizeof(kk), "%016d", k);
-	recRow.key = kk;
-	recRow.value = gen.Generate(value_size_).ToString() + kk;
- 	
+        char key[100];
+	snprintf(key, sizeof(key), "%016d", k);
+	recRow.key = std::string(key);
+	recRow.value = gen.Generate(value_size_).ToString();
+ 
 	rowBuilder.rewind();
 	rowBuilder << recRow;
 	nark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
@@ -792,11 +789,12 @@ class Benchmark {
 		exit(-1);	
 	}
  
-        bytes += value_size_ + strlen(kk);
+        bytes += value_size_ + strlen(key);
         thread->stats.FinishedSingleOp();
       }
     }
     thread->stats.AddBytes(bytes);
+    //nark::db::CompositeTable::syncFinishWriting();
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -834,19 +832,58 @@ class Benchmark {
   }
 
   void ReadRandom(ThreadState* thread) {
-/*
-    std::string value;
-    int found = 0;
-    for (int i = 0; i < reads_; i++) {
-      char key[100];
-      const int k = thread->rand.Next() % FLAGS_num;
-      snprintf(key, sizeof(key), "%016d", k);
-      thread->stats.FinishedSingleOp();
-    }
+    
+	  nark::valvec<nark::byte> keyHit, val;
+	  nark::valvec<nark::llong> idvec;
+    	  int found = 0;
+
+	  for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
+		  nark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
+		  const nark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
+		  std::string keyData;
+		  for (size_t i = 0; i < reads_; ++i) {
+			  const int k = thread->rand.Next() % FLAGS_num;
+			  char key[100];
+			  // printf("indexId %d\n", indexId);
+			  switch (indexId) {
+				  default:
+					  assert(0);
+					  break;
+				  case 0:
+			  		  snprintf(key, sizeof(key), "%016d", k);
+					  keyData = key;
+					  break;
+			  }
+			  idvec.resize(0);
+			  std::string keyJson = indexSchema.toJsonStr(keyData);
+			  fflush(stdout);
+			  nark::llong recId;
+			  if (i == 0x002d && indexId == 1)
+				  i = i;
+			  int ret = indexIter->seekLowerBound(keyData, &recId, &keyHit);
+			  if (ret == 0) { // found exact key
+				  idvec.push_back(recId);
+				  int hasNext; // int as bool
+				  while ((hasNext = indexIter->increment(&recId, &keyHit))
+						  && nark::fstring(keyHit) == keyData) {
+					  assert(recId < tab->numDataRows());
+					  idvec.push_back(recId);
+				  }
+				  if (hasNext)
+					  idvec.push_back(recId);
+			  }
+			  for (size_t i = 0; i < idvec.size(); ++i) {
+				  recId = idvec[i];
+				  ctx->getValue(recId, &val);
+			  }
+			  if(idvec.size() > 0)
+				found++;
+      			  thread->stats.FinishedSingleOp();
+		  }
+	  }
     char msg[100];
     snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
     thread->stats.AddMessage(msg);
-*/
   }
 
   void ReadMissing(ThreadState* thread) {
@@ -1064,7 +1101,7 @@ int main(int argc, char** argv) {
   }
 
   if (FLAGS_db_table == NULL) {
-      default_db_table += "dbbenchtable";
+      default_db_table += "MockCompositeTable";
       FLAGS_db_table = default_db_table.c_str();
   }
 
