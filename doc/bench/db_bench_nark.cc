@@ -793,8 +793,8 @@ class Benchmark {
         thread->stats.FinishedSingleOp();
       }
     }
+    tab->syncFinishWriting();
     thread->stats.AddBytes(bytes);
-    //nark::db::CompositeTable::syncFinishWriting();
   }
 
   void ReadSequential(ThreadState* thread) {
