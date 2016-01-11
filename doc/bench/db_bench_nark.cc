@@ -795,6 +795,7 @@ class Benchmark {
     }
     thread->stats.AddBytes(bytes);
     tab->syncFinishWriting();
+	printf("tab->numDataRows()=%lld\n", tab->numDataRows());
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -866,6 +867,7 @@ class Benchmark {
 				  if (hasNext)
 					  idvec.push_back(recId);
 			  }
+		//	  printf("seekLowerBound(%s)=%d\n", indexSchema.toJsonStr(keyData).c_str(), ret);
 			  for (size_t i = 0; i < idvec.size(); ++i) {
 				  recId = idvec[i];
 				  ctx->getValue(recId, &val);
@@ -1104,5 +1106,7 @@ int main(int argc, char** argv) {
     shuff[i] = i;
   leveldb::Benchmark benchmark;
   benchmark.Run();
+  printf("benchmark.Run() completed\n");
+  nark::db::CompositeTable::safeStopAndWaitForCompress();
   return 0;
 }
