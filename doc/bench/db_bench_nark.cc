@@ -746,9 +746,9 @@ class Benchmark {
     std::cout << "Create database " << FLAGS_db << std::endl;
     
     tab = nark::db::CompositeTable::createTable(FLAGS_db_table);
+    ctx = tab->createDbContext();
     tab->load(FLAGS_db);
     ctx->syncIndex = FLAGS_sync_index;
-    ctx = tab->createDbContext();
   }
 
   void WriteSeq(ThreadState* thread) {
@@ -772,7 +772,7 @@ class Benchmark {
     int64_t bytes = 0;
 
     nark::NativeDataOutput<nark::AutoGrownMemIO> rowBuilder;
-
+    int temp = 1;
     for (int i = 0; i < num_; i += entries_per_batch_) {
       for (int j = 0; j < entries_per_batch_; j++) {
     	TestRow recRow;
@@ -785,8 +785,8 @@ class Benchmark {
 	rowBuilder.rewind();
 	rowBuilder << recRow;
 	nark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
-
-        if (ctx->insertRow(binRow) < 0) {
+        
+	if (ctx->insertRow(binRow) < 0) {
 		printf("Insert failed: %s\n", ctx->errMsg.c_str());
 		exit(-1);	
 	}
@@ -1102,7 +1102,7 @@ int main(int argc, char** argv) {
   }
 
   if (FLAGS_db_table == NULL) {
-      default_db_table += "MockCompositeTable";
+      default_db_table += "DfaDbTable";
       FLAGS_db_table = default_db_table.c_str();
   }
 

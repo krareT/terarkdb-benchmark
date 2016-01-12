@@ -1,9 +1,0 @@
-LevelDB:    version 1.5
-Keys:       16 bytes each
-Values:     10 bytes each (5 bytes after compression)
-Entries:    10
-RawSize:    0.0 MB (estimated)
-FileSize:   0.0 MB (estimated)
-------------------------------------------------
- Run() 
-Create database data
