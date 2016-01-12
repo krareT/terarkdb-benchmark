@@ -20,7 +20,6 @@ Now, the test framework supports fillrandom and readrandom benchmarks for the ea
 									      nark-bone/src
 									      nark-serialization/src
 									      nark-hashmap/src
-									      stdafx.h
 
 2. create symlink: libnark-g++-4.9-r.so libnark-NarkDB-g++-4.9-r.so in /usr/lib64
 

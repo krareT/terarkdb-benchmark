@@ -103,6 +103,8 @@ static double FLAGS_compression_ratio = 0.5;
 // Print histogram of operation timings
 static bool FLAGS_histogram = false;
 
+static bool FLAGS_sync_index = true;
+
 // Number of bytes to buffer in memtable before compacting
 // (initialized to default value by "main")
 static int FLAGS_write_buffer_size = 0;
@@ -745,8 +747,8 @@ class Benchmark {
     
     tab = nark::db::CompositeTable::createTable(FLAGS_db_table);
     tab->load(FLAGS_db);
+    ctx->syncIndex = FLAGS_sync_index;
     ctx = tab->createDbContext();
-
   }
 
   void WriteSeq(ThreadState* thread) {
@@ -1063,6 +1065,9 @@ int main(int argc, char** argv) {
     } else if (sscanf(argv[i], "--use_existing_db=%d%c", &n, &junk) == 1 &&
                (n == 0 || n == 1)) {
       FLAGS_use_existing_db = n;
+    } else if (sscanf(argv[i], "--sync_index=%d%c", &n, &junk) == 1 &&
+               (n == 0 || n == 1)) {
+      FLAGS_sync_index = n;
     } else if (sscanf(argv[i], "--num=%d%c", &n, &junk) == 1) {
       FLAGS_num = n;
     } else if (sscanf(argv[i], "--reads=%d%c", &n, &junk) == 1) {
