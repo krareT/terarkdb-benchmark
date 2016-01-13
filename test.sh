@@ -3,7 +3,7 @@ rm -rf data/*
 echo 3 > /proc/sys/vm/drop_caches
 cp dbmeta.json data/
 free -m
-./db_bench_nark --benchmarks=fillrandom,readrandom --value_size=64 --num=50000000 --reads=25000000 --sync_index=0 --db=data
+env NarkDb_WrSegCacheSizeMB=64 ./db_bench_nark --benchmarks=fillrandom,readrandom --value_size=64 --num=50000000 --reads=25000000 --sync_index=0 --db=data
 total_size=`du -s -b data`
 echo $total_size
 echo "####rocksdb benchmark finish"
