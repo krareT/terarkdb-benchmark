@@ -555,9 +555,11 @@ class Benchmark {
 
       if (fresh_db) {
         if (FLAGS_use_existing_db) {
+/*
           fprintf(stdout, "%-12s : skipped (--use_existing_db is true)\n",
                   name.ToString().c_str());
           method = NULL;
+*/
         } else {
           delete db_;
           db_ = NULL;
@@ -1023,6 +1025,7 @@ int main(int argc, char** argv) {
     } else if (sscanf(argv[i], "--write_buffer_size=%d%c", &n, &junk) == 1) {
       FLAGS_write_buffer_size = n;
     } else if (sscanf(argv[i], "--cache_size=%d%c", &n, &junk) == 1) {
+      std::cout << " cache size " << n << std::endl;
       FLAGS_cache_size = n;
     } else if (sscanf(argv[i], "--bloom_bits=%d%c", &n, &junk) == 1) {
       FLAGS_bloom_bits = n;
