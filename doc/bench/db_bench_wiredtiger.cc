@@ -848,8 +848,9 @@ class Benchmark {
 
       if (FLAGS_use_lsm) {
         config << ",lsm=(";
+        // if (FLAGS_cache_size > SMALL_CACHE)
         if (FLAGS_cache_size > SMALL_CACHE)
-          config << ",chunk_size=20MB";
+          config << ",chunk_size=" << FLAGS_write_buffer_size;
         if (FLAGS_bloom_bits > 0)
           config << ",bloom_bit_count=" << FLAGS_bloom_bits;
         else if (FLAGS_bloom_bits == 0)

@@ -1,0 +1,56 @@
+NarkDB Benchmarks
+	by Terark panfengfeng leipeng and fuxinyuan, Jan 2016
+
+In order to test NakrDB's performance, we benchmark it against other well-established database implementations. We compare NarkDB against RocksDB (version 2.5), Redis (version 3.0.6) and WiredTiger (version 2.7.0). 
+
+Benchmarks were all performed on a eight-core Intel(R) Xeon(R) CPU E5-2680 v3 @ 2.50GHz, with 16 GB of DDR3 RAM machine. The OS version is 3.10.0-123.9.3.el7.x86_64.
+
+Benchmark Source Code
+
+We wrote benchmark tools for rocksdb, redis, wiredtiger, narkdb on LevelDB's db_bench. The code for each of the benchmarks resides here:
+	RocksDB: doc/bench/db_bench_rocksdb.cc	
+	Redis: doc/bench/db_bench_redis.cc	
+	Wiredtiger: doc/bench/db_bench_wiredtiger.cc	
+	NarkDB: doc/bench/db_bench_nark.cc
+
+1. Baseline Performance
+
+This section gives the baseline performance of all the databases. Following sections show how performance changes as various parameters are varied. For the baseline:
+	Using compression
+	Kyes are 16 bytes each
+	Value are 64 bytes each (with enough redundancy so that a simple compressor shringks them to 50% of their original size)	
+	Total data volume is 4GB (no-compression), so that the number of key/value pair is 4GB/80B (~50000000)
+
+Other specfic configuration:
+	RocksDB:
+		configuration I: Memtable size:64MB, with bloom filter, with cache size(192MB)
+		configuration II: Memtable size:64MB with bloom filter, without cache size
+		configuration III: Memtable size 64MB without bloom filter, without cache size
+		
+	WiredTiger:
+		configuration I: Memtable size 64MB, with bloom filter, with cache size(192MB)
+		configuration II: default configuration, with bloom filter, withtou cache size 
+		configuration III: default condifuration, without bloom filter, without cache size
+	
+	Redis:	??
+	
+	NarkDB: 
+		configuration I: sync_index = false
+		configuration II: sync_index = true
+
+
+###### Baseline Result ######
+
+Random Writes (~50000000)
+	RocksDB (II):		11.177 	micros/op
+	WiredTiger (I): 	4.384 	micros/op	
+	Redis:
+	NarkDB (I):		3.2	micros/op		
+	NarkDB (II):	 	10.547 	micros/op	
+
+Random Reads  (~25000000)
+	RocksDB (II):		34.920  micros/op
+	WiredTiger (I): 	128.141 micros/op	
+	Redis:
+	NarkDB (I):		88.87 	micros/op
+	NarkDB (II):		91.982	micros/op
