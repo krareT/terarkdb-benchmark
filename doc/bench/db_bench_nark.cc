@@ -872,7 +872,8 @@ class Benchmark {
 		//	  printf("seekLowerBound(%s)=%d\n", indexSchema.toJsonStr(keyData).c_str(), ret);
 			  for (size_t i = 0; i < idvec.size(); ++i) {
 				  recId = idvec[i];
-				  ctx->getValue(recId, &val);
+			//	  ctx->getValue(recId, &val);
+				  tab->selectOneColumn(recId, 1, &val, ctx.get());
 			  }
 			  if(idvec.size() > 0)
 				found++;
