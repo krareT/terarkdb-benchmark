@@ -1,4 +1,4 @@
-value=128
+value=256
 record_num=50000000
 read_num=25000000
 
@@ -11,7 +11,7 @@ cp dbmeta.json $dirname
 free -m
 export NarkDb_WrSegCacheSizeMB=67108864 
 ./db_bench_nark --benchmarks=fillrandom,readrandom --value_size=$value --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname
-total_size=`du -s -b data | awk '{print $1}'`
+total_size=`du -s -b $dirname | awk '{print $1}'`
 echo $total_size
 echo "####narkdb benchmark finish"
 free -m
@@ -23,7 +23,7 @@ dirname=data/rocksdb_datadir_$(date +%s)
 mkdir $dirname
 free -m
 ./db_bench_rocksdb --benchmarks=fillrandom,readrandom --value_size=$value --num=$record_num --reads=$read_num --write_buffer_size=67108864 --cache_size=$total_size --bloom_bits=5 --db=$dirname
-du -s -b data
+du -s -b $dirname
 echo "####rocksdb benchmark finish"
 free -m
 
@@ -34,6 +34,6 @@ dirname=data/wiredtiger_datadir_$(date +%s)
 mkdir $dirname
 free -m
 ./db_bench_wiredtiger --benchmarks=fillrandom,readrandom --value_size=$value --num=$record_num --reads=$read_num --write_buffer_size=67108864 --cache_size=$total_size --bloom_bits=5 --db=$dirname
-du -s -b data
+du -s -b $dirname
 echo "####wiredtiger benchmark finish"
 free -m
