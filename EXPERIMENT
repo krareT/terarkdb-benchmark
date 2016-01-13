@@ -32,7 +32,7 @@ Other specfic configuration:
 	
 	NarkDB: 
 		configuration I: sync_index = false
-		configuration II: sync_index = true
+		(configuration II: sync_index = true)
 
 
 ###### Baseline Result ######

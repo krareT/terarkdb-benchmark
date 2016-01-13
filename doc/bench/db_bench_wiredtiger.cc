@@ -831,7 +831,7 @@ class Benchmark {
       // Create tuning options and create the data file
       config.str("");
       config << "key_format=S,value_format=S";
-      config << ",prefix_compression=false";
+      config << ",prefix_compression=true";
       config << ",checksum=off";
       if (FLAGS_cache_size < SMALL_CACHE && FLAGS_cache_size > 0) {
           config << ",internal_page_max=4kb";

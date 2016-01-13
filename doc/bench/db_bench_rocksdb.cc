@@ -16,6 +16,7 @@
 #include "rocksdb/db.h"
 #include "rocksdb/env.h"
 #include "rocksdb/cache.h"
+#include "rocksdb/options.h"
 #include "rocksdb/filter_policy.h"
 
 // Comma-separated list of operations to run in the specified order
@@ -86,6 +87,14 @@ static int FLAGS_threads = 1;
 
 // Size of each value
 static int FLAGS_value_size = 100;
+
+static enum rocksdb::CompressionType FLAGS_compression_type =
+    rocksdb::kSnappyCompression;
+
+static int FLAGS_min_level_to_compress = 0;
+
+static int FLAGS_num_levels = 7;
+
 
 // Arrange to generate values that shrink to this fraction of
 // their original size after compression
@@ -730,6 +739,20 @@ class Benchmark {
     options.block_cache = cache_;
     options.write_buffer_size = FLAGS_write_buffer_size;
     options.filter_policy = filter_policy_;
+
+    options.compression = FLAGS_compression_type;
+    if (FLAGS_min_level_to_compress >= 0) {
+      assert(FLAGS_min_level_to_compress <= FLAGS_num_levels);
+      options.compression_per_level.resize(FLAGS_num_levels);
+      for (int i = 0; i < FLAGS_min_level_to_compress; i++) {
+        options.compression_per_level[i] = rocksdb::kNoCompression;
+      }
+      for (int i = FLAGS_min_level_to_compress;
+           i < FLAGS_num_levels; i++) {
+        options.compression_per_level[i] = FLAGS_compression_type;
+      }
+    }
+
     std::cout << "Create database " << FLAGS_db << std::endl;
     rocksdb::Status s = rocksdb::DB::Open(options, FLAGS_db, &db_);
     if (!s.ok()) {
