@@ -23,14 +23,10 @@ This section gives the baseline performance of all the databases. Following sect
 
 Other specfic configuration:
 	RocksDB:
-		configuration I: Memtable size:64MB, with bloom filter, with cache size(192MB)
-		configuration II: Memtable size:64MB with bloom filter, without cache size
-		configuration III: Memtable size 64MB without bloom filter, without cache size
+		configuration: Memtable size:64MB, with bloom filter, with cache size(192MB), with compression(snappy)
 		
 	WiredTiger:
-		configuration I: Memtable size 64MB, with bloom filter, with cache size(192MB)
-		configuration II: default configuration, with bloom filter, withtou cache size 
-		configuration III: default condifuration, without bloom filter, without cache size
+		configuration: Memtable size 64MB, with bloom filter, with cache size(192MB), with compression(prefix and block,snappy)
 	
 	Redis:	??
 	
