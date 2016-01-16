@@ -1,0 +1,12 @@
+## 1
+value = 64	(Done) rocksdb wiredtiger narkdb
+value = 128	(Done) rocksdb wiredtiger narkdb
+value = 256	(Done) rocksdb wiredtiger narkdb
+
+## 2
+value = 32	(Done) redis narkdb 
+value = 64 	(Done) redis narkdb
+
+## 3
+real dataset
+rocksdb wiredtiger narkdb

@@ -551,7 +551,7 @@ class Benchmark {
           Open();
         }
       }
-
+      std::cout << " run one method " << std::endl;
       if (method != NULL) {
         RunBenchmark(num_threads, name, method);
       }
@@ -744,7 +744,7 @@ class Benchmark {
       thread->stats.AddMessage(msg);
     }
 
-	if (!seq)
+    if (!seq)
 	  thread->rand.Shuffle(shuff, num_);
     RandomGenerator gen;
     int64_t bytes = 0;

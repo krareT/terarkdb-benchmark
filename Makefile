@@ -22,6 +22,9 @@ include build_config.mk
 ROCKDB_INCLUDE_PATH=-I/home/pff/dbengine/rocksdb-2.5.fb/include
 #librocksdb.so 
 
+ROCKDB_NEW_INCLUDE_PATH=-I/home/pff/dbengine/rocksdb-4.1/include
+#librocksdb-4.1.so 
+
 REDIS_INCLUDE_PATH=-I/home/pff/dbengine/hiredis-0.13.3
 
 WIREDTIGER_INCLUDE_PATH=-I/home/pff/dbengine/wiredtiger-2.7.0
@@ -134,6 +137,9 @@ db_bench_wiredtiger: doc/bench/db_bench_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL)
 
 db_bench_rocksdb: doc/bench/db_bench_rocksdb.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/bench/db_bench_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb
+
+db_bench_rocksdb_new: doc/bench/db_bench_rocksdb_new.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/bench/db_bench_rocksdb_new.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb-4.1
 
 db_bench_redis: doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lhiredis
