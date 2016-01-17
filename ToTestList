@@ -9,4 +9,4 @@ value = 64 	(Done) redis narkdb
 
 ## 3
 real dataset
-rocksdb wiredtiger narkdb
+	wiredtiger narkdb
