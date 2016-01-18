@@ -795,8 +795,8 @@ class Benchmark {
         thread->stats.FinishedSingleOp();
       }
     }
-    thread->stats.AddBytes(bytes);
     tab->syncFinishWriting();
+    thread->stats.AddBytes(bytes);
 	printf("tab->numDataRows()=%lld\n", tab->numDataRows());
   }
 
