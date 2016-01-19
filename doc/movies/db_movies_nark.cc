@@ -813,7 +813,6 @@ class Benchmark {
 		  recId = thread->rand.Next() % FLAGS_num;
 	// 	  recId = readshuff[i];
 		  ctx->getValue(recId, &val);
-		  std::cout << "key " << recId << "value " << val << std::endl;
       		  thread->stats.FinishedSingleOp();
 	  }
   }
