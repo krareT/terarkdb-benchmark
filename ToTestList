@@ -10,3 +10,6 @@ value = 64 	(Done) redis narkdb
 ## 3
 real dataset
 	wiredtiger narkdb
+
+## 4
+#read hot
