@@ -849,9 +849,9 @@ class Benchmark {
     if (!FLAGS_use_existing_db) {
       // Create tuning options and create the data file
       config.str("");
-      config << "key_format=S,value_format=SSSSSSS";
+      config << "key_format=SSSS,value_format=SSSS";
       config << ",columns=[productId, userId, profileName, helpfulness, score, time, summary, text]";
-      config << ",prefix_compression=false";
+      config << ",prefix_compression=true";
       config << ",checksum=off";
       if (FLAGS_cache_size < SMALL_CACHE && FLAGS_cache_size > 0) {
           config << ",internal_page_max=4kb";
@@ -877,7 +877,7 @@ class Benchmark {
         config << ")";
       }
 #ifndef SYMAS_CONFIG
-      // config << ",block_compressor=snappy";
+      config << ",block_compressor=snappy";
 #endif
       fprintf(stderr, "Creating %s with config %s\n",uri_.c_str(), config.str().c_str());
       int ret = session->create(session, uri_.c_str(), config.str().c_str());
@@ -979,8 +979,10 @@ class Benchmark {
 	    }
 
 	    if (str == "") {
-        	    cursor->set_key(cursor, recRow.productId.c_str());
-		    cursor->set_value(cursor, recRow.userId.c_str(), recRow.profileName.c_str(), recRow.helpfulness.c_str(), recRow.score.c_str(), recRow.time.c_str(), recRow.summary.c_str(), recRow.text.c_str());
+        	    cursor->set_key(cursor, recRow.productId.c_str(), recRow.userId.c_str(), recRow.profileName.c_str(), recRow.helpfulness.c_str()) ;
+		    cursor->set_value(cursor, recRow.score.c_str(), recRow.time.c_str(), recRow.summary.c_str(), recRow.text.c_str());
+        	    // cursor->set_key(cursor, recRow.productId.c_str());
+		    // cursor->set_value(cursor, recRow.userId.c_str(), recRow.profileName.c_str(), recRow.helpfulness.c_str(), recRow.score.c_str(), recRow.time.c_str(), recRow.summary.c_str(), recRow.text.c_str());
 		    int ret = cursor->insert(cursor);
 		    if (ret != 0) {
 			    fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
@@ -994,6 +996,30 @@ class Benchmark {
 	    }
     }
     cursor->close(cursor);
+    
+/*
+    ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
+    if (ret != 0) {
+      fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+      exit(1);
+    }
+
+   std::cout << " get now!" << std::endl;    
+ 
+    char *k1, *k2, *k3, *k4;
+    char *v1, *v2, *v3, *v4, *v5, *v6, *v7;
+    int temp = 0;
+    while ((ret = cursor->next(cursor)) == 0) {
+	    temp++;
+	    ret = cursor->get_key(cursor, &k1, &k2, &k3, &k4);
+	    ret = cursor->get_value(cursor, &v1, &v2, &v3, &v4);
+      	    fprintf(stdout, " productId: %s\nuserId: %s\nprofileName: %s\n helpfulness: %s\nscore: %s\n time: %s\n summary: %s\n text: %s\n", k1, k2, k3, k4, v1, v2, v3, v4);
+    }
+   std::cout << " get number " << temp << std::endl;    
+
+    ret = cursor->close(cursor);
+*/
+
     thread->stats.AddBytes(bytes);
     std::cout << " bytes " << bytes << std::endl;
   }
