@@ -991,7 +991,6 @@ class Benchmark {
 		    thread->stats.FinishedSingleOp();
 		    std::cout << " num " << num << " record num " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness.size() << " " << recRow.score.size() << " " << recRow.time.size() << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
 		    num = 0;
-		    continue;
 	    }
     }
     cursor->close(cursor);
