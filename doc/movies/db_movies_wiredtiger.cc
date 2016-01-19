@@ -850,8 +850,8 @@ class Benchmark {
     if (!FLAGS_use_existing_db) {
       // Create tuning options and create the data file
       config.str("");
-      config << "key_format=SS,value_format=SLLLLSS";
-      config << ",columns=[productId, userId, profileName, helpfulness1, helpfulness2, score, time, summary, text]";
+      config << "key_format=r,value_format=SSSLLLLSS";
+      config << ",columns=[id, productId, userId, profileName, helpfulness1, helpfulness2, score, time, summary, text]";
       config << ",prefix_compression=true";
       config << ",checksum=off";
       if (FLAGS_cache_size < SMALL_CACHE && FLAGS_cache_size > 0) {
@@ -920,7 +920,7 @@ class Benchmark {
     WT_CURSOR *cursor;
     std::stringstream cur_config;
     cur_config.str("");
-    cur_config << "append";
+    cur_config << "append=true";
     if (seq && FLAGS_threads == 1)
   	cur_config << ",bulk=true";
     if (FLAGS_stagger)
@@ -938,54 +938,53 @@ class Benchmark {
     TestRow recRow;
 
     while(getline(ifs, str)) {
-	    if (strstr(str.c_str(),  "product/productId") != NULL) {
+	    if (str.find("product/productId:") == 0) {
 		    recRow.productId = str.substr(19);
 		    bytes += recRow.productId.size();
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "review/userId") != NULL) {
+	    if (str.find("review/userId:") == 0) {
 		    recRow.userId = str.substr(15);
 		    bytes += recRow.userId.size();	
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "review/profileName") != NULL) {
+	    if (str.find("review/profileName:") == 0) {
 		    recRow.profileName = str.substr(20);
 		    bytes += recRow.profileName.size();
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "review/helpfulness") != NULL) {
+	    if (str.find("review/helpfulness:") == 0) {
 		    char* pos2 = NULL;
 		    recRow.helpfulness1 = strtol(str.data()+20, &pos2, 10);
 		    recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
 		    bytes += sizeof(uint32_t)*2;
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "review/score") != NULL) {
+	    if (str.find("review/score:") == 0) {
 		    recRow.score = atol(str.substr(14).c_str());
 		    bytes += sizeof(uint32_t);
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "review/time") != NULL) {
+	    if (str.find("review/time:") == 0) {
 		    recRow.time = atol(str.substr(13).c_str());
 		    // recRow.time = str.substr(13);
 		    bytes += sizeof(uint32_t);
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "review/summary") != NULL) {
+	    if (str.find("review/summary:") == 0) {
 		    recRow.summary = str.substr(16);
 		    bytes += recRow.summary.size();	
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "review/text") != NULL) {
+	    if (str.find("review/text:") == 0) {
 		    recRow.text = str.substr(13);
 		    bytes += recRow.text.size();	
 		    num++;
 	    }
 
 	    if (str == "") {
-        	    cursor->set_key(cursor, recRow.productId.c_str(), recRow.userId.c_str());
 		    // cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1.c_str(), recRow.helpfulness2.c_str(), recRow.score.c_str(), recRow.time.c_str(), recRow.summary.c_str(), recRow.text.c_str());
-		    cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
+		    cursor->set_value(cursor, recRow.productId.c_str(), recRow.userId.c_str(), recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
 		    int ret = cursor->insert(cursor);
 		    if (ret != 0) {
 			    fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
@@ -998,6 +997,7 @@ class Benchmark {
 		    num = 0;
 	    }
     }
+    FLAGS_num = num_;
     cursor->close(cursor);
     
 /*
@@ -1125,30 +1125,37 @@ repeat:
   void ReadRandom(ThreadState* thread) {
     const char *ckey;
     WT_CURSOR *cursor;
+    
+    const char* wproductId;
+    const char* wuserId;
+    const char*  wprofileName;
+    uint32_t whelpfulness1;
+    uint32_t whelpfulness2;
+    uint32_t wscore;
+    uint32_t wtime;
+    const char* wsummary;
+    const char* wtext;
+
     int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
     if (ret != 0) {
       fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
       exit(1);
     }
-    int found = 0;
     for (int i = 0; i < reads_; i++) {
-      char key[100];
       const int k = thread->rand.Next() % FLAGS_num;
-      if (k == 0) {
-        found++; /* Wired Tiger does not support 0 keys. */
-        continue;
-      }
-      snprintf(key, sizeof(key), "%016d", k);
+      uint64_t key = k + 1;
       cursor->set_key(cursor, key);
       if (cursor->search(cursor) == 0) {
-       found++;
+        ret = cursor->get_value(cursor, &wproductId, &wuserId, &wprofileName, &whelpfulness1, &whelpfulness2, &wscore, &wtime, &wsummary, &wtext);
       }
       thread->stats.FinishedSingleOp();
     }
     cursor->close(cursor);
+/*
     char msg[100];
     snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
     thread->stats.AddMessage(msg);
+*/
   }
 
   void ReadMissing(ThreadState* thread) {
@@ -1173,6 +1180,17 @@ repeat:
   void ReadHot(ThreadState* thread) {
     const char *ckey;
     WT_CURSOR *cursor;
+    
+    const char* wproductId;
+    const char* wuserId;
+    const char*  wprofileName;
+    uint32_t whelpfulness1;
+    uint32_t whelpfulness2;
+    uint32_t wscore;
+    uint32_t wtime;
+    const char* wsummary;
+    const char* wtext;
+
     int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
     if (ret != 0) {
       fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
@@ -1180,11 +1198,12 @@ repeat:
     }
     const int range = (FLAGS_num + 99) / 100;
     for (int i = 0; i < reads_; i++) {
-      char key[100];
       const int k = thread->rand.Next() % range;
-      snprintf(key, sizeof(key), "%016d", k);
+      uint64_t key = k + 1;
       cursor->set_key(cursor, key);
-      cursor->search(cursor);
+      if (cursor->search(cursor) == 0) {
+        ret = cursor->get_value(cursor, &wproductId, &wuserId, &wprofileName, &whelpfulness1, &whelpfulness2, &wscore, &wtime, &wsummary, &wtext);
+      }
       thread->stats.FinishedSingleOp();
     }
     cursor->close(cursor);
