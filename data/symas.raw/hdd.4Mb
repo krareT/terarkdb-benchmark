@@ -1,0 +1,67 @@
+A. Sequential Reads (readseq)
+LevelDB 4385965 ops/sec 	0.2280 micros/op
+Kyoto TreeDB 823723 ops/sec 	1.2140 micros/op
+SQLite3 306937 ops/sec 	3.2580 micros/op
+MDB 14084507 ops/sec 	0.0710 micros/op
+BerkeleyDB 825083 ops/sec 	1.2120 micros/op
+ 
+B. Random Reads (readrandom)
+LevelDB 135925 ops/sec 	7.3570 micros/op
+Kyoto TreeDB 101041 ops/sec 	9.8970 micros/op
+SQLite3 81579 ops/sec 	12.2581 micros/op
+MDB 746826 ops/sec 	1.3390 micros/op
+BerkeleyDB 102323 ops/sec 	9.7730 micros/op
+ 
+
+Read performance is essentially the same as the previous tests since all of the data is present in the filesystem cache.
+
+C. Sequential Writes (fillseq)
+LevelDB 497265 ops/sec 	2.0110 micros/op
+Kyoto TreeDB 337952 ops/sec 	2.9590 micros/op
+SQLite3 49383 ops/sec 	20.2499 micros/op
+MDB 488281 ops/sec 	2.0480 micros/op
+BerkeleyDB 68507 ops/sec 	14.5970 micros/op
+ 
+D. Random Writes (fillrandom)
+LevelDB 172058 ops/sec 	5.8120 micros/op
+Kyoto TreeDB 90827 ops/sec 	11.0099 micros/op
+SQLite3 19623 ops/sec 	50.9606 micros/op
+MDB 233155 ops/sec 	4.2890 micros/op
+BerkeleyDB 27625 ops/sec 	36.1991 micros/op
+ 
+E. Batch Writes
+Sequential Writes (fillseqbatch)
+LevelDB 517063 entries/sec 	1.9340 micros/op
+Kyoto TreeDB 337952 entries/sec 	2.9590 micros/op
+SQLite3 97267 entries/sec 	10.2810 micros/op
+MDB 2487562 entries/sec 	0.4020 micros/op
+BerkeleyDB 118329 entries/sec 	8.4510 micros/op
+ 
+Random Writes (fillrandbatch)
+LevelDB 226244 entries/sec 	4.4200 micros/op
+Kyoto TreeDB 90827 entries/sec 	11.0099 micros/op
+SQLite3 25825 entries/sec 	38.7222 micros/op
+MDB 286451 entries/sec 	3.4910 micros/op
+BerkeleyDB 26190 entries/sec 	38.1825 micros/op
+ 
+F. Synchronous Writes
+
+As before only 1000 operations are performed due to the slowness of these tests. The HDD's cache was not disabled for these tests.
+
+Sequential Writes (fillseqsync)
+LevelDB 1260 ops/sec 	793.6508 micros/op
+Kyoto TreeDB 30 ops/sec 	33333.3333 micros/op
+SQLite3 114 ops/sec 	8771.9298 micros/op
+MDB 364 ops/sec 	2747.2527 micros/op
+BerkeleyDB 733 ops/sec 	1364.2565 micros/op
+
+Random Writes (fillrandsync)
+LevelDB 1291 ops/sec 	774.5933 micros/op
+Kyoto TreeDB 28 ops/sec 	35714.2857 micros/op
+SQLite3 112 ops/sec 	8928.5714 micros/op
+MDB 297 ops/sec 	3367.0034 micros/op
+BerkeleyDB 704 ops/sec 	1420.4545 micros/op
+
+The slowness of the HDD overshadows any difference between sequential and random write performance here. LevelDB seems to benefit more from the HDD's caching than any of the other databases.
+
+MDB's NOMETASYNC option made no discernible difference here so those results are omitted. Ultimately the seek overhead cannot be avoided using a single storage device. Ideally the meta pages should be isolated in a separate file that can be stored on a separate spindle to avoid the seek overhead.

@@ -1,0 +1,23 @@
+A. Sequential Reads (readseq)
+ 
+B. Random Reads (readrandom)
+ 
+C. Sequential Writes (fillseq)
+ 
+D. Random Writes (fillrandom)
+ 
+E. Overwrites (overwrite)
+ 
+F. Synchronous Random Writes (fillsync)
+
+G. Reverse Reads (readreverse)
+
+H. Random write of 100K values 1000 keys (fill100K)
+
+I. Repeated CRC32C (crc32c)
+
+J. Snappy compression (snappycomp)
+
+K. Snappy uncompress (snappyuncomp)
+
+L. Acquire load (acquireload)

@@ -1,0 +1,69 @@
+A. Sequential Reads (readseq)
+LevelDB 4629630 ops/sec 	0.2160 micros/op
+Kyoto TreeDB 834028 ops/sec 	1.1990 micros/op
+SQLite3 315259 ops/sec 	3.1720 micros/op
+MDB 14084507 ops/sec 	0.0710 micros/op
+BerkeleyDB 843882 ops/sec 	1.1850 micros/op
+ 
+B. Random Reads (readrandom)
+LevelDB 143947 ops/sec 	6.9470 micros/op
+Kyoto TreeDB 99285 ops/sec 	10.0720 micros/op
+SQLite3 83668 ops/sec 	11.9520 micros/op
+MDB 723589 ops/sec 	1.3820 micros/op
+BerkeleyDB 102669 ops/sec 	9.7400 micros/op
+ 
+
+Read performance is essentially the same as for tmpfs since all of the data is present in the filesystem cache.
+C. Sequential Writes (fillseq)
+LevelDB 477555 ops/sec 	2.0940 micros/op
+Kyoto TreeDB 335683 ops/sec 	2.9790 micros/op
+SQLite3 51419 ops/sec 	19.4481 micros/op
+MDB 494315 ops/sec 	2.0230 micros/op
+BerkeleyDB 59637 ops/sec 	16.7681 micros/op
+ 
+D. Random Writes (fillrandom)
+LevelDB 164962 ops/sec 	6.0620 micros/op
+Kyoto TreeDB 93266 ops/sec 	10.7220 micros/op
+SQLite3 38619 ops/sec 	25.8940 micros/op
+MDB 236798 ops/sec 	4.2230 micros/op
+BerkeleyDB 16783 ops/sec 	59.5841 micros/op
+ 
+
+Most of the databases perform at close to their tmpfs speeds which is expected since these are asynchronous writes. However BerkeleyDB shows a large reduction in throughput. Also surprisingly MDB beats LevelDB's write performance here. Even though the writes are fully cached the underlying storage device still has an impact on write throughput.
+
+E. Batch Writes
+Sequential Writes (fillseqbatch)
+LevelDB 619963 entries/sec 	1.6130 micros/op
+Kyoto TreeDB 335683 entries/sec 	2.9790 micros/op
+SQLite3 99850 entries/sec 	10.0150 micros/op
+MDB 2386635 entries/sec 	0.4190 micros/op
+BerkeleyDB 111297 entries/sec 	8.9850 micros/op
+ 
+Random Writes (fillrandbatch)
+LevelDB 228154 entries/sec 	4.3830 micros/op
+Kyoto TreeDB 93266 entries/sec 	10.7220 micros/op
+SQLite3 53700 entries/sec 	18.6220 micros/op
+MDB 286205 entries/sec 	3.4940 micros/op
+BerkeleyDB 16254 entries/sec 	61.5233 micros/op
+ 
+F. Synchronous Writes
+
+Here the difference between SSD and tmpfs is made obvious. Note that due to the overall slowness of these operations they were only performed 1000 times each.
+
+Sequential Writes (fillseqsync)
+LevelDB 342 ops/sec 	2923.9766 micros/op
+Kyoto TreeDB 69 ops/sec 	14492.7536 micros/op
+SQLite3 114 ops/sec 	8771.9298 micros/op
+MDB 149 ops/sec 	6711.4094 micros/op
+MDB no MetaSync 328 ops/sec 	3048.7805 micros/op
+BerkeleyDB 300 ops/sec 	3333.3333 micros/op
+ 
+Random Writes (fillrandsync)
+LevelDB 342 ops/sec 	2923.9766 micros/op
+Kyoto TreeDB 67 ops/sec 	14925.3731 micros/op
+SQLite3 114 ops/sec 	8771.9298 micros/op
+MDB 148 ops/sec 	6756.7568 micros/op
+MDB no MetaSync 322 ops/sec 	3105.5901 micros/op
+BerkeleyDB 291 ops/sec 	3436.4261 micros/op
+
+The slowness of the SSD overshadows any difference between sequential and random write performance here.

@@ -1,0 +1,22 @@
+﻿{
+	"RowSchema": {
+		"columns" : {
+			"productId"   : { "type" : "strzero" },
+			"userId"      : { "type" : "strzero" },
+			"profileName" : { "type" : "strzero", "colstore": true },
+			"helpfulness1": { "type" : "uint32" , "colstore": true },
+			"helpfulness2": { "type" : "uint32" , "colstore": true },
+			"score"       : { "type" : "uint32" , "colstore": true },
+			"time"        : { "type" : "uint32" , "colstore": true },
+			"summary"     : { "type" : "strzero", "colstore": true, "maxFragLen": 20 },
+			"text"        : { "type" : "strzero", "colstore": true, "maxFragLen": 30 }
+		}
+	},
+	"MaxWrSegSize" : 27483648,
+	"ReadonlyDataMemSize" : 268435456,
+	"SufarrCompressMinFreqXX": 5,
+	"TableIndex" : [
+		{ "fields": "productId"  , "ordered" : true },
+		{ "fields": "userId"  , "ordered" : true }
+	]
+}

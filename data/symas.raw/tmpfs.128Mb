@@ -1,0 +1,58 @@
+A. Sequential Reads (readseq)
+LevelDB 4566210 ops/sec 	0.2190 micros/op
+Kyoto TreeDB 1242236 ops/sec 	0.8050 micros/op
+SQLite3 441501 ops/sec 	2.2650 micros/op
+MDB 14705882 ops/sec 	0.0680 micros/op
+BerkeleyDB 860585 ops/sec 	1.1620 micros/op
+
+B. Random Reads (readrandom)
+LevelDB 177557 ops/sec 	5.6320 micros/op
+Kyoto TreeDB 195198 ops/sec 	5.1230 micros/op
+SQLite3 105697 ops/sec 	9.4610 micros/op
+MDB 751315 ops/sec 	1.3310 micros/op
+BerkeleyDB 169348 ops/sec 	5.9050 micros/op
+ 
+C. Sequential Writes (fillseq)
+LevelDB 488520 ops/sec 	2.0470 micros/op
+Kyoto TreeDB 323939 ops/sec 	3.0870 micros/op
+SQLite3 54660 ops/sec 	18.2949 micros/op
+MDB 461255 ops/sec 	2.1680 micros/op
+BerkeleyDB 91525 ops/sec 	10.9260 micros/op
+
+D. Random Writes (fillrandom)
+LevelDB 318370 ops/sec 	3.1410 micros/op
+Kyoto TreeDB 182983 ops/sec 	5.4650 micros/op
+SQLite3 43687 ops/sec 	22.8901 micros/op
+MDB 240154 ops/sec 	4.1640 micros/op
+BerkeleyDB 67838 ops/sec 	14.7410 micros/op
+ 
+E. Batch Writes
+
+Sequential Writes (fillseqbatch)
+LevelDB 683995 entries/sec 	1.4620 micros/op
+Kyoto TreeDB 324675 entries/sec 	3.0800 micros/op
+SQLite3 105119 entries/sec 	9.5130 micros/op
+MDB 2481390 entries/sec 	0.4030 micros/op
+BerkeleyDB 191534 entries/sec 	5.2210 micros/op
+ 
+Random Writes (fillrandbatch)
+LevelDB 441501 entries/sec 	2.2650 micros/op
+Kyoto TreeDB 182983 entries/sec 	5.4650 micros/op
+SQLite3 64078 entries/sec 	15.6060 micros/op
+MDB 294898 entries/sec 	3.3910 micros/op
+BerkeleyDB 104613 entries/sec 	9.5590 micros/op
+ 
+F. Synchronous Writes
+Sequential Writes (fillseqsync)
+LevelDB 441696 ops/sec 	2.2640 micros/op
+Kyoto TreeDB 5730 ops/sec 	174.5201 micros/op
+SQLite3 51243 ops/sec 	19.5149 micros/op
+MDB 404694 ops/sec 	2.4710 micros/op
+BerkeleyDB 86957 ops/sec 	11.4999 micros/op
+ 
+Random Writes (fillrandsync)
+LevelDB 304599 ops/sec 	3.2830 micros/op
+Kyoto TreeDB 5698 ops/sec 	175.5002 micros/op
+SQLite3 40510 ops/sec 	24.6853 micros/op
+MDB 224871 ops/sec 	4.4470 micros/op
+BerkeleyDB 65789 ops/sec 	15.2001 micros/op
