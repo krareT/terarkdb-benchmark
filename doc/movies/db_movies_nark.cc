@@ -760,7 +760,7 @@ class Benchmark {
     tab->syncFinishWriting();
     thread->stats.AddBytes(bytes);
     printf("tab->numDataRows()=%lld\n", tab->numDataRows());
-    std::cout << " bytes " << bytes << std::endl;
+    FLAGS_num = tab->numDataRows(); 
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -798,58 +798,23 @@ class Benchmark {
   }
 
   void ReadRandom(ThreadState* thread) {
-    fprintf(stderr, "ReadReverse not supported\n");
-    return;
+	  nark::valvec<nark::byte> val;
+	  nark::llong recId;
+// method 1
 /*
-	  nark::valvec<nark::byte> keyHit, val;
-	  nark::valvec<nark::llong> idvec;
-    	  int found = 0;
-	  for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
-		  nark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
-		  const nark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
-		  std::string keyData;
-		  for (size_t i = 0; i < reads_; ++i) {
-			  const int k = thread->rand.Next() % FLAGS_num;
-			  char key[100];
-			  // printf("indexId %d\n", indexId);
-			  switch (indexId) {
-				  default:
-					  assert(0);
-					  break;
-				  case 0:
-			  		  snprintf(key, sizeof(key), "%016d", k);
-					  keyData = key;
-					  break;
-			  }
-			  idvec.resize(0);
-			  nark::llong recId;
-			  int ret = indexIter->seekLowerBound(keyData, &recId, &keyHit);
-			  if (ret == 0) { // found exact key
-				  idvec.push_back(recId);
-				  int hasNext; // int as bool
-				  while ((hasNext = indexIter->increment(&recId, &keyHit))
-						  && nark::fstring(keyHit) == keyData) {
-					  assert(recId < tab->numDataRows());
-					  idvec.push_back(recId);
-				  }
-				  if (hasNext)
-					  idvec.push_back(recId);
-			  }
-		//	  printf("seekLowerBound(%s)=%d\n", indexSchema.toJsonStr(keyData).c_str(), ret);
-			  for (size_t i = 0; i < idvec.size(); ++i) {
-				  recId = idvec[i];
-			//	  ctx->getValue(recId, &val);
-				  tab->selectOneColumn(recId, 1, &val, ctx.get());
-			  }
-			  if(idvec.size() > 0)
-				found++;
-      			  thread->stats.FinishedSingleOp();
-		  }
+          int *readshuff = NULL;
+	  readshuff = (int *)malloc(FLAGS_num * sizeof(int));
+	  for (int i=0; i<FLAGS_num; i++)
+		  readshuff[i] = i;
+	  thread->rand.Shuffle(readshuff, FLAGS_num);
+*/	  
+	  
+	  for (size_t i = 0; i < reads_; ++i) {
+		  recId = thread->rand.Next() % FLAGS_num;
+	// 	  recId = readshuff[i];
+		  ctx->getValue(recId, &val);
+      		  thread->stats.FinishedSingleOp();
 	  }
-    char msg[100];
-    snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
-    thread->stats.AddMessage(msg);
-*/
   }
 
   void ReadMissing(ThreadState* thread) {
@@ -869,20 +834,14 @@ class Benchmark {
   }
 
   void ReadHot(ThreadState* thread) {
-    fprintf(stderr, "ReadHot not supported\n");
-    return;
-/*
-    ReadOptions options;
-    std::string value;
+    nark::valvec<nark::byte> val;
+    nark::llong recId;
     const int range = (FLAGS_num + 99) / 100;
     for (int i = 0; i < reads_; i++) {
-      char key[100];
-      const int k = thread->rand.Next() % range;
-      snprintf(key, sizeof(key), "%016d", k);
-      db_->Get(options, key, &value);
+      recId = thread->rand.Next() % range;
+      ctx->getValue(recId, &val);
       thread->stats.FinishedSingleOp();
     }
-*/
   }
 
   void SeekRandom(ThreadState* thread) {
