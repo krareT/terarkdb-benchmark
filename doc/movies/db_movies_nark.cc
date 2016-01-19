@@ -301,9 +301,10 @@ struct TestRow {
 	std::string productId; 
 	std::string userId;
 	std::string profileName;
-	std::string helpfulness;
-	std::string score;
-	std::string time;
+	uint32_t helpfulness1;
+	uint32_t helpfulness2;
+	uint32_t score;
+	uint32_t time;
 	std::string summary;
 	std::string text;
 	
@@ -311,9 +312,10 @@ struct TestRow {
 			&nark::db::Schema::StrZero(productId)
 			&nark::db::Schema::StrZero(userId)
 			&nark::db::Schema::StrZero(profileName)
-			&nark::db::Schema::StrZero(helpfulness)
-			&nark::db::Schema::StrZero(score)
-			&nark::db::Schema::StrZero(time)
+			&helpfulness1
+			&helpfulness2
+			&score
+			&time
 			&nark::db::Schema::StrZero(summary)
 			&nark::db::Schema::StrZero(text)
 			)
@@ -693,43 +695,47 @@ class Benchmark {
     TestRow recRow;
      
     while(getline(ifs, str)) {
-	    
-	    if (strstr(str.c_str(),  "productId") != NULL) {
+		nark::fstring fstr(str);
+	    if (fstr.startsWith("product/productId:")) {
 		    recRow.productId = str.substr(19);
 		    bytes += recRow.productId.size();
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "userId") != NULL) {
+	    if (fstr.startsWith("review/userId:")) {
 		    recRow.userId = str.substr(15);
 		    bytes += recRow.userId.size();	
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "profileName") != NULL) {
+	    if (fstr.startsWith("review/profileName:")) {
 		    recRow.profileName = str.substr(20);
 		    bytes += recRow.profileName.size();
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "helpfulness") != NULL) {
-		    recRow.helpfulness = str.substr(20);
-		    bytes += recRow.helpfulness.size();	
+	    if (fstr.startsWith("review/helpfulness:")) {
+			char* pos2 = NULL;
+		    recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
+		    recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+		    bytes += sizeof(uint32_t)*2;
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "score") != NULL) {
-		    recRow.score = str.substr(14);
-		    bytes += recRow.score.size();	
+	    if (fstr.startsWith("review/score:")) {
+		    recRow.score = nark::lcast(fstr.substr(14));
+		    bytes += sizeof(uint32_t);
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "time") != NULL) {
-		    recRow.time = str.substr(13);
-		    bytes += recRow.time.size();	
+	    if (fstr.startsWith("review/time:")) {
+		//    recRow.time = str.substr(13);
+		//    bytes += recRow.time.size();	
+			recRow.time = nark::lcast(fstr.substr(13));
+			bytes += sizeof(uint32_t);
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "summary") != NULL) {
+	    if (fstr.startsWith("review/summary:")) {
 		    recRow.summary = str.substr(16);
 		    bytes += recRow.summary.size();	
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "text") != NULL) {
+	    if (fstr.startsWith("review/text:")) {
 		    recRow.text = str.substr(13);
 		    bytes += recRow.text.size();	
 		    num++;
@@ -746,7 +752,7 @@ class Benchmark {
 		    }
 		    num_++; 
 		    thread->stats.FinishedSingleOp();
-		    std::cout << " num " << num << " record num " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness.size() << " " << recRow.score.size() << " " << recRow.time.size() << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
+		    std::cout << " num " << num << " record num " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness1 << "/" << recRow.helpfulness2 << " " << recRow.score << " " << recRow.time << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
 		    num = 0;
 	    }
     }
