@@ -358,9 +358,10 @@ struct TestRow {
 	std::string productId; 
 	std::string userId;
 	std::string profileName;
-	std::string helpfulness;
-	std::string score;
-	std::string time;
+	uint32_t helpfulness1;
+	uint32_t helpfulness2;
+	uint32_t score;
+	uint32_t time;
 	std::string summary;
 	std::string text;
 };
@@ -849,8 +850,8 @@ class Benchmark {
     if (!FLAGS_use_existing_db) {
       // Create tuning options and create the data file
       config.str("");
-      config << "key_format=SSSS,value_format=SSSS";
-      config << ",columns=[productId, userId, profileName, helpfulness, score, time, summary, text]";
+      config << "key_format=SS,value_format=SLLLLSS";
+      config << ",columns=[productId, userId, profileName, helpfulness1, helpfulness2, score, time, summary, text]";
       config << ",prefix_compression=true";
       config << ",checksum=off";
       if (FLAGS_cache_size < SMALL_CACHE && FLAGS_cache_size > 0) {
@@ -937,52 +938,54 @@ class Benchmark {
     TestRow recRow;
 
     while(getline(ifs, str)) {
-	    if (strstr(str.c_str(),  "productId") != NULL) {
+	    if (strstr(str.c_str(),  "product/productId") != NULL) {
 		    recRow.productId = str.substr(19);
 		    bytes += recRow.productId.size();
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "userId") != NULL) {
+	    if (strstr(str.c_str(), "review/userId") != NULL) {
 		    recRow.userId = str.substr(15);
 		    bytes += recRow.userId.size();	
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "profileName") != NULL) {
+	    if (strstr(str.c_str(), "review/profileName") != NULL) {
 		    recRow.profileName = str.substr(20);
 		    bytes += recRow.profileName.size();
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "helpfulness") != NULL) {
-		    recRow.helpfulness = str.substr(20);
-		    bytes += recRow.helpfulness.size();	
+	    if (strstr(str.c_str(), "review/helpfulness") != NULL) {
+		    char* pos2 = NULL;
+		    recRow.helpfulness1 = strtol(str.data()+20, &pos2, 10);
+		    recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+		    bytes += sizeof(uint32_t)*2;
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "score") != NULL) {
-		    recRow.score = str.substr(14);
-		    bytes += recRow.score.size();	
+	    if (strstr(str.c_str(), "review/score") != NULL) {
+		    recRow.score = atol(str.substr(14).c_str());
+		    bytes += sizeof(uint32_t);
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "time") != NULL) {
-		    recRow.time = str.substr(13);
-		    bytes += recRow.time.size();	
+	    if (strstr(str.c_str(), "review/time") != NULL) {
+		    recRow.time = atol(str.substr(13).c_str());
+		    // recRow.time = str.substr(13);
+		    bytes += sizeof(uint32_t);
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "summary") != NULL) {
+	    if (strstr(str.c_str(), "review/summary") != NULL) {
 		    recRow.summary = str.substr(16);
 		    bytes += recRow.summary.size();	
 		    num++;
 	    }
-	    if (strstr(str.c_str(), "text") != NULL) {
+	    if (strstr(str.c_str(), "review/text") != NULL) {
 		    recRow.text = str.substr(13);
 		    bytes += recRow.text.size();	
 		    num++;
 	    }
 
 	    if (str == "") {
-        	    cursor->set_key(cursor, recRow.productId.c_str(), recRow.userId.c_str(), recRow.profileName.c_str(), recRow.helpfulness.c_str()) ;
-		    cursor->set_value(cursor, recRow.score.c_str(), recRow.time.c_str(), recRow.summary.c_str(), recRow.text.c_str());
-        	    // cursor->set_key(cursor, recRow.productId.c_str());
-		    // cursor->set_value(cursor, recRow.userId.c_str(), recRow.profileName.c_str(), recRow.helpfulness.c_str(), recRow.score.c_str(), recRow.time.c_str(), recRow.summary.c_str(), recRow.text.c_str());
+        	    cursor->set_key(cursor, recRow.productId.c_str(), recRow.userId.c_str());
+		    // cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1.c_str(), recRow.helpfulness2.c_str(), recRow.score.c_str(), recRow.time.c_str(), recRow.summary.c_str(), recRow.text.c_str());
+		    cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
 		    int ret = cursor->insert(cursor);
 		    if (ret != 0) {
 			    fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
@@ -991,7 +994,7 @@ class Benchmark {
 
 		    num_++; 
 		    thread->stats.FinishedSingleOp();
-		    std::cout << " num " << num << " record num " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness.size() << " " << recRow.score.size() << " " << recRow.time.size() << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
+		    std::cout << " num " << num << " record num_ " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness1 << " " << recRow.helpfulness2 << " " << recRow.score << " " << recRow.time << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
 		    num = 0;
 	    }
     }

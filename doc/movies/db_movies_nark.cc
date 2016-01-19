@@ -798,6 +798,9 @@ class Benchmark {
   }
 
   void ReadRandom(ThreadState* thread) {
+    fprintf(stderr, "ReadReverse not supported\n");
+    return;
+/*
 	  nark::valvec<nark::byte> keyHit, val;
 	  nark::valvec<nark::llong> idvec;
     	  int found = 0;
@@ -846,6 +849,7 @@ class Benchmark {
     char msg[100];
     snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
     thread->stats.AddMessage(msg);
+*/
   }
 
   void ReadMissing(ThreadState* thread) {

@@ -13,7 +13,7 @@
 		}
 	},
 	"MaxWrSegSize" : 2147483648,
-	"ReadonlyDataMemSize" : 268435456,
+	"ReadonlyDataMemSize" : 1268435456,
 	"SufarrCompressMinFreqXX": 5,
 	"TableIndex" : [
 		{ "fields": "productId"  , "ordered" : true },
