@@ -902,21 +902,52 @@ class Benchmark {
   }
 
   void ReadHot(ThreadState* thread) {
-    fprintf(stderr, "ReadHot not supported\n");
-    return;
-/*
-    ReadOptions options;
-    std::string value;
+    
+    nark::valvec<nark::byte> keyHit, val;
+    nark::valvec<nark::llong> idvec;
     const int range = (FLAGS_num + 99) / 100;
-    for (int i = 0; i < reads_; i++) {
-      char key[100];
-      const int k = thread->rand.Next() % range;
-      snprintf(key, sizeof(key), "%016d", k);
-      db_->Get(options, key, &value);
-      thread->stats.FinishedSingleOp();
-    }
-*/
-  }
+    
+    for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
+		  nark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
+		  const nark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
+		  std::string keyData;
+		  for (size_t i = 0; i < reads_; ++i) {
+			  const int k = thread->rand.Next() % range;
+			  char key[100];
+			  // printf("indexId %d\n", indexId);
+			  switch (indexId) {
+				  default:
+					  assert(0);
+					  break;
+				  case 0:
+			  		  snprintf(key, sizeof(key), "%016d", k);
+					  keyData = key;
+					  break;
+			  }
+			  idvec.resize(0);
+			  nark::llong recId;
+			  int ret = indexIter->seekLowerBound(keyData, &recId, &keyHit);
+			  if (ret == 0) { // found exact key
+				  idvec.push_back(recId);
+				  int hasNext; // int as bool
+				  while ((hasNext = indexIter->increment(&recId, &keyHit))
+						  && nark::fstring(keyHit) == keyData) {
+					  assert(recId < tab->numDataRows());
+					  idvec.push_back(recId);
+				  }
+				  if (hasNext)
+					  idvec.push_back(recId);
+			  }
+		//	  printf("seekLowerBound(%s)=%d\n", indexSchema.toJsonStr(keyData).c_str(), ret);
+			  for (size_t i = 0; i < idvec.size(); ++i) {
+				  recId = idvec[i];
+			//	  ctx->getValue(recId, &val);
+				  tab->selectOneColumn(recId, 1, &val, ctx.get());
+			  }
+      			  thread->stats.FinishedSingleOp();
+		  }
+	  }
+   }
 
   void SeekRandom(ThreadState* thread) {
     fprintf(stderr, "SeekRandom not supported\n");

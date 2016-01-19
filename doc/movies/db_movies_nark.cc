@@ -760,6 +760,7 @@ class Benchmark {
     tab->syncFinishWriting();
     thread->stats.AddBytes(bytes);
     printf("tab->numDataRows()=%lld\n", tab->numDataRows());
+    std::cout << " bytes " << bytes << std::endl;
   }
 
   void ReadSequential(ThreadState* thread) {

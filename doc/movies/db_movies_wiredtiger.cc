@@ -830,7 +830,7 @@ class Benchmark {
     options.write_buffer_size = FLAGS_write_buffer_size;
     */
 #ifndef SYMAS_CONFIG
-    // config << ",extensions=[libwiredtiger_snappy.so]";
+    config << ",extensions=[libwiredtiger_snappy.so]";
 #endif
     //config << ",verbose=[lsm]";
     Env::Default()->CreateDir(FLAGS_db);
@@ -850,7 +850,7 @@ class Benchmark {
       // Create tuning options and create the data file
       config.str("");
       config << "key_format=S,value_format=SSSSSSS";
-      config << ",columns=(productId, userId, profileName, helpfulness, score, time, summary, text)";
+      config << ",columns=[productId, userId, profileName, helpfulness, score, time, summary, text]";
       config << ",prefix_compression=false";
       config << ",checksum=off";
       if (FLAGS_cache_size < SMALL_CACHE && FLAGS_cache_size > 0) {
@@ -868,7 +868,6 @@ class Benchmark {
 
       if (FLAGS_use_lsm) {
         config << ",lsm=(";
-        // if (FLAGS_cache_size > SMALL_CACHE)
         if (FLAGS_cache_size > SMALL_CACHE)
           config << ",chunk_size=" << FLAGS_write_buffer_size;
         if (FLAGS_bloom_bits > 0)
@@ -992,7 +991,6 @@ class Benchmark {
 		    thread->stats.FinishedSingleOp();
 		    std::cout << " num " << num << " record num " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness.size() << " " << recRow.score.size() << " " << recRow.time.size() << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
 		    num = 0;
-		    continue;
 	    }
     }
     cursor->close(cursor);
