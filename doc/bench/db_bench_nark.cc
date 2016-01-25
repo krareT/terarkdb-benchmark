@@ -148,7 +148,8 @@ class RandomGenerator {
     // large enough to serve all typical value sizes we want to write.
     Random rnd(301);
     std::string piece;
-    while (data_.size() < 1048576) {
+    while (data_.size() < 536870912) {
+    //while (data_.size() < 1048576) {
       // Add a short fragment that is as compressible as specified
       // by FLAGS_compression_ratio.
       test::CompressibleString(&rnd, FLAGS_compression_ratio, 100, &piece);
@@ -1006,12 +1007,12 @@ class Benchmark {
   }
 
   void ReadWhileWriting(ThreadState* thread) {
-/*
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
       // Special thread that keeps writing until other threads are done.
       RandomGenerator gen;
+      nark::NativeDataOutput<nark::AutoGrownMemIO> rowBuilder;
       while (true) {
         {
           MutexLock l(&thread->shared->mu);
@@ -1021,16 +1022,27 @@ class Benchmark {
           }
         }
 
+	TestRow recRow;
         const int k = thread->rand.Next() % FLAGS_num;
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
+	recRow.key = std::string(key);
+	recRow.value = gen.Generate(value_size_).ToString();
+	
+	rowBuilder.rewind();
+	rowBuilder << recRow;
+	nark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+	if (ctx->insertRow(binRow) < 0) {
+                printf("Insert failed: %s\n", ctx->errMsg.c_str());
+                exit(-1);
+        }
 	
       }
 
       // Do not count any of the preceding work/delay in stats.
       thread->stats.Start();
     }
-*/
   }
 
   void Compact(ThreadState* thread) {

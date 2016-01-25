@@ -106,11 +106,11 @@ static bool FLAGS_histogram = false;
 
 // Number of bytes to buffer in memtable before compacting
 // (initialized to default value by "main")
-static int FLAGS_write_buffer_size = 0;
+static long FLAGS_write_buffer_size = 0;
 
 // Number of bytes to use as a cache of uncompressed data.
 // Negative means use default settings.
-static int FLAGS_cache_size = -1;
+static long FLAGS_cache_size = -1;
 
 // Maximum number of files to keep open at the same time (use default if == 0)
 static int FLAGS_open_files = 0;
@@ -146,7 +146,7 @@ class RandomGenerator {
     // large enough to serve all typical value sizes we want to write.
     Random rnd(301);
     std::string piece;
-    while (data_.size() < 1048576) {
+    while (data_.size() < 536870912) {
       // Add a short fragment that is as compressible as specified
       // by FLAGS_compression_ratio.
       test::CompressibleString(&rnd, FLAGS_compression_ratio, 100, &piece);
@@ -742,6 +742,7 @@ class Benchmark {
 
     options.create_if_missing = !FLAGS_use_existing_db;
     options.write_buffer_size = FLAGS_write_buffer_size;
+    std::cout << options.write_buffer_size << std::endl;
 
     rocksdb::BlockBasedTableOptions block_based_options;
     block_based_options.index_type = rocksdb::BlockBasedTableOptions::kBinarySearch;
@@ -1010,7 +1011,8 @@ int main(int argc, char** argv) {
 
   for (int i = 1; i < argc; i++) {
     double d;
-    int n;
+    // int n;
+    long n;
     char junk;
     if (rocksdb::Slice(argv[i]).starts_with("--benchmarks=")) {
       FLAGS_benchmarks = argv[i] + strlen("--benchmarks=");
@@ -1030,11 +1032,12 @@ int main(int argc, char** argv) {
       FLAGS_threads = n;
     } else if (sscanf(argv[i], "--value_size=%d%c", &n, &junk) == 1) {
       FLAGS_value_size = n;
-    } else if (sscanf(argv[i], "--write_buffer_size=%d%c", &n, &junk) == 1) {
+    } else if (sscanf(argv[i], "--write_buffer_size=%ld%c", &n, &junk) == 1) {
       FLAGS_write_buffer_size = n;
-    } else if (sscanf(argv[i], "--cache_size=%d%c", &n, &junk) == 1) {
-      std::cout << " cache size " << n << std::endl;
+      std::cout << "FLAGS_write_buffer_size " << FLAGS_write_buffer_size << std::endl;
+    } else if (sscanf(argv[i], "--cache_size=%ld%c", &n, &junk) == 1) {
       FLAGS_cache_size = n;
+      std::cout << " cache size " << FLAGS_cache_size << std::endl;
     } else if (sscanf(argv[i], "--bloom_bits=%d%c", &n, &junk) == 1) {
       FLAGS_bloom_bits = n;
     } else if (sscanf(argv[i], "--open_files=%d%c", &n, &junk) == 1) {

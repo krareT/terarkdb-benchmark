@@ -6,7 +6,7 @@
 		}
 	},
 	"MaxWrSegSize" : 2147483648,
-	"ReadonlyDataMemSize" : 268435456,
+	"ReadonlyDataMemSize" : 6442450944,
 	"TableIndex" : [
 		{ "fields": "key"  , "ordered" : true }
 	]
