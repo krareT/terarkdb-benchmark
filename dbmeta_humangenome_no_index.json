@@ -1,0 +1,12 @@
+﻿{
+	"RowSchema": {
+		"columns" : {
+			"humangenome"   : { "type" : "strzero", "colstore": true },
+		}
+	},
+	"MaxWrSegSize" : 2147483648,
+	"ReadonlyDataMemSize" : 1268435456,
+	"SufarrCompressMinFreqXX": 5,
+	"TableIndex" : [
+	]
+}

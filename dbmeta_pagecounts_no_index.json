@@ -1,0 +1,15 @@
+﻿{
+	"RowSchema": {
+		"columns" : {
+			"wikicode"   : { "type" : "strzero", "colstore": true },
+			"articletitle"      : { "type" : "strzero", "colstore": true },
+			"monthlytotal": { "type" : "strzero" , "colstore": true },
+			"hourlycounts"      : { "type" : "strzero", "colstore": true },
+		}
+	},
+	"MaxWrSegSize" : 2147483648,
+	"ReadonlyDataMemSize" : 1268435456,
+	"SufarrCompressMinFreqXX": 5,
+	"TableIndex" : [
+	]
+}

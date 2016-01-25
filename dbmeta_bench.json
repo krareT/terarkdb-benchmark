@@ -7,6 +7,7 @@
 	},
 	"MaxWrSegSize" : 2147483648,
 	"ReadonlyDataMemSize" : 6442450944,
+	"SufarrCompressMinFreqXX": 5,
 	"TableIndex" : [
 		{ "fields": "key"  , "ordered" : true }
 	]
