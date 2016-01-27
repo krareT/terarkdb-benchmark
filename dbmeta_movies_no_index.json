@@ -9,7 +9,12 @@
 			"score"       : { "type" : "uint32" , "colstore": true },
 			"time"        : { "type" : "uint32" , "colstore": true },
 			"summary"     : { "type" : "strzero", "colstore": true, "maxFragLen": 20 },
-			"text"        : { "type" : "strzero", "colstore": true, "maxFragLen": 100 }
+			"text"        : { "type" : "strzero", "colstore": true,
+							  "nltDelims": " \\t,.:?<",
+							  "minFragLen": 8, "maxFragLen": 100,
+							  "rsX": -256,
+							  "SufarrCompressMinFreqX": 5,
+							  "useFastZip": true }
 		}
 	},
 	"MaxWrSegSize" : 2147483648,
