@@ -298,26 +298,10 @@ struct ThreadState {
 };
 
 struct TestRow {
-	std::string productId; 
-	std::string userId;
-	std::string profileName;
-	uint32_t helpfulness1;
-	uint32_t helpfulness2;
-	uint32_t score;
-	uint32_t time;
-	std::string summary;
-	std::string text;
+	std::string humangenome; 
 	
 	DATA_IO_LOAD_SAVE(TestRow,
-			&nark::db::Schema::StrZero(productId)
-			&nark::db::Schema::StrZero(userId)
-			&nark::db::Schema::StrZero(profileName)
-			&helpfulness1
-			&helpfulness2
-			&score
-			&time
-			&nark::db::Schema::StrZero(summary)
-			&nark::db::Schema::StrZero(text)
+			&nark::db::Schema::StrZero(humangenome)
 			)
 };
 
@@ -690,58 +674,14 @@ class Benchmark {
     std::cout << "data_resource " << FLAGS_resource_data << std::endl;
     std::ifstream ifs(FLAGS_resource_data);  
     std::string str;  
-    int64_t num = 0; 
     
     TestRow recRow;
      
     while(getline(ifs, str)) {
-		nark::fstring fstr(str);
-	    if (fstr.startsWith("product/productId:")) {
-		    recRow.productId = str.substr(19);
-		    bytes += recRow.productId.size();
-		    num++;
-	    }
-	    if (fstr.startsWith("review/userId:")) {
-		    recRow.userId = str.substr(15);
-		    bytes += recRow.userId.size();	
-		    num++;
-	    }
-	    if (fstr.startsWith("review/profileName:")) {
-		    recRow.profileName = str.substr(20);
-		    bytes += recRow.profileName.size();
-		    num++;
-	    }
-	    if (fstr.startsWith("review/helpfulness:")) {
-			char* pos2 = NULL;
-		    recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
-		    recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
-		    bytes += sizeof(uint32_t)*2;
-		    num++;
-	    }
-	    if (fstr.startsWith("review/score:")) {
-		    recRow.score = nark::lcast(fstr.substr(14));
-		    bytes += sizeof(uint32_t);
-		    num++;
-	    }
-	    if (fstr.startsWith("review/time:")) {
-		//    recRow.time = str.substr(13);
-		//    bytes += recRow.time.size();	
-			recRow.time = nark::lcast(fstr.substr(13));
-			bytes += sizeof(uint32_t);
-		    num++;
-	    }
-	    if (fstr.startsWith("review/summary:")) {
-		    recRow.summary = str.substr(16);
-		    bytes += recRow.summary.size();	
-		    num++;
-	    }
-	    if (fstr.startsWith("review/text:")) {
-		    recRow.text = str.substr(13);
-		    bytes += recRow.text.size();	
-		    num++;
-	    }
-
-	    if (str == "") {
+		    recRow.humangenome = str;
+		    bytes += recRow.humangenome.size();
+		    // std::cout << " recRow.humangenome " << recRow.humangenome << std::endl;
+	    
 		    rowBuilder.rewind();
 		    rowBuilder << recRow;
 		    nark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
@@ -750,16 +690,14 @@ class Benchmark {
 			    printf("Insert failed: %s\n", ctx->errMsg.c_str());
 			    exit(-1);	
 		    }
-		    num_++; 
 		    thread->stats.FinishedSingleOp();
 		    // std::cout << " num " << num << " record num " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness1 << "/" << recRow.helpfulness2 << " " << recRow.score << " " << recRow.time << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
-		    num = 0;
-	    }
     }
     
     tab->syncFinishWriting();
     thread->stats.AddBytes(bytes);
     printf("tab->numDataRows()=%lld\n", tab->numDataRows());
+    printf("bytes=%lld\n", bytes);
     FLAGS_num = tab->numDataRows(); 
   }
 

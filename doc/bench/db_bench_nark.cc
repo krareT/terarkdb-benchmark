@@ -493,6 +493,7 @@ class Benchmark {
         entries_per_batch_ = 1000;
         method = &Benchmark::WriteRandom;
       } else if (name == Slice("fillrandom")) {
+	num_threads = 1;
         fresh_db = true;
         method = &Benchmark::WriteRandom;
       } else if (name == Slice("overwrite")) {
@@ -1010,6 +1011,7 @@ class Benchmark {
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
+/*
       // Special thread that keeps writing until other threads are done.
       RandomGenerator gen;
       nark::NativeDataOutput<nark::AutoGrownMemIO> rowBuilder;
@@ -1042,6 +1044,7 @@ class Benchmark {
 
       // Do not count any of the preceding work/delay in stats.
       thread->stats.Start();
+*/
     }
   }
 

@@ -355,15 +355,7 @@ struct ThreadState {
 };
 
 struct TestRow {
-	std::string productId; 
-	std::string userId;
-	std::string profileName;
-	uint32_t helpfulness1;
-	uint32_t helpfulness2;
-	uint32_t score;
-	uint32_t time;
-	std::string summary;
-	std::string text;
+	std::string humangenome; 
 };
 
 }  // namespace
@@ -850,8 +842,8 @@ class Benchmark {
     if (!FLAGS_use_existing_db) {
       // Create tuning options and create the data file
       config.str("");
-      config << "key_format=r,value_format=SSSLLLLSS";
-      config << ",columns=[id, productId, userId, profileName, helpfulness1, helpfulness2, score, time, summary, text]";
+      config << "key_format=r,value_format=S";
+      config << ",columns=[id, humangenome]";
       config << ",prefix_compression=true";
       config << ",checksum=off";
       if (FLAGS_cache_size < SMALL_CACHE && FLAGS_cache_size > 0) {
@@ -933,98 +925,29 @@ class Benchmark {
     }
 
     std::ifstream ifs(FLAGS_resource_data);  
-    int64_t num = 0; 
     std::string str;  
     TestRow recRow;
 
     while(getline(ifs, str)) {
-	    if (str.find("product/productId:") == 0) {
-		    recRow.productId = str.substr(19);
-		    bytes += recRow.productId.size();
-		    num++;
-	    }
-	    if (str.find("review/userId:") == 0) {
-		    recRow.userId = str.substr(15);
-		    bytes += recRow.userId.size();	
-		    num++;
-	    }
-	    if (str.find("review/profileName:") == 0) {
-		    recRow.profileName = str.substr(20);
-		    bytes += recRow.profileName.size();
-		    num++;
-	    }
-	    if (str.find("review/helpfulness:") == 0) {
-		    char* pos2 = NULL;
-		    recRow.helpfulness1 = strtol(str.data()+20, &pos2, 10);
-		    recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
-		    bytes += sizeof(uint32_t)*2;
-		    num++;
-	    }
-	    if (str.find("review/score:") == 0) {
-		    recRow.score = atol(str.substr(14).c_str());
-		    bytes += sizeof(uint32_t);
-		    num++;
-	    }
-	    if (str.find("review/time:") == 0) {
-		    recRow.time = atol(str.substr(13).c_str());
-		    // recRow.time = str.substr(13);
-		    bytes += sizeof(uint32_t);
-		    num++;
-	    }
-	    if (str.find("review/summary:") == 0) {
-		    recRow.summary = str.substr(16);
-		    bytes += recRow.summary.size();	
-		    num++;
-	    }
-	    if (str.find("review/text:") == 0) {
-		    recRow.text = str.substr(13);
-		    bytes += recRow.text.size();	
-		    num++;
-	    }
-
-	    if (str == "") {
-		    // cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1.c_str(), recRow.helpfulness2.c_str(), recRow.score.c_str(), recRow.time.c_str(), recRow.summary.c_str(), recRow.text.c_str());
-		    cursor->set_value(cursor, recRow.productId.c_str(), recRow.userId.c_str(), recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
+		    recRow.humangenome = str;
+		    bytes += recRow.humangenome.size();
+		    // std::cout << " recRow.humangenome " << recRow.humangenome << std::endl;
+		    cursor->set_value(cursor, recRow.humangenome.c_str());
 		    int ret = cursor->insert(cursor);
 		    if (ret != 0) {
 			    fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
 			    exit(1);
 		    }
-
-		    num_++; 
+		    num_++;
+		 
 		    thread->stats.FinishedSingleOp();
-		    std::cout << " num " << num << " record num_ " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness1 << " " << recRow.helpfulness2 << " " << recRow.score << " " << recRow.time << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
-		    num = 0;
-	    }
+		    // std::cout << " num " << num << " record num_ " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness1 << " " << recRow.helpfulness2 << " " << recRow.score << " " << recRow.time << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
     }
     FLAGS_num = num_;
     cursor->close(cursor);
     
-/*
-    ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
-    if (ret != 0) {
-      fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
-      exit(1);
-    }
-
-   std::cout << " get now!" << std::endl;    
- 
-    char *k1, *k2, *k3, *k4;
-    char *v1, *v2, *v3, *v4, *v5, *v6, *v7;
-    int temp = 0;
-    while ((ret = cursor->next(cursor)) == 0) {
-	    temp++;
-	    ret = cursor->get_key(cursor, &k1, &k2, &k3, &k4);
-	    ret = cursor->get_value(cursor, &v1, &v2, &v3, &v4);
-      	    fprintf(stdout, " productId: %s\nuserId: %s\nprofileName: %s\n helpfulness: %s\nscore: %s\n time: %s\n summary: %s\n text: %s\n", k1, k2, k3, k4, v1, v2, v3, v4);
-    }
-   std::cout << " get number " << temp << std::endl;    
-
-    ret = cursor->close(cursor);
-*/
-
     thread->stats.AddBytes(bytes);
-    std::cout << " bytes " << bytes << std::endl;
+    std::cout << " record num " << num_ << " bytes " << bytes << std::endl;
   }
 
   void ReadSequential(ThreadState* thread) {

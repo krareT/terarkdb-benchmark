@@ -933,6 +933,7 @@ class Benchmark {
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
+/*
       // Special thread that keeps writing until other threads are done.
       RandomGenerator gen;
       while (true) {
@@ -956,6 +957,7 @@ class Benchmark {
 
       // Do not count any of the preceding work/delay in stats.
       thread->stats.Start();
+*/
     }
   }
 

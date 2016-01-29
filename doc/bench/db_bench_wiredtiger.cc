@@ -141,6 +141,8 @@ static int FLAGS_max_compact_wait = 1200;
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
 
+#define RAND_SHUFFLE
+
 #ifdef RAND_SHUFFLE
 static int *shuff = NULL;
 #endif
@@ -1183,6 +1185,7 @@ repeat:
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
+/*
       // Special thread that keeps writing until other threads are done.
       RandomGenerator gen;
       while (true) {
@@ -1220,6 +1223,7 @@ repeat:
 
       // Do not count any of the preceding work/delay in stats.
       thread->stats.Start();
+*/
     }
   }
 

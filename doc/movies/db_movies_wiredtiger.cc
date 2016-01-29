@@ -118,7 +118,8 @@ static int FLAGS_write_buffer_size = 0;
 
 // Number of bytes to use as a cache of uncompressed data.
 // Negative means use default settings.
-static int FLAGS_cache_size = -1;
+// static int FLAGS_cache_size = -1;
+static long FLAGS_cache_size = -1;
 
 // Maximum number of files to keep open at the same time (use default if == 0)
 static int FLAGS_open_files = 0;
@@ -862,7 +863,8 @@ class Benchmark {
           config << ",internal_page_max=16kb";
           config << ",leaf_page_max=16kb";
         if (FLAGS_cache_size > 0) {
-          int memmax = FLAGS_cache_size * 0.75;
+          long memmax = FLAGS_cache_size * 0.75;
+          // int memmax = FLAGS_cache_size * 0.75;
           config << ",memory_page_max=" << memmax;
         }
       }
@@ -993,7 +995,7 @@ class Benchmark {
 
 		    num_++; 
 		    thread->stats.FinishedSingleOp();
-		    std::cout << " num " << num << " record num_ " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness1 << " " << recRow.helpfulness2 << " " << recRow.score << " " << recRow.time << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
+		    // std::cout << " num " << num << " record num_ " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness1 << " " << recRow.helpfulness2 << " " << recRow.score << " " << recRow.time << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
 		    num = 0;
 	    }
     }
@@ -1432,6 +1434,7 @@ int main(int argc, char** argv) {
   for (int i = 1; i < argc; i++) {
     double d;
     int n;
+    long size;
     char junk;
     if (leveldb::Slice(argv[i]).starts_with("--benchmarks=")) {
       FLAGS_benchmarks = argv[i] + strlen("--benchmarks=");
@@ -1461,9 +1464,9 @@ int main(int argc, char** argv) {
       FLAGS_value_size = n;
     } else if (sscanf(argv[i], "--write_buffer_size=%d%c", &n, &junk) == 1) {
       FLAGS_write_buffer_size = n;
-    } else if (sscanf(argv[i], "--cache_size=%d%c", &n, &junk) == 1) {
-      std::cout << "cache_size " << n << std::endl;
-      FLAGS_cache_size = n;
+    } else if (sscanf(argv[i], "--cache_size=%ld%c", &size, &junk) == 1) {
+      std::cout << "cache_size " << size << std::endl;
+      FLAGS_cache_size = size;
     } else if (sscanf(argv[i], "--bloom_bits=%d%c", &n, &junk) == 1) {
       FLAGS_bloom_bits = n;
     } else if (sscanf(argv[i], "--open_files=%d%c", &n, &junk) == 1) {

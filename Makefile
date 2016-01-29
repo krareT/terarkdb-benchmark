@@ -9,8 +9,8 @@ INSTALL_PATH ?= $(CURDIR)
 # Uncomment exactly one of the lines labelled (A), (B), and (C) below
 # to switch between compilation modes.
 
-OPT ?= -O2 -DNDEBUG       # (A) Production use (optimized mode)
-#OPT ?= -g2              # (B) Debug mode, w/ full line-level debugging symbols
+#OPT ?= -O2 -DNDEBUG       # (A) Production use (optimized mode)
+OPT ?= -g2              # (B) Debug mode, w/ full line-level debugging symbols
 #OPT ?= -O2 -g2 -DNDEBUG # (C) Profiling mode: opt, but w/debugging symbols
 #-----------------------------------------------
 
@@ -145,7 +145,7 @@ db_bench_redis: doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lhiredis
 
 db_bench_nark: doc/bench/db_bench_nark.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/bench/db_bench_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0
+	$(CXX) doc/bench/db_bench_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-d -lnark-NarkDB-g++-5.3-d -lboost_system -lboost_filesystem -lwiredtiger-2.7.0
 
 
 db_movies_nark: doc/movies/db_movies_nark.o $(LIBOBJECTS) $(TESTUTIL)
@@ -153,6 +153,21 @@ db_movies_nark: doc/movies/db_movies_nark.o $(LIBOBJECTS) $(TESTUTIL)
 
 db_movies_wiredtiger: doc/movies/db_movies_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/movies/db_movies_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.7.0 -lwiredtiger_snappy
+
+db_humangenome_nark: doc/humangenome/db_humangenome_nark.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/humangenome/db_humangenome_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+
+db_humangenome_wiredtiger: doc/humangenome/db_humangenome_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/humangenome/db_humangenome_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.7.0 -lwiredtiger_snappy
+
+db_pagecounts_nark: doc/pagecounts/db_pagecounts_nark.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/pagecounts/db_pagecounts_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+
+db_pagecounts_wiredtiger: doc/pagecounts/db_pagecounts_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/pagecounts/db_pagecounts_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.7.0 -lwiredtiger_snappy
+
+
+
 
 arena_test: util/arena_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) util/arena_test.o $(LIBOBJECTS) $(TESTHARNESS) -o $@ $(LDFLAGS)
