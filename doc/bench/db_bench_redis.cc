@@ -426,7 +426,8 @@ class Benchmark {
   }
 
   ~Benchmark() {
-     redisFree(db_);	
+     redisFree(db_);
+     db_ = NULL;	
   }
 
   void Run() {
@@ -551,7 +552,6 @@ class Benchmark {
           Open();
         }
       }
-      std::cout << " run one method " << std::endl;
       if (method != NULL) {
         RunBenchmark(num_threads, name, method);
       }
@@ -726,7 +726,6 @@ class Benchmark {
                 std::cout << "Connect to redisServer faile" << std::endl;
                 return ;
     }
-  //  std::cout << "Connect to redisServer Success" << std::endl;
   }
 
   void WriteSeq(ThreadState* thread) {
@@ -806,13 +805,24 @@ class Benchmark {
   }
 
   void ReadRandom(ThreadState* thread) {
+
+    redisContext* rdb;
+
+    rdb = redisConnect("127.0.0.1", 6379);
+    if (rdb->err) {
+                redisFree(rdb);
+                std::cout << "Connect to redisServer faile" << std::endl;
+                return ;
+    }
+
     std::string value;
     int found = 0;
     for (int i = 0; i < reads_; i++) {
       char key[100];
       const int k = thread->rand.Next() % FLAGS_num;
       snprintf(key, sizeof(key), "%016d", k);
-      redisReply* r = (redisReply*)redisCommand(db_, "GET %s", key);
+      // redisReply* r = (redisReply*)redisCommand(db_, "GET %s", key);
+      redisReply* r = (redisReply*)redisCommand(rdb, "GET %s", key);
       if(r->type == REDIS_REPLY_STRING) {
 	found++;
       }
@@ -822,6 +832,7 @@ class Benchmark {
     char msg[100];
     snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
     thread->stats.AddMessage(msg);
+    redisFree(rdb);
   }
 
   void ReadMissing(ThreadState* thread) {
@@ -918,6 +929,7 @@ class Benchmark {
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
+/*
       // Special thread that keeps writing until other threads are done.
       RandomGenerator gen;
       while (true) {
@@ -948,6 +960,7 @@ class Benchmark {
 
       // Do not count any of the preceding work/delay in stats.
       thread->stats.Start();
+*/
     }
   }
 

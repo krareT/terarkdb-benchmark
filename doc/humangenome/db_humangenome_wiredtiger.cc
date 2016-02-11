@@ -118,7 +118,8 @@ static int FLAGS_write_buffer_size = 0;
 
 // Number of bytes to use as a cache of uncompressed data.
 // Negative means use default settings.
-static int FLAGS_cache_size = -1;
+// static int FLAGS_cache_size = -1;
+static long FLAGS_cache_size = -1;
 
 // Maximum number of files to keep open at the same time (use default if == 0)
 static int FLAGS_open_files = 0;
@@ -355,6 +356,7 @@ struct ThreadState {
 };
 
 struct TestRow {
+	std::string index; 
 	std::string humangenome; 
 };
 
@@ -842,8 +844,8 @@ class Benchmark {
     if (!FLAGS_use_existing_db) {
       // Create tuning options and create the data file
       config.str("");
-      config << "key_format=r,value_format=S";
-      config << ",columns=[id, humangenome]";
+      config << "key_format=r,value_format=SS";
+      config << ",columns=[id, index, humangenome]";
       config << ",prefix_compression=true";
       config << ",checksum=off";
       if (FLAGS_cache_size < SMALL_CACHE && FLAGS_cache_size > 0) {
@@ -927,22 +929,43 @@ class Benchmark {
     std::ifstream ifs(FLAGS_resource_data);  
     std::string str;  
     TestRow recRow;
+    int first = 1;
 
     while(getline(ifs, str)) {
-		    recRow.humangenome = str;
+	if (str.find(">") == 0) {
+		if (first) {
+			recRow.index = str.substr(1);		
+			bytes += recRow.index.size();
+			first = 0;
+		} else {
 		    bytes += recRow.humangenome.size();
-		    // std::cout << " recRow.humangenome " << recRow.humangenome << std::endl;
-		    cursor->set_value(cursor, recRow.humangenome.c_str());
-		    int ret = cursor->insert(cursor);
+		    cursor->set_value(cursor, recRow.index.c_str(), recRow.humangenome.c_str());
+		    ret = cursor->insert(cursor);
 		    if (ret != 0) {
 			    fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
 			    exit(1);
 		    }
 		    num_++;
-		 
 		    thread->stats.FinishedSingleOp();
-		    // std::cout << " num " << num << " record num_ " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness1 << " " << recRow.helpfulness2 << " " << recRow.score << " " << recRow.time << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
+		    recRow.index = str.substr(1);
+		    bytes += recRow.index.size();
+		    recRow.humangenome.clear();
+		}
+	} else {
+		recRow.humangenome.append(str);
+	}
     }
+
+    bytes += recRow.humangenome.size();
+    cursor->set_value(cursor, recRow.index.c_str(), recRow.humangenome.c_str());
+    ret = cursor->insert(cursor);
+    if (ret != 0) {
+	    fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+	    exit(1);
+    }
+    num_++;
+    thread->stats.FinishedSingleOp();
+
     FLAGS_num = num_;
     cursor->close(cursor);
     
@@ -1049,15 +1072,8 @@ repeat:
     const char *ckey;
     WT_CURSOR *cursor;
     
-    const char* wproductId;
-    const char* wuserId;
-    const char*  wprofileName;
-    uint32_t whelpfulness1;
-    uint32_t whelpfulness2;
-    uint32_t wscore;
-    uint32_t wtime;
-    const char* wsummary;
-    const char* wtext;
+    const char* windex;
+    const char* whumangenome;
 
     int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
     if (ret != 0) {
@@ -1071,7 +1087,7 @@ repeat:
       cursor->set_key(cursor, key);
       if (cursor->search(cursor) == 0) {
 	found++;
-        ret = cursor->get_value(cursor, &wproductId, &wuserId, &wprofileName, &whelpfulness1, &whelpfulness2, &wscore, &wtime, &wsummary, &wtext);
+        ret = cursor->get_value(cursor, &window, &whumangenome);
       }
       thread->stats.FinishedSingleOp();
     }
@@ -1355,6 +1371,7 @@ int main(int argc, char** argv) {
   for (int i = 1; i < argc; i++) {
     double d;
     int n;
+    long size;
     char junk;
     if (leveldb::Slice(argv[i]).starts_with("--benchmarks=")) {
       FLAGS_benchmarks = argv[i] + strlen("--benchmarks=");
@@ -1384,9 +1401,9 @@ int main(int argc, char** argv) {
       FLAGS_value_size = n;
     } else if (sscanf(argv[i], "--write_buffer_size=%d%c", &n, &junk) == 1) {
       FLAGS_write_buffer_size = n;
-    } else if (sscanf(argv[i], "--cache_size=%d%c", &n, &junk) == 1) {
-      std::cout << "cache_size " << n << std::endl;
-      FLAGS_cache_size = n;
+    } else if (sscanf(argv[i], "--cache_size=%ld%c", &size, &junk) == 1) {
+      std::cout << "cache_size " << size << std::endl;
+      FLAGS_cache_size = size;
     } else if (sscanf(argv[i], "--bloom_bits=%d%c", &n, &junk) == 1) {
       FLAGS_bloom_bits = n;
     } else if (sscanf(argv[i], "--open_files=%d%c", &n, &junk) == 1) {

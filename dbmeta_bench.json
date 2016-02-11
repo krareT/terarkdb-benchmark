@@ -1,12 +1,12 @@
 ﻿{
 	"RowSchema": {
 		"columns" : {
-			"key"   : { "type" : "strzero" },
-			"value" : { "type" : "strzero" }
+			"key"   : { "type" : "strzero", "colstore": false },
+			"value" : { "type" : "strzero", "colstore": false } 
 		}
 	},
 	"MaxWrSegSize" : 2147483648,
-	"ReadonlyDataMemSize" : 1073741824,
+	"ReadonlyDataMemSize" : 1288490188,
 	"SufarrCompressMinFreqXX": 5,
 	"TableIndex" : [
 		{ "fields": "key"  , "ordered" : true }

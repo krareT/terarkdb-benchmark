@@ -1,0 +1,46 @@
+####Now, running wiredtiger benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        253      15633          8          0         11
+-/+ buffers/cache:        241      15646
+Swap:            0          0          0
+Wed Feb  3 17:08:56 CST 2016
+FLAGS_write_buffer_size 67108864
+cache_size 3221225472
+WiredTiger:    version WiredTiger 2.7.0: (December  8, 2015), lib ver 2, lib rev 7 patch 0
+Keys:       16 bytes each
+Values:     128 bytes each (64 bytes after compression)
+Entries:    50000000
+RawSize:    6866.5 MB (estimated)
+FileSize:   3814.7 MB (estimated)
+------------------------------------------------
+fillrandom   :       4.531 micros/op;   30.3 MB/s
+Wed Feb  3 17:12:46 CST 2016
+7270892902	data_memory
+####wiredtiger benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       7207       8680          8          2       6950
+-/+ buffers/cache:        254      15633
+Swap:            0          0          0
+####Now, running wiredtiger benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887       7201       8686          8          0       6945
+-/+ buffers/cache:        255      15632
+Swap:            0          0          0
+Wed Feb  3 17:12:47 CST 2016
+FLAGS_write_buffer_size 67108864
+cache_size 3221225472
+WiredTiger:    version WiredTiger 2.7.0: (December  8, 2015), lib ver 2, lib rev 7 patch 0
+Keys:       16 bytes each
+Values:     128 bytes each (64 bytes after compression)
+Entries:    50000000
+RawSize:    6866.5 MB (estimated)
+FileSize:   3814.7 MB (estimated)
+------------------------------------------------
+readrandom   :      34.590 micros/op; (30000000 of 50000000 found)
+Wed Feb  3 17:30:07 CST 2016
+6942422372	data_memory
+####wiredtiger benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       6896       8991          8          1       6639
+-/+ buffers/cache:        255      15631
+Swap:            0          0          0

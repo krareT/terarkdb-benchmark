@@ -1,0 +1,40 @@
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        283      15604          8          1         13
+-/+ buffers/cache:        268      15619
+Swap:            0          0          0
+Thu Feb  4 15:56:49 CST 2016
+NarkDB Test Begins! Run() 
+Create database data/test_human
+ DoWrite now! num_ 17448961 FLAGS_num 17448961
+data_resource data/xenoMrna.fa
+divsufsort: 634665686 bytes, time: 206.885682 seconds, through-put: 3.067712 MB/s
+tab->numDataRows()=17448961
+bytes=12676081057
+fillrandom   :     475.448 micros/op;    1.5 MB/s
+db movies nark completed
+Thu Feb  4 18:15:05 CST 2016
+4049851558	data/test_human
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       4262      11625          8          3       3882
+-/+ buffers/cache:        377      15510
+Swap:            0          0          0
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887       1788      14099          8          1       1472
+-/+ buffers/cache:        314      15572
+Swap:            0          0          0
+Thu Feb  4 18:15:06 CST 2016
+NarkDB Test Begins! Run() 
+Create database data/test_human
+INFO: loading segment: data/test_human/g-0000/rd-0000 ... done!
+readrandom   :      43.439 micros/op;
+db movies nark completed
+Thu Feb  4 18:22:21 CST 2016
+4364471154	data/test_human
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       4183      11704          8          2       3866
+-/+ buffers/cache:        314      15573
+Swap:            0          0          0

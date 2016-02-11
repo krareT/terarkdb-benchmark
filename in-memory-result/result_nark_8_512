@@ -1,0 +1,50 @@
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        293      15594          8          0         11
+-/+ buffers/cache:        281      15606
+Swap:            0          0          0
+Sun Feb  7 10:13:40 CST 2016
+LevelDB:    version 1.5
+Keys:       16 bytes each
+Values:     128 bytes each (64 bytes after compression)
+Entries:    50000000
+RawSize:    6866.5 MB (estimated)
+FileSize:   3814.7 MB (estimated)
+------------------------------------------------
+ Run() 
+Create database data_memory
+divsufsort: 319734784 bytes, time: 100.534180 seconds, through-put: 3.180359 MB/s
+tab->numDataRows()=50000000
+fillrandom   :      35.637 micros/op;    3.9 MB/s
+benchmark.Run() completed
+Sun Feb  7 10:43:23 CST 2016
+3551390991	data_memory
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       3688      12199          8          1       3403
+-/+ buffers/cache:        283      15604
+Swap:            0          0          0
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887       3679      12208          8          0       3394
+-/+ buffers/cache:        284      15603
+Swap:            0          0          0
+Sun Feb  7 10:43:23 CST 2016
+LevelDB:    version 1.5
+Keys:       16 bytes each
+Values:     128 bytes each (64 bytes after compression)
+Entries:    50000000
+RawSize:    6866.5 MB (estimated)
+FileSize:   3814.7 MB (estimated)
+------------------------------------------------
+ Run() 
+Create database data_memory
+INFO: loading segment: data_memory/g-0000/rd-0000 ... done!
+readrandom   :       6.172 micros/op; (30000000 of 50000000 found)
+benchmark.Run() completed
+Sun Feb  7 10:46:28 CST 2016
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       3990      11896          8          1       3705
+-/+ buffers/cache:        284      15603
+Swap:            0          0          0

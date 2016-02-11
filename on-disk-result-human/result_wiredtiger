@@ -1,0 +1,48 @@
+####Now, running wiredtiger benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        213      15674          8          1         14
+-/+ buffers/cache:        197      15690
+Swap:            0          0          0
+Thu Feb  4 00:08:33 CST 2016
+WiredTiger:    version WiredTiger 2.7.0: (December  8, 2015), lib ver 2, lib rev 7 patch 0
+Keys:       16 bytes each
+Values:     100 bytes each (50 bytes after compression)
+Entries:    0
+RawSize:    0.0 MB (estimated)
+FileSize:   0.0 MB (estimated)
+WARNING: Optimization is disabled: benchmarks unnecessarily slow
+WARNING: Assertions are enabled; benchmarks unnecessarily slow
+------------------------------------------------
+ record num 17448961 bytes 12676081057
+fillrandom   :      14.905 micros/op;   46.5 MB/s
+Thu Feb  4 00:13:10 CST 2016
+8603288899	data/test_human
+####wiredtiger benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887      15567        320          8          3      15168
+-/+ buffers/cache:        394      15493
+Swap:            0          0          0
+####Now, running wiredtiger benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        254      15632          8          0         14
+-/+ buffers/cache:        240      15647
+Swap:            0          0          0
+Thu Feb  4 00:13:12 CST 2016
+cache_size -2147483648
+WiredTiger:    version WiredTiger 2.7.0: (December  8, 2015), lib ver 2, lib rev 7 patch 0
+Keys:       16 bytes each
+Values:     100 bytes each (50 bytes after compression)
+Entries:    17448961
+RawSize:    1930.3 MB (estimated)
+FileSize:   1098.3 MB (estimated)
+WARNING: Optimization is disabled: benchmarks unnecessarily slow
+WARNING: Assertions are enabled; benchmarks unnecessarily slow
+------------------------------------------------
+readrandom   :      86.163 micros/op; (10000000 found) 17448961
+Thu Feb  4 00:27:33 CST 2016
+8603288902	data/test_human
+####wiredtiger benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       8053       7834          8          1       7830
+-/+ buffers/cache:        221      15666
+Swap:            0          0          0

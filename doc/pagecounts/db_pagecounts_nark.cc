@@ -4,8 +4,6 @@
 
 #include <sys/types.h>
 #include <boost/algorithm/string.hpp>
-#include <string>  
-#include <vector>  
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
@@ -303,13 +301,13 @@ struct ThreadState {
 struct TestRow {
 	std::string wikicode; 
 	std::string articletitle;
-	std::string monthlytotal;
+	uint32_t monthlytotal;
 	std::string hourlycounts;
 	
 	DATA_IO_LOAD_SAVE(TestRow,
 			&nark::db::Schema::StrZero(wikicode)
 			&nark::db::Schema::StrZero(articletitle)
-			&nark::db::Schema::StrZero(monthlytotal)
+			&monthlytotal
 			&nark::db::Schema::StrZero(hourlycounts)
 			)
 };
@@ -691,19 +689,19 @@ class Benchmark {
     while(getline(ifs, str)) {
 	boost::split(fields, str, boost::is_any_of(" "));
 	assert(fields.size() == 4);
-	
+
 	recRow.wikicode = fields[0];
 	bytes += recRow.wikicode.size();
-
+	
 	recRow.articletitle = fields[1];
 	bytes += recRow.articletitle.size();
 
-	recRow.monthlytotal = fields[2];
-	bytes += recRow.monthlytotal.size();
-  	
+	recRow.monthlytotal = atoi(fields[2].c_str());
+	bytes += sizeof(uint32_t)*2;
+
 	recRow.hourlycounts = fields[3];
 	bytes += recRow.hourlycounts.size();
-
+	
 	rowBuilder.rewind();
 	rowBuilder << recRow;
 	nark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
@@ -713,12 +711,12 @@ class Benchmark {
 		exit(-1);	
 	}
 	num_++; 
-	thread->stats.FinishedSingleOp();
-	// std::cout << " num " << num << " record num " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness1 << "/" << recRow.helpfulness2 << " " << recRow.score << " " << recRow.time << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
+	thread->stats.FinishedSingleOp();	
     }
     
     tab->syncFinishWriting();
     thread->stats.AddBytes(bytes);
+
     printf("tab->numDataRows()=%lld\n", tab->numDataRows());
     printf("bytes=%lld\n", bytes);
     FLAGS_num = tab->numDataRows(); 
@@ -761,18 +759,8 @@ class Benchmark {
   void ReadRandom(ThreadState* thread) {
 	  nark::valvec<nark::byte> val;
 	  nark::llong recId;
-// method 1
-/*
-          int *readshuff = NULL;
-	  readshuff = (int *)malloc(FLAGS_num * sizeof(int));
-	  for (int i=0; i<FLAGS_num; i++)
-		  readshuff[i] = i;
-	  thread->rand.Shuffle(readshuff, FLAGS_num);
-*/	  
-	  
 	  for (size_t i = 0; i < reads_; ++i) {
 		  recId = thread->rand.Next() % FLAGS_num;
-	// 	  recId = readshuff[i];
 		  ctx->getValue(recId, &val);
       		  thread->stats.FinishedSingleOp();
 	  }

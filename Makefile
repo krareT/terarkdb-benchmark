@@ -144,9 +144,11 @@ db_bench_rocksdb_new: doc/bench/db_bench_rocksdb_new.o $(LIBOBJECTS) $(TESTUTIL)
 db_bench_redis: doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lhiredis
 
-db_bench_nark: doc/bench/db_bench_nark.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/bench/db_bench_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-d -lnark-NarkDB-g++-5.3-d -lboost_system -lboost_filesystem -lwiredtiger-2.7.0
+db_bench_nark_index: doc/bench/db_bench_nark_index.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/bench/db_bench_nark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0
 
+db_bench_nark_no_index: doc/bench/db_bench_nark_no_index.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/bench/db_bench_nark_no_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0
 
 db_movies_nark: doc/movies/db_movies_nark.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/movies/db_movies_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb

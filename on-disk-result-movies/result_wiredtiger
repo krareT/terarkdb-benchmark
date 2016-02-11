@@ -1,0 +1,44 @@
+####Now, running wiredtiger benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        201      15686          8          0         21
+-/+ buffers/cache:        178      15708
+Swap:            0          0          0
+Wed Feb  3 22:51:13 CST 2016
+WiredTiger:    version WiredTiger 2.7.0: (December  8, 2015), lib ver 2, lib rev 7 patch 0
+Keys:       16 bytes each
+Values:     100 bytes each (50 bytes after compression)
+Entries:    0
+RawSize:    0.0 MB (estimated)
+FileSize:   0.0 MB (estimated)
+------------------------------------------------
+ bytes 8232033864
+fillrandom   :      33.961 micros/op;   29.2 MB/s
+Wed Feb  3 22:55:50 CST 2016
+7131632963	data/test_movies
+####wiredtiger benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887      15616        271          8          5      15223
+-/+ buffers/cache:        387      15499
+Swap:            0          0          0
+####Now, running wiredtiger benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        240      15646          8          0         21
+-/+ buffers/cache:        218      15668
+Swap:            0          0          0
+Wed Feb  3 22:55:51 CST 2016
+cache_size 2147483648
+WiredTiger:    version WiredTiger 2.7.0: (December  8, 2015), lib ver 2, lib rev 7 patch 0
+Keys:       16 bytes each
+Values:     100 bytes each (50 bytes after compression)
+Entries:    7911684
+RawSize:    875.2 MB (estimated)
+FileSize:   498.0 MB (estimated)
+------------------------------------------------
+readrandom   :     125.175 micros/op; (4000000 found) 7911684
+Wed Feb  3 23:04:12 CST 2016
+7131632966	data/test_movies
+####wiredtiger benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       6685       9201          8          3       6472
+-/+ buffers/cache:        209      15678
+Swap:            0          0          0

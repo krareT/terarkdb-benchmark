@@ -1,0 +1,46 @@
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        295      15591          8          0         14
+-/+ buffers/cache:        280      15607
+Swap:            0          0          0
+Thu Feb  4 23:48:14 CST 2016
+NarkDB Test Begins! Run() 
+Create database data/test_human
+ DoWrite now! num_ 17448961 FLAGS_num 17448961
+data_resource data/xenoMrna.fa
+divsufsort: 105745387 bytes, time: 17.530514 seconds, through-put: 6.032076 MB/s
+divsufsort: 106036716 bytes, time: 18.898654 seconds, through-put: 5.610808 MB/s
+divsufsort: 106217925 bytes, time: 27.317463 seconds, through-put: 3.888279 MB/s
+divsufsort: 105305358 bytes, time: 30.793152 seconds, through-put: 3.419765 MB/s
+divsufsort: 106713108 bytes, time: 28.582151 seconds, through-put: 3.733558 MB/s
+divsufsort: 104647192 bytes, time: 16.209509 seconds, through-put: 6.455914 MB/s
+tab->numDataRows()=17448961
+bytes=12676081057
+fillrandom   :     108.018 micros/op;    6.4 MB/s
+db movies nark completed
+Fri Feb  5 00:19:39 CST 2016
+4463652648	data/test_human
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       4801      11085          8          5       4383
+-/+ buffers/cache:        413      15474
+Swap:            0          0          0
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        779      15108          8          0        481
+-/+ buffers/cache:        297      15590
+Swap:            0          0          0
+Fri Feb  5 00:19:40 CST 2016
+NarkDB Test Begins! Run() 
+Create database data/test_human
+INFO: loading segment: data/test_human/g-0001/rd-0000 ... done!
+INFO: loading segment: data/test_human/g-0001/rd-0001 ... done!
+readrandom   :      62.610 micros/op;
+db movies nark completed
+Fri Feb  5 00:30:06 CST 2016
+4778272244	data/test_human
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       4533      11353          8          3       4242
+-/+ buffers/cache:        287      15600
+Swap:            0          0          0

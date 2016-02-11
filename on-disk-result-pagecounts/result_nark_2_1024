@@ -1,0 +1,47 @@
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        264      15622          8          0         13
+-/+ buffers/cache:        250      15636
+Swap:            0          0          0
+Sat Feb  6 20:10:08 CST 2016
+NarkDB Test Begins! Run() 
+Create database data/test_pagecounts
+ DoWrite now! num_ 65187562 FLAGS_num 65187562
+data_resource data/pagecounts-2015-12-views-ge-5
+divsufsort: 101385942 bytes, time: 17.792400 seconds, through-put: 5.698273 MB/s
+divsufsort: 103109476 bytes, time: 21.272969 seconds, through-put: 4.846972 MB/s
+divsufsort: 103445302 bytes, time: 27.895905 seconds, through-put: 3.708261 MB/s
+divsufsort: 102427365 bytes, time: 25.921760 seconds, through-put: 3.951405 MB/s
+divsufsort: 102620201 bytes, time: 26.792976 seconds, through-put: 3.830116 MB/s
+divsufsort: 102445318 bytes, time: 27.604344 seconds, through-put: 3.711203 MB/s
+divsufsort: 18787212 bytes, time: 2.083065 seconds, through-put: 9.019023 MB/s
+tab->numDataRows()=65187562
+bytes=12827089140
+fillrandom   :      20.538 micros/op;    9.1 MB/s
+db movies nark completed
+Sat Feb  6 20:32:27 CST 2016
+7028981089	data/test_pagecounts
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       6073       9813          8          3       5651
+-/+ buffers/cache:        418      15468
+Swap:            0          0          0
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        451      15436          8          0        236
+-/+ buffers/cache:        214      15673
+Swap:            0          0          0
+Sat Feb  6 20:32:28 CST 2016
+NarkDB Test Begins! Run() 
+Create database data/test_pagecounts
+INFO: loading segment: data/test_pagecounts/g-0001/rd-0000 ... done!
+INFO: loading segment: data/test_pagecounts/g-0001/rd-0001 ... done!
+readrandom   :      34.779 micros/op;
+db movies nark completed
+Sat Feb  6 20:51:02 CST 2016
+7343600685	data/test_pagecounts
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       6960       8926          8          3       6728
+-/+ buffers/cache:        228      15659
+Swap:            0          0          0

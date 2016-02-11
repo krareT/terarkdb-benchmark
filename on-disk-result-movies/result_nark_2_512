@@ -1,0 +1,43 @@
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        247      15640          8          0         16
+-/+ buffers/cache:        230      15657
+Swap:            0          0          0
+Thu Feb  4 09:47:17 CST 2016
+NarkDB Test Begins! Run() 
+Create database data/test_movies
+ DoWrite now! num_ 7911684 FLAGS_num 7911684
+data_resource data/movies.txt
+divsufsort: 105789633 bytes, time: 18.539721 seconds, through-put: 5.706107 MB/s
+divsufsort: 106822125 bytes, time: 20.874432 seconds, through-put: 5.117367 MB/s
+divsufsort: 106700072 bytes, time: 25.351428 seconds, through-put: 4.208839 MB/s
+divsufsort: 94282590 bytes, time: 16.566029 seconds, through-put: 5.691321 MB/s
+tab->numDataRows()=7911696
+fillrandom   :     159.225 micros/op;    6.2 MB/s
+db movies nark completed
+Thu Feb  4 10:08:17 CST 2016
+3127563619	data/test_movies
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       4830      11057          8          5       4506
+-/+ buffers/cache:        318      15569
+Swap:            0          0          0
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        947      14940          8          0        702
+-/+ buffers/cache:        244      15643
+Swap:            0          0          0
+Thu Feb  4 10:08:18 CST 2016
+NarkDB Test Begins! Run() 
+Create database data/test_movies
+INFO: loading segment: data/test_movies/g-0001/rd-0000 ... done!
+INFO: loading segment: data/test_movies/g-0001/rd-0001 ... done!
+readrandom   :      94.642 micros/op;
+db movies nark completed
+Thu Feb  4 10:14:37 CST 2016
+3442183215	data/test_movies
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       3197      12690          8          1       2976
+-/+ buffers/cache:        219      15668
+Swap:            0          0          0

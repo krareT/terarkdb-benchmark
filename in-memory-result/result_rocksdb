@@ -1,0 +1,55 @@
+####Now, running wiredtiger benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        300      15586          8          1         12
+-/+ buffers/cache:        287      15600
+Swap:            0          0          0
+Sun Feb  7 14:01:34 CST 2016
+FLAGS_write_buffer_size 67108864
+ cache size 3221225472
+RocksDB:    version 4.1
+Keys:       16 bytes each
+Values:     128 bytes each (64 bytes after compression)
+Entries:    50000000
+RawSize:    6866.5 MB (estimated)
+FileSize:   3814.7 MB (estimated)
+------------------------------------------------
+ Run() 
+67108864
+Create database data_memory
+ frehs_db==> DestroyDB
+67108864
+Create database data_memory
+fillrandom   :       6.914 micros/op;   19.9 MB/s
+Sun Feb  7 14:07:20 CST 2016
+5320529521	data_memory
+####wiredtiger benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       5388      10499          8          2       5096
+-/+ buffers/cache:        289      15598
+Swap:            0          0          0
+####Now, running wiredtiger benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887       5379      10508          8          0       5090
+-/+ buffers/cache:        288      15598
+Swap:            0          0          0
+Sun Feb  7 14:07:20 CST 2016
+FLAGS_write_buffer_size 67108864
+ cache size 3221225472
+RocksDB:    version 4.1
+Keys:       16 bytes each
+Values:     128 bytes each (64 bytes after compression)
+Entries:    50000000
+RawSize:    6866.5 MB (estimated)
+FileSize:   3814.7 MB (estimated)
+------------------------------------------------
+ Run() 
+67108864
+Create database data_memory
+readrandom   :      12.459 micros/op; (30000000 of 50000000 found)
+Sun Feb  7 14:13:37 CST 2016
+5248970768	data_memory
+####wiredtiger benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       5326      10560          8          2       5029
+-/+ buffers/cache:        294      15593
+Swap:            0          0          0

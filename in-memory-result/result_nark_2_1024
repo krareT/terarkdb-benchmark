@@ -1,0 +1,54 @@
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        296      15591          8          0         10
+-/+ buffers/cache:        285      15602
+Swap:            0          0          0
+Sun Feb  7 11:24:17 CST 2016
+LevelDB:    version 1.5
+Keys:       16 bytes each
+Values:     128 bytes each (64 bytes after compression)
+Entries:    50000000
+RawSize:    6866.5 MB (estimated)
+FileSize:   3814.7 MB (estimated)
+------------------------------------------------
+ Run() 
+Create database data_memory
+divsufsort: 89203456 bytes, time: 16.971499 seconds, through-put: 5.256074 MB/s
+divsufsort: 89216768 bytes, time: 16.573335 seconds, through-put: 5.383151 MB/s
+divsufsort: 89008000 bytes, time: 23.267766 seconds, through-put: 3.825378 MB/s
+divsufsort: 52306560 bytes, time: 8.134243 seconds, through-put: 6.430415 MB/s
+tab->numDataRows()=50000000
+fillrandom   :      21.914 micros/op;    6.3 MB/s
+benchmark.Run() completed
+Sun Feb  7 11:42:34 CST 2016
+5256260592	data_memory
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       5330      10557          8          3       5040
+-/+ buffers/cache:        286      15601
+Swap:            0          0          0
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887       5309      10578          8          0       5021
+-/+ buffers/cache:        286      15600
+Swap:            0          0          0
+Sun Feb  7 11:42:34 CST 2016
+LevelDB:    version 1.5
+Keys:       16 bytes each
+Values:     128 bytes each (64 bytes after compression)
+Entries:    50000000
+RawSize:    6866.5 MB (estimated)
+FileSize:   3814.7 MB (estimated)
+------------------------------------------------
+ Run() 
+Create database data_memory
+INFO: loading segment: data_memory/g-0001/rd-0000 ... done!
+INFO: loading segment: data_memory/g-0001/rd-0001 ... done!
+readrandom   :       9.672 micros/op; (30000000 of 50000000 found)
+benchmark.Run() completed
+Sun Feb  7 11:47:24 CST 2016
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       5618      10269          8          0       5331
+-/+ buffers/cache:        286      15601
+Swap:            0          0          0

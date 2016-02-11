@@ -1,0 +1,39 @@
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        208      15678          8          0         14
+-/+ buffers/cache:        193      15693
+Swap:            0          0          0
+Thu Feb  4 11:03:43 CST 2016
+NarkDB Test Begins! Run() 
+Create database data/test_movies
+ DoWrite now! num_ 7911684 FLAGS_num 7911684
+data_resource data/movies.txt
+divsufsort: 413594420 bytes, time: 117.098899 seconds, through-put: 3.532009 MB/s
+tab->numDataRows()=7911696
+fillrandom   :     380.358 micros/op;    2.6 MB/s
+db movies nark completed
+Thu Feb  4 11:53:52 CST 2016
+2324740222	data/test_movies
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       2538      13349          8          4       2242
+-/+ buffers/cache:        292      15595
+Swap:            0          0          0
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887       1907      13979          8          0       1632
+-/+ buffers/cache:        274      15613
+Swap:            0          0          0
+Thu Feb  4 11:53:52 CST 2016
+NarkDB Test Begins! Run() 
+Create database data/test_movies
+INFO: loading segment: data/test_movies/g-0000/rd-0000 ... done!
+readrandom   :      23.285 micros/op;
+db movies nark completed
+Thu Feb  4 11:55:28 CST 2016
+2639359818	data/test_movies
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       2515      13372          8          1       2239
+-/+ buffers/cache:        275      15612
+Swap:            0          0          0

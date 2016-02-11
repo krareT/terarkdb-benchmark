@@ -1,0 +1,40 @@
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        214      15673          8          0         13
+-/+ buffers/cache:        200      15687
+Swap:            0          0          0
+Sat Feb  6 15:43:03 CST 2016
+NarkDB Test Begins! Run() 
+Create database data/test_pagecounts
+ DoWrite now! num_ 65187562 FLAGS_num 65187562
+data_resource data/pagecounts-2015-12-views-ge-5
+divsufsort: 634220816 bytes, time: 211.582191 seconds, through-put: 2.997515 MB/s
+tab->numDataRows()=65187562
+bytes=12827089140
+fillrandom   :      88.782 micros/op;    2.1 MB/s
+db movies nark completed
+Sat Feb  6 17:19:31 CST 2016
+6405282183	data/test_pagecounts
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       6533       9354          8          1       6107
+-/+ buffers/cache:        423      15464
+Swap:            0          0          0
+####Now, running narkdb benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887       1717      14170          8          1       1422
+-/+ buffers/cache:        293      15593
+Swap:            0          0          0
+Sat Feb  6 17:19:32 CST 2016
+NarkDB Test Begins! Run() 
+Create database data/test_pagecounts
+INFO: loading segment: data/test_pagecounts/g-0000/rd-0000 ... done!
+readrandom   :      26.802 micros/op;
+db movies nark completed
+Sat Feb  6 17:33:50 CST 2016
+6719901779	data/test_pagecounts
+####narkdb benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887       6431       9456          8          3       6132
+-/+ buffers/cache:        295      15592
+Swap:            0          0          0

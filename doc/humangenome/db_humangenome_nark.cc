@@ -298,9 +298,11 @@ struct ThreadState {
 };
 
 struct TestRow {
+	std::string index; 
 	std::string humangenome; 
 	
 	DATA_IO_LOAD_SAVE(TestRow,
+			&nark::db::Schema::StrZero(index)
 			&nark::db::Schema::StrZero(humangenome)
 			)
 };
@@ -676,24 +678,46 @@ class Benchmark {
     std::string str;  
     
     TestRow recRow;
+    int first = 1;
      
     while(getline(ifs, str)) {
-		    recRow.humangenome = str;
-		    bytes += recRow.humangenome.size();
-		    // std::cout << " recRow.humangenome " << recRow.humangenome << std::endl;
-	    
-		    rowBuilder.rewind();
-		    rowBuilder << recRow;
-		    nark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+		    nark::fstring fstr(str);
+		    if (fstr.startsWith(">")) {
+			if (first) {
+				recRow.index = str.substr(1);
+				bytes += recRow.index.size();
+				first = 0;
+			} else {		
+				bytes += recRow.humangenome.size();
+				rowBuilder.rewind();
+				rowBuilder << recRow;
+				nark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
 
-		    if (ctx->insertRow(binRow) < 0) {
-			    printf("Insert failed: %s\n", ctx->errMsg.c_str());
-			    exit(-1);	
+				if (ctx->insertRow(binRow) < 0) {
+					printf("Insert failed: %s\n", ctx->errMsg.c_str());
+					exit(-1);	
+				}
+				thread->stats.FinishedSingleOp();
+				recRow.index = str.substr(1);
+				bytes += recRow.index.size();
+				recRow.humangenome.clear();
+			}
+		    } else {
+			recRow.humangenome.append(str);
 		    }
-		    thread->stats.FinishedSingleOp();
-		    // std::cout << " num " << num << " record num " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness1 << "/" << recRow.helpfulness2 << " " << recRow.score << " " << recRow.time << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
     }
-    
+
+    bytes += recRow.humangenome.size();
+    rowBuilder.rewind();
+    rowBuilder << recRow;
+    nark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+    if (ctx->insertRow(binRow) < 0) {
+	    printf("Insert failed: %s\n", ctx->errMsg.c_str());
+	    exit(-1);	
+    }
+    thread->stats.FinishedSingleOp();
+
     tab->syncFinishWriting();
     thread->stats.AddBytes(bytes);
     printf("tab->numDataRows()=%lld\n", tab->numDataRows());

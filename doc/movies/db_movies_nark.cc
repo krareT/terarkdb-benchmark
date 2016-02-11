@@ -695,7 +695,7 @@ class Benchmark {
     TestRow recRow;
      
     while(getline(ifs, str)) {
-		nark::fstring fstr(str);
+	    nark::fstring fstr(str);
 	    if (fstr.startsWith("product/productId:")) {
 		    recRow.productId = str.substr(19);
 		    bytes += recRow.productId.size();
@@ -752,7 +752,6 @@ class Benchmark {
 		    }
 		    num_++; 
 		    thread->stats.FinishedSingleOp();
-		    // std::cout << " num " << num << " record num " << num_ << " " << recRow.productId.size() << " " << recRow.userId.size() << " " << recRow.profileName.size() << " " << recRow.helpfulness1 << "/" << recRow.helpfulness2 << " " << recRow.score << " " << recRow.time << " " << recRow.summary.size() << " " << recRow.text.size() << std::endl;
 		    num = 0;
 	    }
     }
@@ -800,18 +799,9 @@ class Benchmark {
   void ReadRandom(ThreadState* thread) {
 	  nark::valvec<nark::byte> val;
 	  nark::llong recId;
-// method 1
-/*
-          int *readshuff = NULL;
-	  readshuff = (int *)malloc(FLAGS_num * sizeof(int));
-	  for (int i=0; i<FLAGS_num; i++)
-		  readshuff[i] = i;
-	  thread->rand.Shuffle(readshuff, FLAGS_num);
-*/	  
 	  
 	  for (size_t i = 0; i < reads_; ++i) {
 		  recId = thread->rand.Next() % FLAGS_num;
-	// 	  recId = readshuff[i];
 		  ctx->getValue(recId, &val);
       		  thread->stats.FinishedSingleOp();
 	  }

@@ -1,0 +1,72 @@
+####Now, running wiredtiger benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887        268      15619          8          0         12
+-/+ buffers/cache:        254      15632
+Swap:            0          0          0
+Tue Feb  9 10:18:45 CST 2016
+LevelDB:    version 1.5
+Keys:       16 bytes each
+Values:     100 bytes each (50 bytes after compression)
+Entries:    50000000
+RawSize:    5531.3 MB (estimated)
+FileSize:   3147.1 MB (estimated)
+WARNING: Optimization is disabled: benchmarks unnecessarily slow
+WARNING: Assertions are enabled; benchmarks unnecessarily slow
+------------------------------------------------
+ Run() 
+Create database /tmp/leveldbtest-0/dbbench
+ frehs_db==> DestroyDB
+Create database /tmp/leveldbtest-0/dbbench
+ run one method 
+fillrandom   :      52.864 micros/op;    2.1 MB/s
+Tue Feb  9 11:02:49 CST 2016
+4096	data_memory
+####wiredtiger benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887      10172       5714          8          6         24
+-/+ buffers/cache:      10141       5746
+Swap:            0          0          0
+####Now, running wiredtiger benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887      10155       5732          8          0         13
+-/+ buffers/cache:      10141       5746
+Swap:            0          0          0
+Tue Feb  9 11:02:49 CST 2016
+LevelDB:    version 1.5
+Keys:       16 bytes each
+Values:     100 bytes each (50 bytes after compression)
+Entries:    50000000
+RawSize:    5531.3 MB (estimated)
+FileSize:   3147.1 MB (estimated)
+WARNING: Optimization is disabled: benchmarks unnecessarily slow
+WARNING: Assertions are enabled; benchmarks unnecessarily slow
+------------------------------------------------
+ Run() 
+Create database /tmp/leveldbtest-0/dbbench
+ run one method 
+readrandom   :      50.705 micros/op; (30000000 of 50000000 found)
+Tue Feb  9 11:28:10 CST 2016
+4096	data_memory
+####wiredtiger benchmark finish
+             total       used       free     shared    buffers     cached
+Mem:         15887      10160       5726          8          2         19
+-/+ buffers/cache:      10139       5748
+Swap:            0          0          0
+####Now, running wiredtiger benchmark
+             total       used       free     shared    buffers     cached
+Mem:         15887      10153       5734          8          0         13
+-/+ buffers/cache:      10139       5748
+Swap:            0          0          0
+Tue Feb  9 11:28:10 CST 2016
+LevelDB:    version 1.5
+Keys:       16 bytes each
+Values:     100 bytes each (50 bytes after compression)
+Entries:    50000000
+RawSize:    5531.3 MB (estimated)
+FileSize:   3147.1 MB (estimated)
+WARNING: Optimization is disabled: benchmarks unnecessarily slow
+WARNING: Assertions are enabled; benchmarks unnecessarily slow
+------------------------------------------------
+ Run() 
+Create database /tmp/leveldbtest-0/dbbench
+ run one method 

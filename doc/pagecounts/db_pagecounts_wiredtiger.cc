@@ -1067,15 +1067,10 @@ repeat:
     const char *ckey;
     WT_CURSOR *cursor;
     
-    const char* wproductId;
-    const char* wuserId;
-    const char*  wprofileName;
-    uint32_t whelpfulness1;
-    uint32_t whelpfulness2;
-    uint32_t wscore;
-    uint32_t wtime;
-    const char* wsummary;
-    const char* wtext;
+    const char* wwikicode;
+    const char* warticletitle;
+    const char* wmonthlytotal;
+    const char* whourlycounts;
 
     int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
     if (ret != 0) {
@@ -1089,7 +1084,7 @@ repeat:
       cursor->set_key(cursor, key);
       if (cursor->search(cursor) == 0) {
 	found++;
-        ret = cursor->get_value(cursor, &wproductId, &wuserId, &wprofileName, &whelpfulness1, &whelpfulness2, &wscore, &wtime, &wsummary, &wtext);
+        ret = cursor->get_value(cursor, &wwikicode, &warticletitle, &wmonthlytotal, &whourlycounts);
       }
       thread->stats.FinishedSingleOp();
     }
@@ -1373,6 +1368,7 @@ int main(int argc, char** argv) {
   for (int i = 1; i < argc; i++) {
     double d;
     int n;
+    long size;
     char junk;
     if (leveldb::Slice(argv[i]).starts_with("--benchmarks=")) {
       FLAGS_benchmarks = argv[i] + strlen("--benchmarks=");
@@ -1402,9 +1398,9 @@ int main(int argc, char** argv) {
       FLAGS_value_size = n;
     } else if (sscanf(argv[i], "--write_buffer_size=%d%c", &n, &junk) == 1) {
       FLAGS_write_buffer_size = n;
-    } else if (sscanf(argv[i], "--cache_size=%d%c", &n, &junk) == 1) {
-      std::cout << "cache_size " << n << std::endl;
-      FLAGS_cache_size = n;
+    } else if (sscanf(argv[i], "--cache_size=%ld%c", &size, &junk) == 1) {
+      std::cout << "cache_size " << size << std::endl;
+      FLAGS_cache_size = size;
     } else if (sscanf(argv[i], "--bloom_bits=%d%c", &n, &junk) == 1) {
       FLAGS_bloom_bits = n;
     } else if (sscanf(argv[i], "--open_files=%d%c", &n, &junk) == 1) {

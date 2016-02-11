@@ -1,15 +1,15 @@
 ﻿{
 	"RowSchema": {
 		"columns" : {
-			"productId"   : { "type" : "strzero", "colstore": true },
-			"userId"      : { "type" : "strzero", "colstore": true },
-			"profileName" : { "type" : "strzero", "colstore": true },
-			"helpfulness1": { "type" : "uint32" , "colstore": true },
-			"helpfulness2": { "type" : "uint32" , "colstore": true },
-			"score"       : { "type" : "uint32" , "colstore": true },
-			"time"        : { "type" : "uint32" , "colstore": true },
-			"summary"     : { "type" : "strzero", "colstore": true, "maxFragLen": 20 },
-			"text"        : { "type" : "strzero", "colstore": true,
+			"productId"   : { "type" : "strzero", "colstore": false },
+			"userId"      : { "type" : "strzero", "colstore": false },
+			"profileName" : { "type" : "strzero", "colstore": false },
+			"helpfulness1": { "type" : "uint32" , "colstore": false },
+			"helpfulness2": { "type" : "uint32" , "colstore": false },
+			"score"       : { "type" : "uint32" , "colstore": false },
+			"time"        : { "type" : "uint32" , "colstore": false },
+			"summary"     : { "type" : "strzero", "colstore": false, "maxFragLen": 20 },
+			"text"        : { "type" : "strzero", "colstore": false,
 							  "nltDelims": " \\t,.:?<",
 							  "minFragLen": 8, "maxFragLen": 100,
 							  "rsX": -256,
@@ -20,7 +20,7 @@
 		}
 	},
 	"MaxWrSegSize" : 2147483648,
-	"ReadonlyDataMemSize" : 536870912,
+	"ReadonlyDataMemSize" : 1288490188,
 	"SufarrCompressMinFreqXX": 5,
 	"TableIndex" : [
 	]

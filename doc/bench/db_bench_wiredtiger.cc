@@ -847,7 +847,8 @@ class Benchmark {
           config << ",internal_page_max=16kb";
           config << ",leaf_page_max=16kb";
         if (FLAGS_cache_size > 0) {
-          int memmax = FLAGS_cache_size * 0.75;
+          // int memmax = FLAGS_cache_size * 0.75;
+          long memmax = FLAGS_cache_size * 0.75;
           config << ",memory_page_max=" << memmax;
         }
       }
@@ -1330,7 +1331,8 @@ int main(int argc, char** argv) {
 
   for (int i = 1; i < argc; i++) {
     double d;
-    long n;
+    int n;
+    long size;
     char junk;
     if (leveldb::Slice(argv[i]).starts_with("--benchmarks=")) {
       FLAGS_benchmarks = argv[i] + strlen("--benchmarks=");
@@ -1358,11 +1360,11 @@ int main(int argc, char** argv) {
       FLAGS_threads = n;
     } else if (sscanf(argv[i], "--value_size=%d%c", &n, &junk) == 1) {
       FLAGS_value_size = n;
-    } else if (sscanf(argv[i], "--write_buffer_size=%ld%c", &n, &junk) == 1) {
-      FLAGS_write_buffer_size = n;
+    } else if (sscanf(argv[i], "--write_buffer_size=%ld%c", &size, &junk) == 1) {
+      FLAGS_write_buffer_size = size;
       std::cout << "FLAGS_write_buffer_size " << FLAGS_write_buffer_size << std::endl;
-    } else if (sscanf(argv[i], "--cache_size=%ld%c", &n, &junk) == 1) {
-      FLAGS_cache_size = n;
+    } else if (sscanf(argv[i], "--cache_size=%ld%c", &size, &junk) == 1) {
+      FLAGS_cache_size = size;
       std::cout << "cache_size " << FLAGS_cache_size << std::endl;
     } else if (sscanf(argv[i], "--bloom_bits=%d%c", &n, &junk) == 1) {
       FLAGS_bloom_bits = n;
