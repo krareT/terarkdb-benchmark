@@ -1,8 +1,0 @@
-fillseq/fillrandom: load the data from the data resource
-	RocksDB		
-
-	WiredTigerd     (Done)
-
-	NarkDB		(Done, but one problem results from "tab->syncFinishWriting()")
-
-
