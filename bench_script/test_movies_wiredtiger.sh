@@ -10,7 +10,7 @@ echo "####Now, running wiredtiger benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-./db_movies_wiredtiger --benchmarks=fillrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --resource_data=$file
+../db_movies_wiredtiger --benchmarks=fillrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --resource_data=$file
 free -m
 date
 du -s -b $dirname
@@ -22,7 +22,7 @@ echo "####Now, running wiredtiger benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-./db_movies_wiredtiger --benchmarks=readrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --use_existing_db=1 --resource_data=$file
+../db_movies_wiredtiger --benchmarks=readrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --use_existing_db=1 --resource_data=$file
 free -m
 date
 echo "####wiredtiger benchmark finish"

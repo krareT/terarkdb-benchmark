@@ -10,7 +10,7 @@ echo "####Now, running redis benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-./db_bench_redis --benchmarks=fillrandom --value_size=$value --num=$record_num --reads=$read_num --db=$dirname
+../db_bench_redis --benchmarks=fillrandom --value_size=$value --num=$record_num --reads=$read_num --db=$dirname
 free -m
 date
 echo "####wiredtiger redis finish"
@@ -21,7 +21,7 @@ echo "####Now, running redis benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-./db_bench_redis --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --db=$dirname
+../db_bench_redis --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --db=$dirname
 free -m
 date
 echo "####redis benchmark finish"

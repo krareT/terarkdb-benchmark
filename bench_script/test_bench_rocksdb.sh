@@ -13,7 +13,7 @@ echo 3 > /proc/sys/vm/drop_caches
 free -m
 #./db_bench_rocksdb_new --benchmarks=fillrandom --num=$record_num --reads=$readnum --db=$dirname
 date
-./db_bench_rocksdb_new --benchmarks=fillrandom --value_size=$value --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname
+../db_bench_rocksdb_new --benchmarks=fillrandom --value_size=$value --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname
 free -m
 date
 echo "####rocksdb benchmark finish"
@@ -25,7 +25,7 @@ echo 3 > /proc/sys/vm/drop_caches
 #./db_bench_rocksdb_new --benchmarks=readrandom --num=$record_num --reads=$readnum --threads=1 --db=$dirname --use_existing_db=1
 free -m
 date
-./db_bench_rocksdb_new --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --use_existing_db=1
+../db_bench_rocksdb_new --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --use_existing_db=1
 free -m
 date
 echo "####rocksdb benchmark finish"

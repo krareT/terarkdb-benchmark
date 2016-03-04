@@ -12,7 +12,7 @@ echo "####Now, running rocksdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-./db_bench_wiredtiger --benchmarks=fillrandom --value_size=$value --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname
+../db_bench_wiredtiger --benchmarks=fillrandom --value_size=$value --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname
 #./db_bench_wiredtiger --benchmarks=fillrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize
 free -m
 date
@@ -23,7 +23,7 @@ echo "####Now, running rocksdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-./db_bench_wiredtiger --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --use_existing_db=1
+../db_bench_wiredtiger --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --use_existing_db=1
 #./db_bench_wiredtiger --benchmarks=readrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --use_existing_db=1
 free -m
 date

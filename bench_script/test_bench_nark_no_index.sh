@@ -9,14 +9,14 @@ rm -rf $dirname/*
 export TMPDIR=$dirname
 echo $TMPDIR
 
-cp dbmeta_bench_no_index.json $dirname/dbmeta.json 
+cp ../narkschema/dbmeta_bench_no_index.json $dirname/dbmeta.json 
 
 echo "####Now, running nark benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export NarkDb_WrSegCacheSizeMB=64
-./db_bench_nark_no_index --benchmarks=fillrandom --value_size=$value --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname
+../db_bench_nark_no_index --benchmarks=fillrandom --value_size=$value --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname
 free -m
 date
 echo "####nark benchmark finish"
@@ -27,7 +27,7 @@ echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export NarkDb_WrSegCacheSizeMB=64
-./db_bench_nark_no_index --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname
+../db_bench_nark_no_index --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname
 free -m
 date
 echo "####nark benchmark finish"
