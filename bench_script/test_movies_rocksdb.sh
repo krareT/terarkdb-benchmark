@@ -1,9 +1,9 @@
-#file=/data/publicdata/movies/movies.txt
-file=test_file_movies
-#record_num=7911684
-record_num=11
-#read_num=4000000
-read_num=11
+file=/data/publicdata/movies/movies.txt
+#file=test_file_movies
+record_num=7911684
+#record_num=11
+read_num=4000000
+#read_num=11
 dirname=/mnt/datamemory
 writebuffer=67108864
 cachesize=2147483648
@@ -25,6 +25,36 @@ echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 ../db_movies_rocksdb --benchmarks=readrandom --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --use_existing_db=1 --resource_data=$file
+free -m
+date
+echo "####rocksdb benchmark finish"
+du -s -b $dirname
+
+echo "####Now, running rocksdb benchmark"
+echo 3 > /proc/sys/vm/drop_caches
+free -m
+date
+../db_movies_rocksdb --benchmarks=readrandom --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --use_existing_db=1 --threads=8 --resource_data=$file
+free -m
+date
+echo "####rocksdb benchmark finish"
+du -s -b $dirname
+
+echo "####Now, running rocksdb benchmark"
+echo 3 > /proc/sys/vm/drop_caches
+free -m
+date
+../db_movies_rocksdb --benchmarks=readrandom --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --use_existing_db=1 --threads=16 --resource_data=$file
+free -m
+date
+echo "####rocksdb benchmark finish"
+du -s -b $dirname
+
+echo "####Now, running rocksdb benchmark"
+echo 3 > /proc/sys/vm/drop_caches
+free -m
+date
+../db_movies_rocksdb --benchmarks=readrandom --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --use_existing_db=1 --threads=24 --resource_data=$file
 free -m
 date
 echo "####rocksdb benchmark finish"

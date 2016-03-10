@@ -1,6 +1,5 @@
 record_num=80000000
 read_num=40000000
-#dirname=/data_memory/rocksdb
 dirname=/mnt/datamemory
 value=128
 
@@ -16,12 +15,41 @@ date
 echo "####wiredtiger redis finish"
 du -s -b $dirname
 
-
 echo "####Now, running redis benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 ../db_bench_redis --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --db=$dirname
+free -m
+date
+echo "####redis benchmark finish"
+du -s -b $dirname
+
+echo "####Now, running redis benchmark"
+echo 3 > /proc/sys/vm/drop_caches
+free -m
+date
+../db_bench_redis --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --threads=8 --db=$dirname
+free -m
+date
+echo "####redis benchmark finish"
+du -s -b $dirname
+
+echo "####Now, running redis benchmark"
+echo 3 > /proc/sys/vm/drop_caches
+free -m
+date
+../db_bench_redis --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --threads=16 --db=$dirname
+free -m
+date
+echo "####redis benchmark finish"
+du -s -b $dirname
+
+echo "####Now, running redis benchmark"
+echo 3 > /proc/sys/vm/drop_caches
+free -m
+date
+../db_bench_redis --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --threads=24 --db=$dirname
 free -m
 date
 echo "####redis benchmark finish"

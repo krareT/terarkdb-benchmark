@@ -72,7 +72,8 @@ BENCHMARKS = db_bench_bdb db_bench_leveldb db_bench_mdb db_bench_sqlite3 \
 	     db_bench_nark_index db_bench_nark_no_index db_bench_rocksdb_new \
 	     db_movies_nark db_movies_rocksdb db_movies_redis db_movies_wiredtiger \
 	     db_pagecounts_nark db_pagecounts_rocksdb db_pagecounts_redis db_pagecounts_wiredtiger \
-	     db_humangenome_nark db_humangenome_rocksdb db_humangenome_redis db_humangenome_wiredtiger 	
+	     db_humangenome_nark db_humangenome_rocksdb db_humangenome_redis db_humangenome_wiredtiger \
+	    db_wikiarticles_nark db_wikiarticles_rocksdb db_wikiarticles_redis db_wikiarticles_wiredtiger	
 
 LIBRARY = libleveldb.a
 MEMENVLIBRARY = libmemenv.a
@@ -188,6 +189,18 @@ db_pagecounts_redis: doc/pagecounts/db_pagecounts_redis.o $(LIBOBJECTS) $(TESTUT
 
 db_pagecounts_rocksdb: doc/pagecounts/db_pagecounts_rocksdb.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/pagecounts/db_pagecounts_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb-4.1
+
+db_wikiarticles_nark: doc/wikiarticles/db_wikiarticles_nark.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/wikiarticles/db_wikiarticles_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+
+db_wikiarticles_rocksdb: doc/wikiarticles/db_wikiarticles_rocksdb.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/pagecounts/db_pagecounts_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb-4.1
+
+db_wikiarticles_wiredtiger: doc/wikiarticles/db_wikiarticles_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/pagecounts/db_pagecounts_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.7.0 -lwiredtiger_snappy
+
+db_wikiarticles_redis: doc/wikiarticles/db_wikiarticles_redis.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/pagecounts/db_pagecounts_redis.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lhiredis
 
 arena_test: util/arena_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) util/arena_test.o $(LIBOBJECTS) $(TESTHARNESS) -o $@ $(LDFLAGS)

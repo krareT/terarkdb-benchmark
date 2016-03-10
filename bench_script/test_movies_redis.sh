@@ -1,9 +1,9 @@
-#file=/data/publicdata/movies/movies.txt
-file=test_file_movies
-#record_num=7911684
-record_num=11
-#read_num=4000000
-read_num=11
+file=/data/publicdata/movies/movies.txt
+#file=test_file_movies
+record_num=7911684
+#record_num=11
+read_num=4000000
+#read_num=11
 dirname=/mnt/datamemory
 
 rm -rf $dirname/*
@@ -25,6 +25,39 @@ echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 ../db_movies_redis --benchmarks=readrandom --num=$record_num --reads=$read_num --db=$dirname --resource_data=$file
+free -m
+date
+echo "####wiredtiger benchmark finish"
+du -s -b $dirname
+#cachesize=`du -s -b -b $dirname | awk '{print $1}'`
+
+echo "####Now, running wiredtiger benchmark"
+echo 3 > /proc/sys/vm/drop_caches
+free -m
+date
+../db_movies_redis --benchmarks=readrandom --num=$record_num --reads=$read_num --db=$dirname --threads=8 --resource_data=$file
+free -m
+date
+echo "####wiredtiger benchmark finish"
+du -s -b $dirname
+#cachesize=`du -s -b -b $dirname | awk '{print $1}'`
+
+echo "####Now, running wiredtiger benchmark"
+echo 3 > /proc/sys/vm/drop_caches
+free -m
+date
+../db_movies_redis --benchmarks=readrandom --num=$record_num --reads=$read_num --db=$dirname --threads=16 --resource_data=$file
+free -m
+date
+echo "####wiredtiger benchmark finish"
+du -s -b $dirname
+#cachesize=`du -s -b -b $dirname | awk '{print $1}'`
+
+echo "####Now, running wiredtiger benchmark"
+echo 3 > /proc/sys/vm/drop_caches
+free -m
+date
+../db_movies_redis --benchmarks=readrandom --num=$record_num --reads=$read_num --db=$dirname --threads=24 --resource_data=$file
 free -m
 date
 echo "####wiredtiger benchmark finish"

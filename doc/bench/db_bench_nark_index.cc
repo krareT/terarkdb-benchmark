@@ -148,7 +148,7 @@ class RandomGenerator {
     // large enough to serve all typical value sizes we want to write.
     Random rnd(301);
     std::string piece;
-    while (data_.size() < 536870912) {
+    while (data_.size() < 268435456) {
     //while (data_.size() < 1048576) {
       // Add a short fragment that is as compressible as specified
       // by FLAGS_compression_ratio.
@@ -839,6 +839,10 @@ class Benchmark {
 
 	  nark::valvec<nark::byte> keyHit, val;
 	  nark::valvec<nark::llong> idvec;
+	  nark::db::DbContextPtr ctxr;
+          ctxr = tab->createDbContext();
+          ctxr->syncIndex = FLAGS_sync_index;
+
     	  int found = 0;
 	  for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
 		  nark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
@@ -874,7 +878,8 @@ class Benchmark {
 		//	  printf("seekLowerBound(%s)=%d\n", indexSchema.toJsonStr(keyData).c_str(), ret);
 			  for (size_t i = 0; i < idvec.size(); ++i) {
 				  recId = idvec[i];
-				  tab->selectOneColumn(recId, 1, &val, ctx.get());
+				  // ctxr->getValue(recId, &val);
+				  tab->selectOneColumn(recId, 1, &val, ctxr.get());
 			  }
 			  if(idvec.size() > 0)
 				found++;
@@ -942,7 +947,6 @@ class Benchmark {
 		//	  printf("seekLowerBound(%s)=%d\n", indexSchema.toJsonStr(keyData).c_str(), ret);
 			  for (size_t i = 0; i < idvec.size(); ++i) {
 				  recId = idvec[i];
-			//	  ctx->getValue(recId, &val);
 				  tab->selectOneColumn(recId, 1, &val, ctx.get());
 			  }
       			  thread->stats.FinishedSingleOp();

@@ -877,7 +877,6 @@ class Benchmark {
       char key[100];
       const int k = thread->rand.Next() % FLAGS_num;
       snprintf(key, sizeof(key), "%016d", k);
-      // redisReply* r = (redisReply*)redisCommand(db_, "GET %s", key);
       redisReply* r = (redisReply*)redisCommand(rdb, "GET %s", key);
       if(r->type == REDIS_REPLY_STRING) {
 	found++;

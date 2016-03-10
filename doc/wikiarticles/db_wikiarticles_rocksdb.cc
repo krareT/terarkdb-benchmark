@@ -5,7 +5,12 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sstream>
+#include <boost/algorithm/string.hpp>
 #include <iostream>
+#include <fstream>
+#include <string.h>
+
 #include "port/port.h"
 #include "util/crc32c.h"
 #include "util/histogram.h"
@@ -17,6 +22,7 @@
 #include "rocksdb/env.h"
 #include "rocksdb/cache.h"
 #include "rocksdb/options.h"
+#include "rocksdb/table.h"
 #include "rocksdb/filter_policy.h"
 
 // Comma-separated list of operations to run in the specified order
@@ -105,11 +111,11 @@ static bool FLAGS_histogram = false;
 
 // Number of bytes to buffer in memtable before compacting
 // (initialized to default value by "main")
-static int FLAGS_write_buffer_size = 0;
+static long FLAGS_write_buffer_size = 0;
 
 // Number of bytes to use as a cache of uncompressed data.
 // Negative means use default settings.
-static int FLAGS_cache_size = -1;
+static long FLAGS_cache_size = -1;
 
 // Maximum number of files to keep open at the same time (use default if == 0)
 static int FLAGS_open_files = 0;
@@ -125,6 +131,7 @@ static bool FLAGS_use_existing_db = false;
 
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
+static const char* FLAGS_resource_data = NULL;
 
 static int *shuff = NULL;
 
@@ -145,7 +152,7 @@ class RandomGenerator {
     // large enough to serve all typical value sizes we want to write.
     Random rnd(301);
     std::string piece;
-    while (data_.size() < 268435456) {
+    while (data_.size() < 536870912) {
       // Add a short fragment that is as compressible as specified
       // by FLAGS_compression_ratio.
       test::CompressibleString(&rnd, FLAGS_compression_ratio, 100, &piece);
@@ -183,6 +190,7 @@ static void AppendWithSpace(std::string* str, rocksdb::Slice msg) {
   }
   str->append(msg.data(), msg.size());
 }
+
 
 class Stats {
  private:
@@ -328,8 +336,10 @@ struct ThreadState {
 class Benchmark {
  private:
   std::shared_ptr<rocksdb::Cache> cache_;
-  const rocksdb::FilterPolicy* filter_policy_;
+  std::shared_ptr<rocksdb::Cache> compressed_cache_;
+  std::shared_ptr<const rocksdb::FilterPolicy> filter_policy_;
   rocksdb::DB* db_;
+
   int num_;
   int value_size_;
   int entries_per_batch_;
@@ -417,7 +427,7 @@ class Benchmark {
   Benchmark()
   : cache_(FLAGS_cache_size >= 0 ? rocksdb::NewLRUCache(FLAGS_cache_size) : NULL),
     filter_policy_(FLAGS_bloom_bits >= 0
-                    ? rocksdb::NewBloomFilterPolicy(FLAGS_bloom_bits)
+                    ? rocksdb::NewBloomFilterPolicy(FLAGS_bloom_bits, false)
                     : NULL),
     db_(NULL),
     num_(FLAGS_num),
@@ -439,8 +449,6 @@ class Benchmark {
 
   ~Benchmark() {
     delete db_;
-    // delete cache_;
-    delete filter_policy_;
   }
 
   void Run() {
@@ -689,7 +697,7 @@ class Benchmark {
 
   void SnappyCompress(ThreadState* thread) {
     RandomGenerator gen;
-    rocksdb::Slice input = gen.Generate(rocksdb::Options().block_size);
+    rocksdb::Slice input = gen.Generate(rocksdb::BlockBasedTableOptions().block_size);
     int64_t bytes = 0;
     int64_t produced = 0;
     bool ok = true;
@@ -714,7 +722,7 @@ class Benchmark {
 
   void SnappyUncompress(ThreadState* thread) {
     RandomGenerator gen;
-    rocksdb::Slice input = gen.Generate(rocksdb::Options().block_size);
+    rocksdb::Slice input = gen.Generate(rocksdb::BlockBasedTableOptions().block_size);
     std::string compressed;
     bool ok = port::Snappy_Compress(input.data(), input.size(), &compressed);
     int64_t bytes = 0;
@@ -735,13 +743,20 @@ class Benchmark {
   }
 
   void Open() {
-    assert(db_ == NULL);
+    assert(db_ == nullptr);
     rocksdb::Options options;
-    options.create_if_missing = !FLAGS_use_existing_db;
-    options.block_cache = cache_;
-    options.write_buffer_size = FLAGS_write_buffer_size;
-    options.filter_policy = filter_policy_;
 
+    options.create_if_missing = !FLAGS_use_existing_db;
+    options.write_buffer_size = FLAGS_write_buffer_size;
+    std::cout << options.write_buffer_size << std::endl;
+
+    rocksdb::BlockBasedTableOptions block_based_options;
+    block_based_options.index_type = rocksdb::BlockBasedTableOptions::kBinarySearch;
+    block_based_options.block_cache = cache_;
+    block_based_options.filter_policy = filter_policy_;
+    options.table_factory.reset(
+		    NewBlockBasedTableFactory(block_based_options));
+  
     options.compression = FLAGS_compression_type;
     if (FLAGS_min_level_to_compress >= 0) {
       assert(FLAGS_min_level_to_compress <= FLAGS_num_levels);
@@ -778,27 +793,35 @@ class Benchmark {
       thread->stats.AddMessage(msg);
     }
 
-	if (!seq)
+    if (!seq)
 	  thread->rand.Shuffle(shuff, num_);
     RandomGenerator gen;
-    rocksdb::WriteBatch batch;
-    rocksdb::Status s;
     int64_t bytes = 0;
-    for (int i = 0; i < num_; i += entries_per_batch_) {
-      batch.Clear();
-      for (int j = 0; j < entries_per_batch_; j++) {
-        const int k = seq ? i+j : shuff[i+j];
-        char key[100];
-        snprintf(key, sizeof(key), "%016d", k);
-        batch.Put(key, gen.Generate(value_size_));
-        bytes += value_size_ + strlen(key);
-        thread->stats.FinishedSingleOp();
-      }
-      s = db_->Write(write_options_, &batch);
-      if (!s.ok()) {
-        fprintf(stderr, "put error: %s\n", s.ToString().c_str());
-        exit(1);
-      }
+
+    std::ifstream ifs(FLAGS_resource_data);  
+    std::string str;  
+    std::string value; 
+    value.clear(); 
+    int64_t shuffleid = 0;
+    std::vector<std::string> fields;
+    rocksdb::Status s;	
+
+    while(getline(ifs, str)) {
+	value = str;
+
+	const int k = shuff[shuffleid];
+	char key[100];
+	snprintf(key, sizeof(key), "%016d", k);
+	s = db_->Put(write_options_, key, value);
+	if (!s.ok()) {
+		fprintf(stderr, "put error: %s\n", s.ToString().c_str());
+		exit(1);
+	}
+
+	bytes += value.size() + strlen(key);
+	value.clear();
+	shuffleid ++; 
+	thread->stats.FinishedSingleOp();
     }
     thread->stats.AddBytes(bytes);
   }
@@ -924,6 +947,7 @@ class Benchmark {
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
+/*
       // Special thread that keeps writing until other threads are done.
       RandomGenerator gen;
       while (true) {
@@ -947,6 +971,7 @@ class Benchmark {
 
       // Do not count any of the preceding work/delay in stats.
       thread->stats.Start();
+*/
     }
   }
 
@@ -1002,7 +1027,8 @@ int main(int argc, char** argv) {
 
   for (int i = 1; i < argc; i++) {
     double d;
-    int n;
+    // int n;
+    long n;
     char junk;
     if (rocksdb::Slice(argv[i]).starts_with("--benchmarks=")) {
       FLAGS_benchmarks = argv[i] + strlen("--benchmarks=");
@@ -1022,17 +1048,20 @@ int main(int argc, char** argv) {
       FLAGS_threads = n;
     } else if (sscanf(argv[i], "--value_size=%d%c", &n, &junk) == 1) {
       FLAGS_value_size = n;
-    } else if (sscanf(argv[i], "--write_buffer_size=%d%c", &n, &junk) == 1) {
+    } else if (sscanf(argv[i], "--write_buffer_size=%ld%c", &n, &junk) == 1) {
       FLAGS_write_buffer_size = n;
-    } else if (sscanf(argv[i], "--cache_size=%d%c", &n, &junk) == 1) {
-      std::cout << " cache size " << n << std::endl;
+      std::cout << "FLAGS_write_buffer_size " << FLAGS_write_buffer_size << std::endl;
+    } else if (sscanf(argv[i], "--cache_size=%ld%c", &n, &junk) == 1) {
       FLAGS_cache_size = n;
+      std::cout << " cache size " << FLAGS_cache_size << std::endl;
     } else if (sscanf(argv[i], "--bloom_bits=%d%c", &n, &junk) == 1) {
       FLAGS_bloom_bits = n;
     } else if (sscanf(argv[i], "--open_files=%d%c", &n, &junk) == 1) {
       FLAGS_open_files = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
+    } else if (strncmp(argv[i], "--resource_data=", 16) == 0) {
+      FLAGS_resource_data = argv[i] + 16;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);

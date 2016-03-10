@@ -1,0 +1,108 @@
+/mnt/datamemory
+####Now, running narkdb benchmark
+              total        used        free      shared  buff/cache   available
+Mem:          64163         994       62867          35         300       62838
+Swap:         17165           0       17165
+Sun Mar  6 23:49:06 CST 2016
+NarkDB Test Begins! Run() 
+Create database /mnt/datamemory
+ DoWrite now! num_ 11 FLAGS_num 11
+data_resource ../test_file_movies
+start step[ordinal=0, threadno=0]: ZipInputData
+start step[ordinal=0, threadno=1]: ZipInputData
+start step[ordinal=0, threadno=3]: ZipInputData
+start step[ordinal=0, threadno=2]: ZipInputData
+start step[ordinal=0, threadno=4]: ZipInputData
+start step[ordinal=0, threadno=5]: ZipInputData
+start step[ordinal=0, threadno=6]: ZipInputData
+start step[ordinal=0, threadno=8]: ZipInputData
+start step[ordinal=0, threadno=7]: ZipInputData
+start step[ordinal=0, threadno=9]: ZipInputData
+start step[ordinal=0, threadno=10]: ZipInputData
+start step[ordinal=0, threadno=11]: ZipInputData
+start step[ordinal=0, threadno=12]: ZipInputData
+start step[ordinal=0, threadno=13]: ZipInputData
+start step[ordinal=0, threadno=14]: ZipInputData
+start step[ordinal=0, threadno=15]: ZipInputData
+start step[ordinal=0, threadno=16]: ZipInputData
+start step[ordinal=0, threadno=17]: ZipInputData
+start step[ordinal=0, threadno=18]: ZipInputData
+start step[ordinal=0, threadno=19]: ZipInputData
+start step[ordinal=0, threadno=20]: ZipInputData
+start step[ordinal=0, threadno=21]: ZipInputData
+start step[ordinal=0, threadno=22]: ZipInputData
+start step[ordinal=0, threadno=23]: ZipInputData
+start step[ordinal=0, threadno=24]: ZipInputData
+start step[ordinal=0, threadno=25]: ZipInputData
+start step[ordinal=0, threadno=26]: ZipInputData
+start step[ordinal=0, threadno=27]: ZipInputData
+start step[ordinal=0, threadno=28]: ZipInputData
+start step[ordinal=0, threadno=29]: ZipInputData
+start step[ordinal=0, threadno=30]: ZipInputData
+start step[ordinal=0, threadno=31]: ZipInputData
+start step[ordinal=1, threadno=0]: WriteZipData
+              total        used        free      shared  buff/cache   available
+Mem:          64163         998       62751          35         414       62778
+Swap:         17165           0       17165
+Sun Mar  6 23:49:07 CST 2016
+105017260	/mnt/datamemory
+####narkdb benchmark finish
+              total        used        free      shared  buff/cache   available
+Mem:          64163         998       62751          35         414       62778
+Swap:         17165           0       17165
+####Now, running narkdb benchmark
+              total        used        free      shared  buff/cache   available
+Mem:          64163        1000       62761          35         401       62781
+Swap:         17165           0       17165
+Sun Mar  6 23:49:07 CST 2016
+NarkDB Test Begins! Run() 
+Create database /mnt/datamemory
+INFO: loading segment: /mnt/datamemory/g-0000/wr-0000 ... done!
+              total        used        free      shared  buff/cache   available
+Mem:          64163         998       62750          35         414       62778
+Swap:         17165           0       17165
+Sun Mar  6 23:49:07 CST 2016
+####narkdb benchmark finish
+105018007	/mnt/datamemory
+####Now, running narkdb benchmark
+              total        used        free      shared  buff/cache   available
+Mem:          64163         997       62765          35         400       62784
+Swap:         17165           0       17165
+Sun Mar  6 23:49:07 CST 2016
+NarkDB Test Begins! Run() 
+Create database /mnt/datamemory
+INFO: loading segment: /mnt/datamemory/g-0000/wr-0000 ... done!
+              total        used        free      shared  buff/cache   available
+Mem:          64163         998       62753          35         410       62779
+Swap:         17165           0       17165
+Sun Mar  6 23:49:07 CST 2016
+####narkdb benchmark finish
+105035810	/mnt/datamemory
+####Now, running narkdb benchmark
+              total        used        free      shared  buff/cache   available
+Mem:          64163        1000       62762          35         400       62783
+Swap:         17165           0       17165
+Sun Mar  6 23:49:08 CST 2016
+NarkDB Test Begins! Run() 
+Create database /mnt/datamemory
+INFO: loading segment: /mnt/datamemory/g-0000/wr-0000 ... done!
+              total        used        free      shared  buff/cache   available
+Mem:          64163        1002       62750          35         409       62778
+Swap:         17165           0       17165
+Sun Mar  6 23:49:08 CST 2016
+####narkdb benchmark finish
+105041314	/mnt/datamemory
+####Now, running narkdb benchmark
+              total        used        free      shared  buff/cache   available
+Mem:          64163        1001       62760          35         400       62782
+Swap:         17165           0       17165
+Sun Mar  6 23:49:08 CST 2016
+NarkDB Test Begins! Run() 
+Create database /mnt/datamemory
+INFO: loading segment: /mnt/datamemory/g-0000/wr-0000 ... done!
+              total        used        free      shared  buff/cache   available
+Mem:          64163         999       62753          35         410       62778
+Swap:         17165           0       17165
+Sun Mar  6 23:49:08 CST 2016
+####narkdb benchmark finish
+105042722	/mnt/datamemory

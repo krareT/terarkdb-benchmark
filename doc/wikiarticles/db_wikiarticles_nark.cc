@@ -3,9 +3,16 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include <sys/types.h>
+#include <boost/algorithm/string.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
+#include "db/db_impl.h"
+#include "db/version_set.h"
+#include "leveldb/cache.h"
+#include "leveldb/db.h"
+#include "leveldb/env.h"
+#include "leveldb/write_batch.h"
 #include "port/port.h"
 #include "util/crc32c.h"
 #include "util/histogram.h"
@@ -13,11 +20,17 @@
 #include "util/random.h"
 #include "util/testutil.h"
 
-#include "rocksdb/db.h"
-#include "rocksdb/env.h"
-#include "rocksdb/cache.h"
-#include "rocksdb/options.h"
-#include "rocksdb/filter_policy.h"
+#include <iostream>  
+#include <fstream>  
+#include <string.h>  
+
+//#include "stdafx.h"
+#include <nark/db/db_table.hpp>
+#include <nark/io/MemStream.hpp>
+#include <nark/io/DataIO.hpp>
+#include <nark/io/RangeStream.hpp>
+#include <nark/lcast.hpp>
+
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -77,7 +90,7 @@ static const char* FLAGS_benchmarks =
     ;
 
 // Number of key/values to place in database
-static int FLAGS_num = 1000000;
+static int FLAGS_num = 0;
 
 // Number of read operations to do.  If negative, do FLAGS_num reads.
 static int FLAGS_reads = -1;
@@ -88,20 +101,14 @@ static int FLAGS_threads = 1;
 // Size of each value
 static int FLAGS_value_size = 100;
 
-static enum rocksdb::CompressionType FLAGS_compression_type =
-    rocksdb::kSnappyCompression;
-
-static int FLAGS_min_level_to_compress = 0;
-
-static int FLAGS_num_levels = 7;
-
-
 // Arrange to generate values that shrink to this fraction of
 // their original size after compression
 static double FLAGS_compression_ratio = 0.5;
 
 // Print histogram of operation timings
 static bool FLAGS_histogram = false;
+
+static bool FLAGS_sync_index = true;
 
 // Number of bytes to buffer in memtable before compacting
 // (initialized to default value by "main")
@@ -121,10 +128,12 @@ static int FLAGS_bloom_bits = -1;
 // If true, do not destroy the existing database.  If you set this
 // flag and also specify a benchmark that wants a fresh database, that
 // benchmark will fail.
-static bool FLAGS_use_existing_db = false;
+static bool FLAGS_use_existing_db = true;
 
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
+static const char* FLAGS_db_table = NULL;
+static const char* FLAGS_resource_data = NULL;
 
 static int *shuff = NULL;
 
@@ -132,39 +141,7 @@ namespace leveldb {
 
 namespace {
 
-// Helper for quickly generating random data.
-class RandomGenerator {
- private:
-  std::string data_;
-  int pos_;
-
- public:
-  RandomGenerator() {
-    // We use a limited amount of data over and over again and ensure
-    // that it is larger than the compression window (32KB), and also
-    // large enough to serve all typical value sizes we want to write.
-    Random rnd(301);
-    std::string piece;
-    while (data_.size() < 268435456) {
-      // Add a short fragment that is as compressible as specified
-      // by FLAGS_compression_ratio.
-      test::CompressibleString(&rnd, FLAGS_compression_ratio, 100, &piece);
-      data_.append(piece);
-    }
-    pos_ = 0;
-  }
-
-  rocksdb::Slice Generate(int len) {
-    if (pos_ + len > data_.size()) {
-      pos_ = 0;
-      assert(len < data_.size());
-    }
-    pos_ += len;
-    return rocksdb::Slice(data_.data() + pos_ - len, len);
-  }
-};
-
-static rocksdb::Slice TrimSpace(rocksdb::Slice s) {
+static Slice TrimSpace(Slice s) {
   int start = 0;
   while (start < s.size() && isspace(s[start])) {
     start++;
@@ -173,10 +150,10 @@ static rocksdb::Slice TrimSpace(rocksdb::Slice s) {
   while (limit > start && isspace(s[limit-1])) {
     limit--;
   }
-  return rocksdb::Slice(s.data() + start, limit - start);
+  return Slice(s.data() + start, limit - start);
 }
 
-static void AppendWithSpace(std::string* str, rocksdb::Slice msg) {
+static void AppendWithSpace(std::string* str, Slice msg) {
   if (msg.empty()) return;
   if (!str->empty()) {
     str->push_back(' ');
@@ -228,7 +205,7 @@ class Stats {
     seconds_ = (finish_ - start_) * 1e-6;
   }
 
-  void AddMessage(rocksdb::Slice msg) {
+  void AddMessage(Slice msg) {
     AppendWithSpace(&message_, msg);
   }
 
@@ -262,7 +239,7 @@ class Stats {
     bytes_ += n;
   }
 
-  void Report(const rocksdb::Slice& name) {
+  void Report(const Slice& name) {
     // Pretend at least one op was done in case we are running a benchmark
     // that does not call FinishedSingleOp().
     if (done_ < 1) done_ = 1;
@@ -323,36 +300,33 @@ struct ThreadState {
   }
 };
 
+struct TestRow {
+	std::string title; 
+	std::string content;
+	
+	DATA_IO_LOAD_SAVE(TestRow,
+			&nark::db::Schema::StrZero(title)
+			&nark::db::Schema::StrZero(content)
+			)
+};
+
 }  // namespace
 
 class Benchmark {
  private:
-  std::shared_ptr<rocksdb::Cache> cache_;
-  const rocksdb::FilterPolicy* filter_policy_;
-  rocksdb::DB* db_;
+
+  nark::db::CompositeTablePtr tab;
+  nark::db::DbContextPtr ctx;
+
   int num_;
   int value_size_;
   int entries_per_batch_;
-  rocksdb::WriteOptions write_options_;
+  WriteOptions write_options_;
   int reads_;
   int heap_counter_;
 
   void PrintHeader() {
-    const int kKeySize = 16;
-    PrintEnvironment();
-    fprintf(stdout, "Keys:       %d bytes each\n", kKeySize);
-    fprintf(stdout, "Values:     %d bytes each (%d bytes after compression)\n",
-            FLAGS_value_size,
-            static_cast<int>(FLAGS_value_size * FLAGS_compression_ratio + 0.5));
-    fprintf(stdout, "Entries:    %d\n", num_);
-    fprintf(stdout, "RawSize:    %.1f MB (estimated)\n",
-            ((static_cast<int64_t>(kKeySize + FLAGS_value_size) * num_)
-             / 1048576.0));
-    fprintf(stdout, "FileSize:   %.1f MB (estimated)\n",
-            (((kKeySize + FLAGS_value_size * FLAGS_compression_ratio) * num_)
-             / 1048576.0));
-    PrintWarnings();
-    fprintf(stdout, "------------------------------------------------\n");
+    fprintf(stdout, "NarkDB Test Begins!");
   }
 
   void PrintWarnings() {
@@ -377,10 +351,10 @@ class Benchmark {
   }
 
   void PrintEnvironment() {
-    fprintf(stdout, "RocksDB:    version %d.%d\n",
-            rocksdb::kMajorVersion, rocksdb::kMinorVersion);
-    fprintf(stderr, "RocksDB:    version %d.%d\n",
-            rocksdb::kMajorVersion, rocksdb::kMinorVersion);
+    fprintf(stdout, "LevelDB:    version %d.%d\n",
+            kMajorVersion, kMinorVersion);
+    fprintf(stderr, "LevelDB:    version %d.%d\n",
+            kMajorVersion, kMinorVersion);
 
 #if defined(__linux)
     time_t now = time(NULL);
@@ -397,8 +371,8 @@ class Benchmark {
         if (sep == NULL) {
           continue;
         }
-        rocksdb::Slice key = TrimSpace(rocksdb::Slice(line, sep - 1 - line));
-        rocksdb::Slice val = TrimSpace(rocksdb::Slice(sep + 1));
+        Slice key = TrimSpace(Slice(line, sep - 1 - line));
+        Slice val = TrimSpace(Slice(sep + 1));
         if (key == "model name") {
           ++num_cpus;
           cpu_type = val.ToString();
@@ -415,11 +389,9 @@ class Benchmark {
 
  public:
   Benchmark()
-  : cache_(FLAGS_cache_size >= 0 ? rocksdb::NewLRUCache(FLAGS_cache_size) : NULL),
-    filter_policy_(FLAGS_bloom_bits >= 0
-                    ? rocksdb::NewBloomFilterPolicy(FLAGS_bloom_bits)
-                    : NULL),
-    db_(NULL),
+  : tab(NULL),
+    ctx(NULL),
+
     num_(FLAGS_num),
     value_size_(FLAGS_value_size),
     entries_per_batch_(1),
@@ -428,19 +400,16 @@ class Benchmark {
     std::vector<std::string> files;
     Env::Default()->GetChildren(FLAGS_db, &files);
     for (int i = 0; i < files.size(); i++) {
-      if (rocksdb::Slice(files[i]).starts_with("heap-")) {
+      if (Slice(files[i]).starts_with("heap-")) {
         Env::Default()->DeleteFile(std::string(FLAGS_db) + "/" + files[i]);
       }
     }
     if (!FLAGS_use_existing_db) {
-      rocksdb::DestroyDB(FLAGS_db, rocksdb::Options());
+      DestroyDB(FLAGS_db, Options());
     }
   }
 
   ~Benchmark() {
-    delete db_;
-    // delete cache_;
-    delete filter_policy_;
   }
 
   void Run() {
@@ -451,12 +420,12 @@ class Benchmark {
     const char* benchmarks = FLAGS_benchmarks;
     while (benchmarks != NULL) {
       const char* sep = strchr(benchmarks, ',');
-      rocksdb::Slice name;
+      Slice name;
       if (sep == NULL) {
         name = benchmarks;
         benchmarks = NULL;
       } else {
-        name = rocksdb::Slice(benchmarks, sep - benchmarks);
+        name = Slice(benchmarks, sep - benchmarks);
         benchmarks = sep + 1;
       }
 
@@ -465,30 +434,30 @@ class Benchmark {
       reads_ = (FLAGS_reads < 0 ? FLAGS_num : FLAGS_reads);
       value_size_ = FLAGS_value_size;
       entries_per_batch_ = 1;
-      write_options_ = rocksdb::WriteOptions();
+      write_options_ = WriteOptions();
 
       void (Benchmark::*method)(ThreadState*) = NULL;
       bool fresh_db = false;
       int num_threads = FLAGS_threads;
 
-      if (name == rocksdb::Slice("fillseq")) {
+      if (name == Slice("fillseq")) {
         fresh_db = true;
         method = &Benchmark::WriteSeq;
-      } else if (name == rocksdb::Slice("fillseqbatch")) {
+      } else if (name == Slice("fillseqbatch")) {
         fresh_db = true;
         entries_per_batch_ = 1000;
         method = &Benchmark::WriteSeq;
-      } else if (name == rocksdb::Slice("fillrandbatch")) {
+      } else if (name == Slice("fillrandbatch")) {
         fresh_db = true;
         entries_per_batch_ = 1000;
         method = &Benchmark::WriteRandom;
-      } else if (name == rocksdb::Slice("fillrandom")) {
+      } else if (name == Slice("fillrandom")) {
         fresh_db = true;
         method = &Benchmark::WriteRandom;
-      } else if (name == rocksdb::Slice("overwrite")) {
+      } else if (name == Slice("overwrite")) {
         fresh_db = false;
         method = &Benchmark::WriteRandom;
-      } else if (name == rocksdb::Slice("fillseqsync")) {
+      } else if (name == Slice("fillseqsync")) {
         fresh_db = true;
 #if 1
         num_ /= 1000;
@@ -496,7 +465,7 @@ class Benchmark {
 #endif
         write_options_.sync = true;
         method = &Benchmark::WriteSeq;
-      } else if (name == rocksdb::Slice("fillrandsync")) {
+      } else if (name == Slice("fillrandsync")) {
         fresh_db = true;
 #if 1
         num_ /= 1000;
@@ -504,67 +473,57 @@ class Benchmark {
 #endif
         write_options_.sync = true;
         method = &Benchmark::WriteRandom;
-      } else if (name == rocksdb::Slice("fill100K")) {
+      } else if (name == Slice("fill100K")) {
         fresh_db = true;
         num_ /= 1000;
         value_size_ = 100 * 1000;
         method = &Benchmark::WriteRandom;
-      } else if (name == rocksdb::Slice("readseq")) {
+      } else if (name == Slice("readseq")) {
         method = &Benchmark::ReadSequential;
-      } else if (name == rocksdb::Slice("readreverse")) {
+      } else if (name == Slice("readreverse")) {
         method = &Benchmark::ReadReverse;
-      } else if (name == rocksdb::Slice("readrandom")) {
+      } else if (name == Slice("readrandom")) {
         method = &Benchmark::ReadRandom;
-      } else if (name == rocksdb::Slice("readmissing")) {
+      } else if (name == Slice("readmissing")) {
         method = &Benchmark::ReadMissing;
-      } else if (name == rocksdb::Slice("seekrandom")) {
+      } else if (name == Slice("seekrandom")) {
         method = &Benchmark::SeekRandom;
-      } else if (name == rocksdb::Slice("readhot")) {
+      } else if (name == Slice("readhot")) {
         method = &Benchmark::ReadHot;
-      } else if (name == rocksdb::Slice("readrandomsmall")) {
+      } else if (name == Slice("readrandomsmall")) {
         reads_ /= 1000;
         method = &Benchmark::ReadRandom;
-      } else if (name == rocksdb::Slice("deleteseq")) {
+      } else if (name == Slice("deleteseq")) {
         method = &Benchmark::DeleteSeq;
-      } else if (name == rocksdb::Slice("deleterandom")) {
+      } else if (name == Slice("deleterandom")) {
         method = &Benchmark::DeleteRandom;
-      } else if (name == rocksdb::Slice("readwhilewriting")) {
+      } else if (name == Slice("readwhilewriting")) {
         num_threads++;  // Add extra thread for writing
         method = &Benchmark::ReadWhileWriting;
-      } else if (name == rocksdb::Slice("compact")) {
+      } else if (name == Slice("compact")) {
         method = &Benchmark::Compact;
-      } else if (name == rocksdb::Slice("crc32c")) {
+      } else if (name == Slice("crc32c")) {
         method = &Benchmark::Crc32c;
-      } else if (name == rocksdb::Slice("acquireload")) {
+      } else if (name == Slice("acquireload")) {
         method = &Benchmark::AcquireLoad;
-      } else if (name == rocksdb::Slice("snappycomp")) {
-        method = &Benchmark::SnappyCompress;
-      } else if (name == rocksdb::Slice("snappyuncomp")) {
-        method = &Benchmark::SnappyUncompress;
-      } else if (name == rocksdb::Slice("heapprofile")) {
+      } else if (name == Slice("heapprofile")) {
         HeapProfile();
-      } else if (name == rocksdb::Slice("stats")) {
+      } else if (name == Slice("stats")) {
         PrintStats("leveldb.stats");
-      } else if (name == rocksdb::Slice("sstables")) {
+      } else if (name == Slice("sstables")) {
         PrintStats("leveldb.sstables");
       } else {
-        if (name != rocksdb::Slice()) {  // No error message for empty name
+        if (name != Slice()) {  // No error message for empty name
           fprintf(stderr, "unknown benchmark '%s'\n", name.ToString().c_str());
         }
       }
 
       if (fresh_db) {
         if (FLAGS_use_existing_db) {
-/*
-          fprintf(stdout, "%-12s : skipped (--use_existing_db is true)\n",
-                  name.ToString().c_str());
-          method = NULL;
-*/
+	/*do nothing*/
         } else {
-          delete db_;
-          db_ = NULL;
-          rocksdb::DestroyDB(FLAGS_db, rocksdb::Options());
-	  std::cout << " frehs_db==> DestroyDB" << std::endl;
+          tab = NULL;
+	  ctx = NULL;
           Open();
         }
       }
@@ -611,7 +570,7 @@ class Benchmark {
     }
   }
 
-  void RunBenchmark(int n, rocksdb::Slice name,
+  void RunBenchmark(int n, Slice name,
                     void (Benchmark::*method)(ThreadState*)) {
     SharedState shared;
     shared.total = n;
@@ -687,80 +646,15 @@ class Benchmark {
     if (ptr == NULL) exit(1); // Disable unused variable warning.
   }
 
-  void SnappyCompress(ThreadState* thread) {
-    RandomGenerator gen;
-    rocksdb::Slice input = gen.Generate(rocksdb::Options().block_size);
-    int64_t bytes = 0;
-    int64_t produced = 0;
-    bool ok = true;
-    std::string compressed;
-    while (ok && bytes < 1024 * 1048576) {  // Compress 1G
-      ok = port::Snappy_Compress(input.data(), input.size(), &compressed);
-      produced += compressed.size();
-      bytes += input.size();
-      thread->stats.FinishedSingleOp();
-    }
-
-    if (!ok) {
-      thread->stats.AddMessage("(snappy failure)");
-    } else {
-      char buf[100];
-      snprintf(buf, sizeof(buf), "(output: %.1f%%)",
-               (produced * 100.0) / bytes);
-      thread->stats.AddMessage(buf);
-      thread->stats.AddBytes(bytes);
-    }
-  }
-
-  void SnappyUncompress(ThreadState* thread) {
-    RandomGenerator gen;
-    rocksdb::Slice input = gen.Generate(rocksdb::Options().block_size);
-    std::string compressed;
-    bool ok = port::Snappy_Compress(input.data(), input.size(), &compressed);
-    int64_t bytes = 0;
-    char* uncompressed = new char[input.size()];
-    while (ok && bytes < 1024 * 1048576) {  // Compress 1G
-      ok =  port::Snappy_Uncompress(compressed.data(), compressed.size(),
-                                    uncompressed);
-      bytes += input.size();
-      thread->stats.FinishedSingleOp();
-    }
-    delete[] uncompressed;
-
-    if (!ok) {
-      thread->stats.AddMessage("(snappy failure)");
-    } else {
-      thread->stats.AddBytes(bytes);
-    }
-  }
 
   void Open() {
-    assert(db_ == NULL);
-    rocksdb::Options options;
-    options.create_if_missing = !FLAGS_use_existing_db;
-    options.block_cache = cache_;
-    options.write_buffer_size = FLAGS_write_buffer_size;
-    options.filter_policy = filter_policy_;
-
-    options.compression = FLAGS_compression_type;
-    if (FLAGS_min_level_to_compress >= 0) {
-      assert(FLAGS_min_level_to_compress <= FLAGS_num_levels);
-      options.compression_per_level.resize(FLAGS_num_levels);
-      for (int i = 0; i < FLAGS_min_level_to_compress; i++) {
-        options.compression_per_level[i] = rocksdb::kNoCompression;
-      }
-      for (int i = FLAGS_min_level_to_compress;
-           i < FLAGS_num_levels; i++) {
-        options.compression_per_level[i] = FLAGS_compression_type;
-      }
-    }
-
+    assert(tab == NULL && ctx == NULL);
     std::cout << "Create database " << FLAGS_db << std::endl;
-    rocksdb::Status s = rocksdb::DB::Open(options, FLAGS_db, &db_);
-    if (!s.ok()) {
-      fprintf(stderr, "open error: %s\n", s.ToString().c_str());
-      exit(1);
-    }
+    
+    tab = nark::db::CompositeTable::createTable(FLAGS_db_table);
+    ctx = tab->createDbContext();
+    tab->load(FLAGS_db);
+    ctx->syncIndex = FLAGS_sync_index;
   }
 
   void WriteSeq(ThreadState* thread) {
@@ -772,39 +666,56 @@ class Benchmark {
   }
 
   void DoWrite(ThreadState* thread, bool seq) {
+    std::cout << " DoWrite now! num_ " << num_ << " FLAGS_num " << FLAGS_num << std::endl;
     if (num_ != FLAGS_num) {
       char msg[100];
       snprintf(msg, sizeof(msg), "(%d ops)", num_);
       thread->stats.AddMessage(msg);
     }
 
-	if (!seq)
-	  thread->rand.Shuffle(shuff, num_);
-    RandomGenerator gen;
-    rocksdb::WriteBatch batch;
-    rocksdb::Status s;
     int64_t bytes = 0;
-    for (int i = 0; i < num_; i += entries_per_batch_) {
-      batch.Clear();
-      for (int j = 0; j < entries_per_batch_; j++) {
-        const int k = seq ? i+j : shuff[i+j];
+
+    nark::NativeDataOutput<nark::AutoGrownMemIO> rowBuilder;
+    std::cout << "data_resource " << FLAGS_resource_data << std::endl;
+    std::ifstream ifs(FLAGS_resource_data);  
+    std::string str;  
+   
+    if (!seq)
+          thread->rand.Shuffle(shuff, num_);
+    TestRow recRow;
+    int64_t shuffleid = 0;
+     
+    while(getline(ifs, str)) {
+	const int k = shuff[shuffleid];
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
-        batch.Put(key, gen.Generate(value_size_));
-        bytes += value_size_ + strlen(key);
-        thread->stats.FinishedSingleOp();
-      }
-      s = db_->Write(write_options_, &batch);
-      if (!s.ok()) {
-        fprintf(stderr, "put error: %s\n", s.ToString().c_str());
-        exit(1);
-      }
+	recRow.title = std::string(key);
+	recRow.content = str;
+	bytes += recRow.title.size() + recRow.content.size();
+
+	rowBuilder.rewind();
+	rowBuilder << recRow;
+	nark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+	if (ctx->insertRow(binRow) < 0) {
+		printf("Insert failed: %s\n", ctx->errMsg.c_str());
+		exit(-1);	
+	}
+	shuffleid ++;
+	thread->stats.FinishedSingleOp();	
     }
+    
+    tab->syncFinishWriting();
     thread->stats.AddBytes(bytes);
+
+    printf("tab->numDataRows()=%lld\n", tab->numDataRows());
   }
 
   void ReadSequential(ThreadState* thread) {
-    rocksdb::Iterator* iter = db_->NewIterator(rocksdb::ReadOptions());
+    fprintf(stderr, "ReadSequential not supported\n");
+    return;
+/*
+    Iterator* iter = db_->NewIterator(ReadOptions());
     int i = 0;
     int64_t bytes = 0;
     for (iter->SeekToFirst(); i < reads_ && iter->Valid(); iter->Next()) {
@@ -814,10 +725,14 @@ class Benchmark {
     }
     delete iter;
     thread->stats.AddBytes(bytes);
+*/
   }
 
   void ReadReverse(ThreadState* thread) {
-    rocksdb::Iterator* iter = db_->NewIterator(rocksdb::ReadOptions());
+    fprintf(stderr, "ReadReverse not supported\n");
+    return;
+/*
+    Iterator* iter = db_->NewIterator(ReadOptions());
     int i = 0;
     int64_t bytes = 0;
     for (iter->SeekToLast(); i < reads_ && iter->Valid(); iter->Prev()) {
@@ -827,28 +742,34 @@ class Benchmark {
     }
     delete iter;
     thread->stats.AddBytes(bytes);
+*/
   }
 
   void ReadRandom(ThreadState* thread) {
-    rocksdb::ReadOptions options;
-    std::string value;
-    int found = 0;
-    for (int i = 0; i < reads_; i++) {
-      char key[100];
-      const int k = thread->rand.Next() % FLAGS_num;
-      snprintf(key, sizeof(key), "%016d", k);
-      if (db_->Get(options, key, &value).ok()) {
-        found++;
-      }
-      thread->stats.FinishedSingleOp();
-    }
-    char msg[100];
-    snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
-    thread->stats.AddMessage(msg);
+	  nark::valvec<nark::byte> val;
+	  nark::llong recId;
+	   int found = 0;	
+
+	  nark::db::DbContextPtr ctxr;
+          ctxr = tab->createDbContext();
+          ctxr->syncIndex = FLAGS_sync_index;
+	  for (size_t i = 0; i < reads_; ++i) {
+		  recId = thread->rand.Next() % FLAGS_num;
+		  ctxr->getValue(recId, &val);
+		  if (val.size() > 0)
+                        found++;
+      		  thread->stats.FinishedSingleOp();
+	  }
+	  char msg[100];
+          snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
+          thread->stats.AddMessage(msg);
   }
 
   void ReadMissing(ThreadState* thread) {
-    rocksdb::ReadOptions options;
+    fprintf(stderr, "ReadMissing not supported\n");
+    return;
+/*
+    ReadOptions options;
     std::string value;
     for (int i = 0; i < reads_; i++) {
       char key[100];
@@ -857,27 +778,29 @@ class Benchmark {
       db_->Get(options, key, &value);
       thread->stats.FinishedSingleOp();
     }
+*/
   }
 
   void ReadHot(ThreadState* thread) {
-    rocksdb::ReadOptions options;
-    std::string value;
+    nark::valvec<nark::byte> val;
+    nark::llong recId;
     const int range = (FLAGS_num + 99) / 100;
     for (int i = 0; i < reads_; i++) {
-      char key[100];
-      const int k = thread->rand.Next() % range;
-      snprintf(key, sizeof(key), "%016d", k);
-      db_->Get(options, key, &value);
+      recId = thread->rand.Next() % range;
+      ctx->getValue(recId, &val);
       thread->stats.FinishedSingleOp();
     }
   }
 
   void SeekRandom(ThreadState* thread) {
-    rocksdb::ReadOptions options;
+    fprintf(stderr, "SeekRandom not supported\n");
+    return;
+/*
+    ReadOptions options;
     std::string value;
     int found = 0;
     for (int i = 0; i < reads_; i++) {
-      rocksdb::Iterator* iter = db_->NewIterator(options);
+      Iterator* iter = db_->NewIterator(options);
       char key[100];
       const int k = thread->rand.Next() % FLAGS_num;
       snprintf(key, sizeof(key), "%016d", k);
@@ -889,12 +812,16 @@ class Benchmark {
     char msg[100];
     snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
     thread->stats.AddMessage(msg);
+*/
   }
 
   void DoDelete(ThreadState* thread, bool seq) {
+    fprintf(stderr, "DoDelete not supported\n");
+    return;
+/*
     RandomGenerator gen;
-    rocksdb::WriteBatch batch;
-    rocksdb::Status s;
+    WriteBatch batch;
+    Status s;
     for (int i = 0; i < num_; i += entries_per_batch_) {
       batch.Clear();
       for (int j = 0; j < entries_per_batch_; j++) {
@@ -910,6 +837,7 @@ class Benchmark {
         exit(1);
       }
     }
+*/
   }
 
   void DeleteSeq(ThreadState* thread) {
@@ -921,6 +849,7 @@ class Benchmark {
   }
 
   void ReadWhileWriting(ThreadState* thread) {
+/*
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
@@ -938,20 +867,17 @@ class Benchmark {
         const int k = thread->rand.Next() % FLAGS_num;
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
-        rocksdb::Status s = db_->Put(write_options_, key, gen.Generate(value_size_));
-        if (!s.ok()) {
-          fprintf(stderr, "put error: %s\n", s.ToString().c_str());
-          exit(1);
-        }
+	
       }
 
       // Do not count any of the preceding work/delay in stats.
       thread->stats.Start();
     }
+*/
   }
 
   void Compact(ThreadState* thread) {
-    fprintf(stderr, "compact not supported\n");
+    fprintf(stderr, "Compact not supported\n");
     return;
 /*
     db_->CompactRange(NULL, NULL);
@@ -959,11 +885,15 @@ class Benchmark {
   }
 
   void PrintStats(const char* key) {
+    fprintf(stderr, "PrintStats not supported\n");
+    return;
+/*
     std::string stats;
     if (!db_->GetProperty(key, &stats)) {
       stats = "(failed)";
     }
     fprintf(stdout, "\n%s\n", stats.c_str());
+*/
   }
 
   static void WriteToFile(void* arg, const char* buf, int n) {
@@ -971,40 +901,36 @@ class Benchmark {
   }
 
   void HeapProfile() {
-    fprintf(stderr, "heap profiling not supported\n");
-    return;
-/*
     char fname[100];
     snprintf(fname, sizeof(fname), "%s/heap-%04d", FLAGS_db, ++heap_counter_);
-    std::unique_ptr<rocksdb::WritableFile> file;
-    rocksdb::EnvOptions soptions;
-    rocksdb::Status s = rocksdb::Env::Default()->NewWritableFile(fname, &file, soptions);
+    WritableFile* file;
+    Status s = Env::Default()->NewWritableFile(fname, &file);
     if (!s.ok()) {
       fprintf(stderr, "%s\n", s.ToString().c_str());
       return;
     }
     bool ok = port::GetHeapProfile(WriteToFile, file);
-    // delete file;
+    delete file;
     if (!ok) {
       fprintf(stderr, "heap profiling not supported\n");
-      rocksdb::Env::Default()->DeleteFile(fname);
+      Env::Default()->DeleteFile(fname);
     }
-*/
   }
 };
 
 }  // namespace leveldb
 
 int main(int argc, char** argv) {
-  FLAGS_write_buffer_size = rocksdb::Options().write_buffer_size;
-  FLAGS_open_files = rocksdb::Options().max_open_files;
+  FLAGS_write_buffer_size = leveldb::Options().write_buffer_size;
+  FLAGS_open_files = leveldb::Options().max_open_files;
   std::string default_db_path;
+  std::string default_db_table;
 
   for (int i = 1; i < argc; i++) {
     double d;
     int n;
     char junk;
-    if (rocksdb::Slice(argv[i]).starts_with("--benchmarks=")) {
+    if (leveldb::Slice(argv[i]).starts_with("--benchmarks=")) {
       FLAGS_benchmarks = argv[i] + strlen("--benchmarks=");
     } else if (sscanf(argv[i], "--compression_ratio=%lf%c", &d, &junk) == 1) {
       FLAGS_compression_ratio = d;
@@ -1014,25 +940,19 @@ int main(int argc, char** argv) {
     } else if (sscanf(argv[i], "--use_existing_db=%d%c", &n, &junk) == 1 &&
                (n == 0 || n == 1)) {
       FLAGS_use_existing_db = n;
+    } else if (sscanf(argv[i], "--sync_index=%d%c", &n, &junk) == 1 &&
+               (n == 0 || n == 1)) {
+      FLAGS_sync_index = n;
     } else if (sscanf(argv[i], "--num=%d%c", &n, &junk) == 1) {
       FLAGS_num = n;
     } else if (sscanf(argv[i], "--reads=%d%c", &n, &junk) == 1) {
       FLAGS_reads = n;
     } else if (sscanf(argv[i], "--threads=%d%c", &n, &junk) == 1) {
       FLAGS_threads = n;
-    } else if (sscanf(argv[i], "--value_size=%d%c", &n, &junk) == 1) {
-      FLAGS_value_size = n;
-    } else if (sscanf(argv[i], "--write_buffer_size=%d%c", &n, &junk) == 1) {
-      FLAGS_write_buffer_size = n;
-    } else if (sscanf(argv[i], "--cache_size=%d%c", &n, &junk) == 1) {
-      std::cout << " cache size " << n << std::endl;
-      FLAGS_cache_size = n;
-    } else if (sscanf(argv[i], "--bloom_bits=%d%c", &n, &junk) == 1) {
-      FLAGS_bloom_bits = n;
-    } else if (sscanf(argv[i], "--open_files=%d%c", &n, &junk) == 1) {
-      FLAGS_open_files = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
+    } else if (strncmp(argv[i], "--resource_data=", 16) == 0) {
+      FLAGS_resource_data = argv[i] + 16;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);
@@ -1041,15 +961,28 @@ int main(int argc, char** argv) {
 
   // Choose a location for the test database if none given with --db=<path>
   if (FLAGS_db == NULL) {
-      rocksdb::Env::Default()->GetTestDirectory(&default_db_path);
+      leveldb::Env::Default()->GetTestDirectory(&default_db_path);
       default_db_path += "/dbbench";
       FLAGS_db = default_db_path.c_str();
+  }
+
+  if (FLAGS_db_table == NULL) {
+      default_db_table += "DfaDbTable";
+      FLAGS_db_table = default_db_table.c_str();
+  }
+
+  if (FLAGS_resource_data == NULL) {
+    fprintf(stderr, "Please input the resource data file\n");
+    exit(-1);
   }
 
   shuff = (int *)malloc(FLAGS_num * sizeof(int));
   for (int i=0; i<FLAGS_num; i++)
     shuff[i] = i;
+
   leveldb::Benchmark benchmark;
   benchmark.Run();
+  fprintf(stdout, "db movies nark completed\n");
+  nark::db::CompositeTable::safeStopAndWaitForCompress();
   return 0;
 }

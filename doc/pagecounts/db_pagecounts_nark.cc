@@ -757,9 +757,12 @@ class Benchmark {
 	  nark::llong recId;
 	   int found = 0;	
 
+	  nark::db::DbContextPtr ctxr;
+          ctxr = tab->createDbContext();
+          ctxr->syncIndex = FLAGS_sync_index;
 	  for (size_t i = 0; i < reads_; ++i) {
 		  recId = thread->rand.Next() % FLAGS_num;
-		  ctx->getValue(recId, &val);
+		  ctxr->getValue(recId, &val);
 		  if (val.size() > 0)
                         found++;
       		  thread->stats.FinishedSingleOp();

@@ -767,12 +767,14 @@ class Benchmark {
  *           	  	  		  readshuff[i] = i;
  *           	  	  		  	  thread->rand.Shuffle(readshuff, FLAGS_num);
  *           	  	  		  	  */	  
+          nark::db::DbContextPtr ctxr;
+          ctxr = tab->createDbContext();
+          ctxr->syncIndex = FLAGS_sync_index;
 
- 
 	  int found = 0; 
 	  for (size_t i = 0; i < reads_; ++i) {
 		  recId = thread->rand.Next() % FLAGS_num;
-		  ctx->getValue(recId, &val);
+		  ctxr->getValue(recId, &val);
 		  if (val.size() > 0)
                         found++;
       		  thread->stats.FinishedSingleOp();

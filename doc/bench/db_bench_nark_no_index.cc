@@ -148,7 +148,7 @@ class RandomGenerator {
     // large enough to serve all typical value sizes we want to write.
     Random rnd(301);
     std::string piece;
-    while (data_.size() < 536870912) {
+    while (data_.size() < 268435456) {
     //while (data_.size() < 1048576) {
       // Add a short fragment that is as compressible as specified
       // by FLAGS_compression_ratio.
@@ -836,14 +836,16 @@ class Benchmark {
   }
 
   void ReadRandom(ThreadState* thread) {
-	  
 	nark::valvec<nark::byte> val;
 	nark::llong recId;
 
+        nark::db::DbContextPtr ctxr;
+        ctxr = tab->createDbContext();
+        ctxr->syncIndex = FLAGS_sync_index;
 	int found = 0;
 	for (size_t i = 0; i < reads_; ++i) {
 		  recId = thread->rand.Next() % FLAGS_num;
-		  ctx->getValue(recId, &val);
+		  ctxr->getValue(recId, &val);
 		  if (val.size() > 0)
 			found++;
 		  thread->stats.FinishedSingleOp();

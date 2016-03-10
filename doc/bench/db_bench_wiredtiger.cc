@@ -164,7 +164,7 @@ class RandomGenerator {
     // large enough to serve all typical value sizes we want to write.
     Random rnd(301);
     std::string piece;
-    while (data_.size() < 536870912) {
+    while (data_.size() < 268435456) {
       // Add a short fragment that is as compressible as specified
       // by FLAGS_compression_ratio.
       test::CompressibleString(&rnd, FLAGS_compression_ratio, 100, &piece);
@@ -813,6 +813,8 @@ class Benchmark {
       config << "create";
     if (FLAGS_cache_size > 0)
       config << ",cache_size=" << FLAGS_cache_size;
+    config << ",log=(enabled,recover=on)";
+    config << ",checkpoint=(log_size=64MB,wait=60)";
     /* TODO: Translate write_buffer_size - maybe it's chunk size?
     options.write_buffer_size = FLAGS_write_buffer_size;
     */
@@ -842,7 +844,7 @@ class Benchmark {
       if (FLAGS_cache_size < SMALL_CACHE && FLAGS_cache_size > 0) {
           config << ",internal_page_max=4kb";
           config << ",leaf_page_max=4kb";
-        config << ",memory_page_max=" << FLAGS_cache_size;
+          config << ",memory_page_max=" << FLAGS_cache_size;
       } else {
           config << ",internal_page_max=16kb";
           config << ",leaf_page_max=16kb";

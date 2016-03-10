@@ -823,6 +823,8 @@ class Benchmark {
       config << "create";
     if (FLAGS_cache_size > 0)
       config << ",cache_size=" << FLAGS_cache_size;
+    config << ",log=(enabled,recover=on)";
+    config << ",checkpoint=(log_size=64MB,wait=60)";
     /* TODO: Translate write_buffer_size - maybe it's chunk size?
     options.write_buffer_size = FLAGS_write_buffer_size;
     */
@@ -850,6 +852,7 @@ class Benchmark {
       config << ",columns=[id, wikicode, articletitle, monthlytotal, hourlycounts]";
       config << ",prefix_compression=true";
       config << ",checksum=off";
+/*
       if (FLAGS_cache_size < SMALL_CACHE && FLAGS_cache_size > 0) {
           config << ",internal_page_max=4kb";
           config << ",leaf_page_max=4kb";
@@ -862,7 +865,7 @@ class Benchmark {
           config << ",memory_page_max=" << memmax;
         }
       }
-
+*/
       if (FLAGS_use_lsm) {
         config << ",lsm=(";
         if (FLAGS_cache_size > SMALL_CACHE)
@@ -959,7 +962,6 @@ class Benchmark {
 		exit(1);
 	}
 
-	num_++; 
 	thread->stats.FinishedSingleOp();
     }
 
