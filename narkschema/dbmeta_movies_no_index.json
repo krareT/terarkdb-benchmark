@@ -9,7 +9,7 @@
 			"score"       : { "type" : "uint32" , "colstore": false },
 			"time"        : { "type" : "uint32" , "colstore": false },
 			"summary"     : { "type" : "strzero", "colstore": false, "maxFragLen": 20 },
-			"text"        : { "type" : "strzero", "colstore": false,
+			"text"        : { "type" : "strzero", "colstore": true,
 							  "nltDelims": " \\t,.:?<",
 							  "minFragLen": 8, "maxFragLen": 100,
 							  "rsX": -256,

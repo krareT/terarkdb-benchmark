@@ -2,7 +2,7 @@
 	"RowSchema": {
 		"columns" : {
 			"key"   : { "type" : "strzero", "colstore": false },
-			"value"  : { "type" : "strzero", "colstore": false,
+			"value"  : { "type" : "strzero", "colstore": true,
                                                           "nltDelims": " \\t,.:?<",
                                                           "minFragLen": 8, "maxFragLen": 100,
                                                           "rsX": -256,

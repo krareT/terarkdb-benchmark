@@ -3,6 +3,7 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include <sys/types.h>
+#include <boost/algorithm/string.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
@@ -18,6 +19,10 @@
 #include "util/mutexlock.h"
 #include "util/random.h"
 #include "util/testutil.h"
+
+#include <iostream>  
+#include <fstream>  
+#include <string.h>  
 
 //#include "stdafx.h"
 #include <nark/db/db_table.hpp>
@@ -85,7 +90,7 @@ static const char* FLAGS_benchmarks =
     ;
 
 // Number of key/values to place in database
-static int FLAGS_num = 1000000;
+static int FLAGS_num = 0;
 
 // Number of read operations to do.  If negative, do FLAGS_num reads.
 static int FLAGS_reads = -1;
@@ -128,45 +133,13 @@ static bool FLAGS_use_existing_db = true;
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
 static const char* FLAGS_db_table = NULL;
+static const char* FLAGS_resource_data = NULL;
 
 static int *shuff = NULL;
 
 namespace leveldb {
 
 namespace {
-
-// Helper for quickly generating random data.
-class RandomGenerator {
- private:
-  std::string data_;
-  int pos_;
-
- public:
-  RandomGenerator() {
-    // We use a limited amount of data over and over again and ensure
-    // that it is larger than the compression window (32KB), and also
-    // large enough to serve all typical value sizes we want to write.
-    Random rnd(301);
-    std::string piece;
-    while (data_.size() < 268435456) {
-    //while (data_.size() < 1048576) {
-      // Add a short fragment that is as compressible as specified
-      // by FLAGS_compression_ratio.
-      test::CompressibleString(&rnd, FLAGS_compression_ratio, 100, &piece);
-      data_.append(piece);
-    }
-    pos_ = 0;
-  }
-
-  Slice Generate(int len) {
-    if (pos_ + len > data_.size()) {
-      pos_ = 0;
-      assert(len < data_.size());
-    }
-    pos_ += len;
-    return Slice(data_.data() + pos_ - len, len);
-  }
-};
 
 static Slice TrimSpace(Slice s) {
   int start = 0;
@@ -328,12 +301,12 @@ struct ThreadState {
 };
 
 struct TestRow {
-	std::string key;
-	std::string value;
+	std::string title; 
+	std::string content;
 	
 	DATA_IO_LOAD_SAVE(TestRow,
-			&nark::db::Schema::StrZero(key)
-			&nark::db::Schema::StrZero(value)
+			&nark::db::Schema::StrZero(title)
+			&nark::db::Schema::StrZero(content)
 			)
 };
 
@@ -352,21 +325,7 @@ class Benchmark {
   int heap_counter_;
 
   void PrintHeader() {
-    const int kKeySize = 16;
-    PrintEnvironment();
-    fprintf(stdout, "Keys:       %d bytes each\n", kKeySize);
-    fprintf(stdout, "Values:     %d bytes each (%d bytes after compression)\n",
-            FLAGS_value_size,
-            static_cast<int>(FLAGS_value_size * FLAGS_compression_ratio + 0.5));
-    fprintf(stdout, "Entries:    %d\n", num_);
-    fprintf(stdout, "RawSize:    %.1f MB (estimated)\n",
-            ((static_cast<int64_t>(kKeySize + FLAGS_value_size) * num_)
-             / 1048576.0));
-    fprintf(stdout, "FileSize:   %.1f MB (estimated)\n",
-            (((kKeySize + FLAGS_value_size * FLAGS_compression_ratio) * num_)
-             / 1048576.0));
-    PrintWarnings();
-    fprintf(stdout, "------------------------------------------------\n");
+    fprintf(stdout, "NarkDB Test Begins!");
   }
 
   void PrintWarnings() {
@@ -491,7 +450,6 @@ class Benchmark {
         entries_per_batch_ = 1000;
         method = &Benchmark::WriteRandom;
       } else if (name == Slice("fillrandom")) {
-	num_threads = 1;
         fresh_db = true;
         method = &Benchmark::WriteRandom;
       } else if (name == Slice("overwrite")) {
@@ -546,10 +504,6 @@ class Benchmark {
         method = &Benchmark::Crc32c;
       } else if (name == Slice("acquireload")) {
         method = &Benchmark::AcquireLoad;
-      } else if (name == Slice("snappycomp")) {
-        method = &Benchmark::SnappyCompress;
-      } else if (name == Slice("snappyuncomp")) {
-        method = &Benchmark::SnappyUncompress;
       } else if (name == Slice("heapprofile")) {
         HeapProfile();
       } else if (name == Slice("stats")) {
@@ -564,11 +518,7 @@ class Benchmark {
 
       if (fresh_db) {
         if (FLAGS_use_existing_db) {
-/*
-          fprintf(stdout, "%-12s : skipped (--use_existing_db is true)\n",
-                  name.ToString().c_str());
-	  method = NULL;
-*/
+	/*do nothing*/
         } else {
           tab = NULL;
           Open();
@@ -693,52 +643,6 @@ class Benchmark {
     if (ptr == NULL) exit(1); // Disable unused variable warning.
   }
 
-  void SnappyCompress(ThreadState* thread) {
-    RandomGenerator gen;
-    Slice input = gen.Generate(Options().block_size);
-    int64_t bytes = 0;
-    int64_t produced = 0;
-    bool ok = true;
-    std::string compressed;
-    while (ok && bytes < 1024 * 1048576) {  // Compress 1G
-      ok = port::Snappy_Compress(input.data(), input.size(), &compressed);
-      produced += compressed.size();
-      bytes += input.size();
-      thread->stats.FinishedSingleOp();
-    }
-
-    if (!ok) {
-      thread->stats.AddMessage("(snappy failure)");
-    } else {
-      char buf[100];
-      snprintf(buf, sizeof(buf), "(output: %.1f%%)",
-               (produced * 100.0) / bytes);
-      thread->stats.AddMessage(buf);
-      thread->stats.AddBytes(bytes);
-    }
-  }
-
-  void SnappyUncompress(ThreadState* thread) {
-    RandomGenerator gen;
-    Slice input = gen.Generate(Options().block_size);
-    std::string compressed;
-    bool ok = port::Snappy_Compress(input.data(), input.size(), &compressed);
-    int64_t bytes = 0;
-    char* uncompressed = new char[input.size()];
-    while (ok && bytes < 1024 * 1048576) {  // Compress 1G
-      ok =  port::Snappy_Uncompress(compressed.data(), compressed.size(),
-                                    uncompressed);
-      bytes += input.size();
-      thread->stats.FinishedSingleOp();
-    }
-    delete[] uncompressed;
-
-    if (!ok) {
-      thread->stats.AddMessage("(snappy failure)");
-    } else {
-      thread->stats.AddBytes(bytes);
-    }
-  }
 
   void Open() {
     assert(tab == NULL);
@@ -757,47 +661,51 @@ class Benchmark {
   }
 
   void DoWrite(ThreadState* thread, bool seq) {
-
+    std::cout << " DoWrite now! num_ " << num_ << " FLAGS_num " << FLAGS_num << std::endl;
     nark::db::DbContextPtr ctxw;
     ctxw = tab->createDbContext();
     ctxw->syncIndex = FLAGS_sync_index;
-
     if (num_ != FLAGS_num) {
       char msg[100];
       snprintf(msg, sizeof(msg), "(%d ops)", num_);
       thread->stats.AddMessage(msg);
     }
 
-    if (!seq)
-	thread->rand.Shuffle(shuff, num_);
-    RandomGenerator gen;
     int64_t bytes = 0;
 
     nark::NativeDataOutput<nark::AutoGrownMemIO> rowBuilder;
-    for (int i = 0; i < num_; i += entries_per_batch_) {
-      for (int j = 0; j < entries_per_batch_; j++) {
-    	TestRow recRow;
-        const int k = seq ? i+j : shuff[i+j];
+    std::cout << "data_resource " << FLAGS_resource_data << std::endl;
+    std::ifstream ifs(FLAGS_resource_data);  
+    std::string str;  
+   
+    if (!seq)
+          thread->rand.Shuffle(shuff, num_);
+    TestRow recRow;
+    int64_t shuffleid = 0;
+     
+    while(getline(ifs, str)) {
+	const int k = shuff[shuffleid];
         char key[100];
-	snprintf(key, sizeof(key), "%016d", k);
-	recRow.key = std::string(key);
-	recRow.value = gen.Generate(value_size_).ToString();
- 
+        snprintf(key, sizeof(key), "%016d", k);
+	recRow.title = std::string(key);
+	recRow.content = str;
+	bytes += recRow.title.size() + recRow.content.size();
+
 	rowBuilder.rewind();
 	rowBuilder << recRow;
 	nark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
-        
+
 	if (ctxw->insertRow(binRow) < 0) {
 		printf("Insert failed: %s\n", ctxw->errMsg.c_str());
 		exit(-1);	
 	}
- 
-        bytes += value_size_ + strlen(key);
-        thread->stats.FinishedSingleOp();
-      }
+	shuffleid ++;
+	thread->stats.FinishedSingleOp();	
     }
+    
     tab->syncFinishWriting();
     thread->stats.AddBytes(bytes);
+
     printf("tab->numDataRows()=%lld\n", tab->numDataRows());
   }
 
@@ -887,6 +795,9 @@ class Benchmark {
     char msg[100];
     snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
     thread->stats.AddMessage(msg);
+
+
+
   }
 
   void ReadMissing(ThreadState* thread) {
@@ -906,52 +817,18 @@ class Benchmark {
   }
 
   void ReadHot(ThreadState* thread) {
-    
-    nark::valvec<nark::byte> keyHit, val;
-    nark::valvec<nark::llong> idvec;
+    nark::valvec<nark::byte> val;
+    nark::llong recId;
+    nark::db::DbContextPtr ctxr;
+    ctxr = tab->createDbContext();
+    ctxr->syncIndex = FLAGS_sync_index;
     const int range = (FLAGS_num + 99) / 100;
-/*    
-    for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
-		  nark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
-		  const nark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
-		  std::string keyData;
-		  for (size_t i = 0; i < reads_; ++i) {
-			  const int k = thread->rand.Next() % range;
-			  char key[100];
-			  // printf("indexId %d\n", indexId);
-			  switch (indexId) {
-				  default:
-					  assert(0);
-					  break;
-				  case 0:
-			  		  snprintf(key, sizeof(key), "%016d", k);
-					  keyData = key;
-					  break;
-			  }
-			  idvec.resize(0);
-			  nark::llong recId;
-			  int ret = indexIter->seekLowerBound(keyData, &recId, &keyHit);
-			  if (ret == 0) { // found exact key
-				  idvec.push_back(recId);
-				  int hasNext; // int as bool
-				  while ((hasNext = indexIter->increment(&recId, &keyHit))
-						  && nark::fstring(keyHit) == keyData) {
-					  assert(recId < tab->numDataRows());
-					  idvec.push_back(recId);
-				  }
-				  if (hasNext)
-					  idvec.push_back(recId);
-			  }
-		//	  printf("seekLowerBound(%s)=%d\n", indexSchema.toJsonStr(keyData).c_str(), ret);
-			  for (size_t i = 0; i < idvec.size(); ++i) {
-				  recId = idvec[i];
-				  tab->selectOneColumn(recId, 1, &val, ctx.get());
-			  }
-      			  thread->stats.FinishedSingleOp();
-		  }
-	  }
-*/
-   }
+    for (int i = 0; i < reads_; i++) {
+      recId = thread->rand.Next() % range;
+      ctxr->getValue(recId, &val);
+      thread->stats.FinishedSingleOp();
+    }
+  }
 
   void SeekRandom(ThreadState* thread) {
     fprintf(stderr, "SeekRandom not supported\n");
@@ -1010,13 +887,12 @@ class Benchmark {
   }
 
   void ReadWhileWriting(ThreadState* thread) {
+/*
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
-/*
       // Special thread that keeps writing until other threads are done.
       RandomGenerator gen;
-      nark::NativeDataOutput<nark::AutoGrownMemIO> rowBuilder;
       while (true) {
         {
           MutexLock l(&thread->shared->mu);
@@ -1026,28 +902,16 @@ class Benchmark {
           }
         }
 
-	TestRow recRow;
         const int k = thread->rand.Next() % FLAGS_num;
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
-	recRow.key = std::string(key);
-	recRow.value = gen.Generate(value_size_).ToString();
-	
-	rowBuilder.rewind();
-	rowBuilder << recRow;
-	nark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
-
-	if (ctx->insertRow(binRow) < 0) {
-                printf("Insert failed: %s\n", ctx->errMsg.c_str());
-                exit(-1);
-        }
 	
       }
 
       // Do not count any of the preceding work/delay in stats.
       thread->stats.Start();
-*/
     }
+*/
   }
 
   void Compact(ThreadState* thread) {
@@ -1123,20 +987,10 @@ int main(int argc, char** argv) {
       FLAGS_reads = n;
     } else if (sscanf(argv[i], "--threads=%d%c", &n, &junk) == 1) {
       FLAGS_threads = n;
-    } else if (sscanf(argv[i], "--value_size=%d%c", &n, &junk) == 1) {
-      FLAGS_value_size = n;
-    } else if (sscanf(argv[i], "--write_buffer_size=%d%c", &n, &junk) == 1) {
-      FLAGS_write_buffer_size = n;
-    } else if (sscanf(argv[i], "--cache_size=%d%c", &n, &junk) == 1) {
-      FLAGS_cache_size = n;
-    } else if (sscanf(argv[i], "--bloom_bits=%d%c", &n, &junk) == 1) {
-      FLAGS_bloom_bits = n;
-    } else if (sscanf(argv[i], "--open_files=%d%c", &n, &junk) == 1) {
-      FLAGS_open_files = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
-    } else if (strncmp(argv[i], "--dbtable=", 10) == 0) {
-      FLAGS_db_table = argv[i] + 10;
+    } else if (strncmp(argv[i], "--resource_data=", 16) == 0) {
+      FLAGS_resource_data = argv[i] + 16;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);
@@ -1155,12 +1009,18 @@ int main(int argc, char** argv) {
       FLAGS_db_table = default_db_table.c_str();
   }
 
+  if (FLAGS_resource_data == NULL) {
+    fprintf(stderr, "Please input the resource data file\n");
+    exit(-1);
+  }
+
   shuff = (int *)malloc(FLAGS_num * sizeof(int));
   for (int i=0; i<FLAGS_num; i++)
     shuff[i] = i;
+
   leveldb::Benchmark benchmark;
   benchmark.Run();
-  printf("benchmark.Run() completed\n");
+  fprintf(stdout, "db movies nark completed\n");
   nark::db::CompositeTable::safeStopAndWaitForCompress();
   return 0;
 }

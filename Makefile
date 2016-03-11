@@ -149,10 +149,13 @@ db_bench_redis: doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lhiredis
 
 db_bench_nark_index: doc/bench/db_bench_nark_index.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/bench/db_bench_nark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0
+	$(CXX) doc/bench/db_bench_nark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-d -lnark-NarkDB-g++-5.3-d -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb_debug
+
+#db_bench_nark_index: doc/bench/db_bench_nark_index.o $(LIBOBJECTS) $(TESTUTIL)
+#	$(CXX) doc/bench/db_bench_nark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
 db_bench_nark_no_index: doc/bench/db_bench_nark_no_index.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/bench/db_bench_nark_no_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0
+	$(CXX) doc/bench/db_bench_nark_no_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
 db_movies_nark: doc/movies/db_movies_nark.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/movies/db_movies_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
@@ -194,13 +197,13 @@ db_wikiarticles_nark: doc/wikiarticles/db_wikiarticles_nark.o $(LIBOBJECTS) $(TE
 	$(CXX) doc/wikiarticles/db_wikiarticles_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
 db_wikiarticles_rocksdb: doc/wikiarticles/db_wikiarticles_rocksdb.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/pagecounts/db_pagecounts_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb-4.1
+	$(CXX) doc/wikiarticles/db_wikiarticles_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb-4.1
 
 db_wikiarticles_wiredtiger: doc/wikiarticles/db_wikiarticles_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/pagecounts/db_pagecounts_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.7.0 -lwiredtiger_snappy
+	$(CXX) doc/wikiarticles/db_wikiarticles_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.7.0 -lwiredtiger_snappy
 
 db_wikiarticles_redis: doc/wikiarticles/db_wikiarticles_redis.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/pagecounts/db_pagecounts_redis.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lhiredis
+	$(CXX) doc/wikiarticles/db_wikiarticles_redis.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lhiredis
 
 arena_test: util/arena_test.o $(LIBOBJECTS) $(TESTHARNESS)
 	$(CXX) util/arena_test.o $(LIBOBJECTS) $(TESTHARNESS) -o $@ $(LDFLAGS)

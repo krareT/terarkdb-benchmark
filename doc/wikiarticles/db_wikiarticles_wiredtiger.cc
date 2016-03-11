@@ -934,7 +934,7 @@ class Benchmark {
     std::string str;  
     std::string value;
     value.clear(); 
-    int64_t shuffleid = 0;
+    int64_t shuffleid = 1;
 
     while(getline(ifs, str)) {
 	const int k = shuff[shuffleid];
@@ -1056,12 +1056,6 @@ repeat:
   void ReadRandom(ThreadState* thread) {
     const char *ckey;
     WT_CURSOR *cursor;
-    
-    const char* wwikicode;
-    const char* warticletitle;
-    const char* wmonthlytotal;
-    const char* whourlycounts;
-
     int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
     if (ret != 0) {
       fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
@@ -1069,12 +1063,15 @@ repeat:
     }
     int found = 0;
     for (int i = 0; i < reads_; i++) {
-      const int k = thread->rand.Next() % FLAGS_num;
-      uint64_t key = k + 1;
+      char key[100];
+      int k = thread->rand.Next() % FLAGS_num;
+      if (k == 0) {
+	k = k + 1;
+      }
+      snprintf(key, sizeof(key), "%016d", k);
       cursor->set_key(cursor, key);
       if (cursor->search(cursor) == 0) {
-	found++;
-        ret = cursor->get_value(cursor, &wwikicode, &warticletitle, &wmonthlytotal, &whourlycounts);
+       found++;
       }
       thread->stats.FinishedSingleOp();
     }
@@ -1413,7 +1410,7 @@ int main(int argc, char** argv) {
   }
 
   shuff = (int *)malloc(FLAGS_num * sizeof(int));
-  for (int i=0; i<FLAGS_num; i++)
+  for (int i=1; i<FLAGS_num+1; i++)
       shuff[i] = i;
   
   leveldb::Benchmark benchmark;

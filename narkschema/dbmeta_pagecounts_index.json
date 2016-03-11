@@ -1,6 +1,7 @@
 ﻿{
 	"RowSchema": {
 		"columns" : {
+			"key"   	: { "type" : "strzero", "colstore": false },
 			"wikicode"   	: { "type" : "strzero", "colstore": false },
 			"articletitle"	: { "type" : "strzero", "colstore": false },
 			"monthlytotal"	: { "type" : "uint32" , "colstore": false },
@@ -19,5 +20,6 @@
 	"ReadonlyDataMemSize" : 1288490188,
 	"SufarrCompressMinFreqXX": 5,
 	"TableIndex" : [
+		{ "fields": "key"  , "ordered" : true }
 	]
 }

@@ -141,11 +141,8 @@ static int FLAGS_max_compact_wait = 1200;
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
 
-#define RAND_SHUFFLE
 
-#ifdef RAND_SHUFFLE
 static int *shuff = NULL;
-#endif
 
 namespace leveldb {
 
@@ -910,7 +907,7 @@ class Benchmark {
     cur_config.str("");
     cur_config << "overwrite";
     if (seq && FLAGS_threads == 1)
-  cur_config << ",bulk=true";
+  	cur_config << ",bulk=true";
     if (FLAGS_stagger)
       stagger = (FLAGS_num / FLAGS_threads) * thread->tid;
 
@@ -1387,11 +1384,9 @@ int main(int argc, char** argv) {
       FLAGS_db = default_db_path.c_str();
   }
 
-#ifdef RAND_SHUFFLE
   shuff = (int *)malloc(FLAGS_num * sizeof(int));
   for (int i=0; i<FLAGS_num; i++)
       shuff[i] = i;
-#endif
   leveldb::Benchmark benchmark;
   benchmark.Run();
   return 0;
