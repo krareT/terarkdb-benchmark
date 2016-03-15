@@ -67,7 +67,7 @@ TESTS = \
 	write_batch_test
 
 PROGRAMS = db_bench $(TESTS)
-BENCHMARKS = db_bench_bdb db_bench_leveldb db_bench_mdb db_bench_sqlite3 \
+#BENCHMARKS = db_bench_bdb db_bench_leveldb db_bench_mdb db_bench_sqlite3 \
 	     db_bench_tree_db db_bench_wiredtiger db_bench_rocksdb db_bench_redis \
 	     db_bench_nark_index db_bench_nark_no_index db_bench_rocksdb_new \
 	     db_movies_nark db_movies_rocksdb db_movies_redis db_movies_wiredtiger \
