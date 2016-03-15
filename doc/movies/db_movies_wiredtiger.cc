@@ -146,6 +146,8 @@ static int FLAGS_max_compact_wait = 1200;
 static const char* FLAGS_db = NULL;
 static const char* FLAGS_resource_data = NULL;
 
+#define RAND_SHUFFLE
+
 #ifdef RAND_SHUFFLE
 static int *shuff = NULL;
 #endif
@@ -373,6 +375,7 @@ class Benchmark {
  private:
   WT_CONNECTION *conn_;
   std::string uri_;
+  std::string urii_;
   int db_num_;
   int num_;
   int value_size_;
@@ -850,14 +853,18 @@ class Benchmark {
         FLAGS_use_lsm ? "lsm" : "table", ++db_num_);
     uri_ = uri;
 
+    char urii[100];
+    snprintf(urii, sizeof(urii), "index:dbbench_wt-%d:key", db_num_);
+    urii_ = urii;
+
     if (!FLAGS_use_existing_db) {
       // Create tuning options and create the data file
       config.str("");
-      config << "key_format=r,value_format=SSSLLLLSS";
-      config << ",columns=[id, productId, userId, profileName, helpfulness1, helpfulness2, score, time, summary, text]";
+      config << "key_format=r,value_format=SSSSLLLLSS";
+      config << ",columns=[id, key, productId, userId, profileName, helpfulness1, helpfulness2, score, time, summary, text]";
       config << ",prefix_compression=true";
       config << ",checksum=off";
-/*
+
       if (FLAGS_cache_size < SMALL_CACHE && FLAGS_cache_size > 0) {
           config << ",internal_page_max=4kb";
           config << ",leaf_page_max=4kb";
@@ -871,7 +878,6 @@ class Benchmark {
           config << ",memory_page_max=" << memmax;
         }
       }
-*/
       if (FLAGS_use_lsm) {
         config << ",lsm=(";
         if (FLAGS_cache_size > SMALL_CACHE)
@@ -888,12 +894,18 @@ class Benchmark {
       fprintf(stderr, "Creating %s with config %s\n",uri_.c_str(), config.str().c_str());
       int ret = session->create(session, uri_.c_str(), config.str().c_str());
       if (ret != 0) {
-        fprintf(stderr, "create error: %s\n", wiredtiger_strerror(ret));
-        exit(1);
+	      fprintf(stderr, "create error: %s\n", wiredtiger_strerror(ret));
+	      exit(1);
+      }
+
+      fprintf(stderr, "Creating index %s\n",urii_.c_str());
+      ret = session->create(session, urii_.c_str(), "columns=(key)");
+      if (ret != 0) {
+	      fprintf(stderr, "create error: %s\n", wiredtiger_strerror(ret));
+	      exit(1);
       }
       session->close(session, NULL);
-    }
-
+    } 
   }
 
   void WriteSeq(ThreadState* thread) {
@@ -910,7 +922,9 @@ class Benchmark {
       snprintf(msg, sizeof(msg), "(%d ops)", num_);
       thread->stats.AddMessage(msg);
     }
-
+   
+    if (!seq)
+          thread->rand.Shuffle(shuff, num_);
     RandomGenerator gen;
     int64_t bytes = 0;
     int stagger = 0;
@@ -925,7 +939,7 @@ class Benchmark {
     WT_CURSOR *cursor;
     std::stringstream cur_config;
     cur_config.str("");
-    cur_config << "append=true";
+    cur_config << "append";
     if (seq && FLAGS_threads == 1)
   	cur_config << ",bulk=true";
     if (FLAGS_stagger)
@@ -941,7 +955,8 @@ class Benchmark {
     int64_t num = 0; 
     std::string str;  
     TestRow recRow;
-
+    int64_t shuffleid = 0;
+ 
     while(getline(ifs, str)) {
 	    if (str.find("product/productId:") == 0) {
 		    recRow.productId = str.substr(19);
@@ -988,13 +1003,17 @@ class Benchmark {
 	    }
 
 	    if (str == "") {
-		    cursor->set_value(cursor, recRow.productId.c_str(), recRow.userId.c_str(), recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
+		    const int k = shuff[shuffleid];
+                    char key[100];
+                    snprintf(key, sizeof(key), "%016d", k);
+		    // cursor->set_key(cursor, key);
+		    cursor->set_value(cursor, key, recRow.productId.c_str(), recRow.userId.c_str(), recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
 		    int ret = cursor->insert(cursor);
 		    if (ret != 0) {
 			    fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
 			    exit(1);
 		    }
-
+		    shuffleid ++;
 		    thread->stats.FinishedSingleOp();
 		    num = 0;
 	    }
@@ -1112,8 +1131,7 @@ repeat:
     uint32_t wtime;
     const char* wsummary;
     const char* wtext;
-
-    int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
+    int ret = thread->session->open_cursor(thread->session, urii_.c_str(), NULL, NULL, &cursor);
     if (ret != 0) {
       fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
       exit(1);
@@ -1121,11 +1139,12 @@ repeat:
     int found = 0;
     for (int i = 0; i < reads_; i++) {
       const int k = thread->rand.Next() % FLAGS_num;
-      uint64_t key = k + 1;
+      char key[100];
+      snprintf(key, sizeof(key), "%016d", k);
       cursor->set_key(cursor, key);
       if (cursor->search(cursor) == 0) {
 	found++;
-        ret = cursor->get_value(cursor, &wproductId, &wuserId, &wprofileName, &whelpfulness1, &whelpfulness2, &wscore, &wtime, &wsummary, &wtext);
+        ret = cursor->get_value(cursor, &ckey, &wproductId, &wuserId, &wprofileName, &whelpfulness1, &whelpfulness2, &wscore, &wtime, &wsummary, &wtext);
       }
       thread->stats.FinishedSingleOp();
     }

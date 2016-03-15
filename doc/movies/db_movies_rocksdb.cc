@@ -793,7 +793,7 @@ class Benchmark {
       thread->stats.AddMessage(msg);
     }
 
-	if (!seq)
+    if (!seq)
 	  thread->rand.Shuffle(shuff, num_);
     RandomGenerator gen;
     int64_t bytes = 0;
@@ -956,7 +956,6 @@ class Benchmark {
   }
 
   void DoDelete(ThreadState* thread, bool seq) {
-    RandomGenerator gen;
     rocksdb::WriteBatch batch;
     rocksdb::Status s;
     for (int i = 0; i < num_; i += entries_per_batch_) {
@@ -988,7 +987,6 @@ class Benchmark {
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
-/*
       // Special thread that keeps writing until other threads are done.
       RandomGenerator gen;
       while (true) {
@@ -1012,7 +1010,6 @@ class Benchmark {
 
       // Do not count any of the preceding work/delay in stats.
       thread->stats.Start();
-*/
     }
   }
 

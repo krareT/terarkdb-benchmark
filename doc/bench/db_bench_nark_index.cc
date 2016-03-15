@@ -491,7 +491,7 @@ class Benchmark {
         entries_per_batch_ = 1000;
         method = &Benchmark::WriteRandom;
       } else if (name == Slice("fillrandom")) {
-	num_threads = 1;
+	// num_threads = 1;
         fresh_db = true;
         method = &Benchmark::WriteRandom;
       } else if (name == Slice("overwrite")) {
@@ -757,6 +757,7 @@ class Benchmark {
   }
 
   void DoWrite(ThreadState* thread, bool seq) {
+    std::cout << " DoWrite now! num_ " << num_ << " FLAGS_num " << FLAGS_num << std::endl;
 
     nark::db::DbContextPtr ctxw;
     ctxw = tab->createDbContext();
@@ -796,8 +797,8 @@ class Benchmark {
         thread->stats.FinishedSingleOp();
       }
     }
-    tab->syncFinishWriting();
     thread->stats.AddBytes(bytes);
+    //tab->syncFinishWriting();
     printf("tab->numDataRows()=%lld\n", tab->numDataRows());
   }
 
@@ -862,7 +863,10 @@ class Benchmark {
 			  }
 			  idvec.resize(0);
 			  nark::llong recId;
+	  		  // std::cout << "ReadRandom thread id " << thread->tid << " i "<< i << std::endl;
+			  printf("before seekLowerBound!\n");
 			  int ret = indexIter->seekLowerBound(keyData, &recId, &keyHit);
+			  printf("afater seekLowerBound(%s)=%d\n", indexSchema.toJsonStr(keyData).c_str(), ret);
 			  if (ret == 0) { // found exact key
 				  idvec.push_back(recId);
 				  int hasNext; // int as bool
@@ -1161,6 +1165,7 @@ int main(int argc, char** argv) {
   leveldb::Benchmark benchmark;
   benchmark.Run();
   printf("benchmark.Run() completed\n");
+  tab->syncFinishWriting();
   nark::db::CompositeTable::safeStopAndWaitForCompress();
   return 0;
 }

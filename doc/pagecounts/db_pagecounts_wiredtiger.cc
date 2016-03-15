@@ -146,6 +146,8 @@ static int FLAGS_max_compact_wait = 1200;
 static const char* FLAGS_db = NULL;
 static const char* FLAGS_resource_data = NULL;
 
+#define RAND_SHUFFLE
+
 #ifdef RAND_SHUFFLE
 static int *shuff = NULL;
 #endif
@@ -368,6 +370,7 @@ class Benchmark {
  private:
   WT_CONNECTION *conn_;
   std::string uri_;
+  std::string urii_;
   int db_num_;
   int num_;
   int value_size_;
@@ -845,14 +848,18 @@ class Benchmark {
         FLAGS_use_lsm ? "lsm" : "table", ++db_num_);
     uri_ = uri;
 
+    char urii[100];
+    snprintf(urii, sizeof(urii), "index:dbbench_wt-%d:key", db_num_);
+    urii_ = urii;
+
     if (!FLAGS_use_existing_db) {
       // Create tuning options and create the data file
       config.str("");
-      config << "key_format=r,value_format=SSLS";
-      config << ",columns=[id, wikicode, articletitle, monthlytotal, hourlycounts]";
+      config << "key_format=r,value_format=SSSLS";
+      config << ",columns=[id, key, wikicode, articletitle, monthlytotal, hourlycounts]";
       config << ",prefix_compression=true";
       config << ",checksum=off";
-/*
+      
       if (FLAGS_cache_size < SMALL_CACHE && FLAGS_cache_size > 0) {
           config << ",internal_page_max=4kb";
           config << ",leaf_page_max=4kb";
@@ -865,7 +872,7 @@ class Benchmark {
           config << ",memory_page_max=" << memmax;
         }
       }
-*/
+      
       if (FLAGS_use_lsm) {
         config << ",lsm=(";
         if (FLAGS_cache_size > SMALL_CACHE)
@@ -885,6 +892,14 @@ class Benchmark {
         fprintf(stderr, "create error: %s\n", wiredtiger_strerror(ret));
         exit(1);
       }
+
+      fprintf(stderr, "Creating index %s\n",urii_.c_str());
+      ret = session->create(session, urii_.c_str(), "columns=(key)");
+      if (ret != 0) {
+              fprintf(stderr, "create error: %s\n", wiredtiger_strerror(ret));
+              exit(1);
+      }
+
       session->close(session, NULL);
     }
 
@@ -904,7 +919,8 @@ class Benchmark {
       snprintf(msg, sizeof(msg), "(%d ops)", num_);
       thread->stats.AddMessage(msg);
     }
-
+    if (!seq)
+          thread->rand.Shuffle(shuff, num_);
     RandomGenerator gen;
     int64_t bytes = 0;
     int stagger = 0;
@@ -919,7 +935,7 @@ class Benchmark {
     WT_CURSOR *cursor;
     std::stringstream cur_config;
     cur_config.str("");
-    cur_config << "append=true";
+    cur_config << "append";
     if (seq && FLAGS_threads == 1)
   	cur_config << ",bulk=true";
     if (FLAGS_stagger)
@@ -935,6 +951,7 @@ class Benchmark {
     std::string str;  
     TestRow recRow;
     std::vector<std::string> fields;
+    int64_t shuffleid = 0;
 
     while(getline(ifs, str)) {
 	boost::split(fields, str, boost::is_any_of(" "));
@@ -942,26 +959,29 @@ class Benchmark {
 	
 	recRow.wikicode = fields[0];
 	bytes += recRow.wikicode.size();
-	
 
 	recRow.articletitle = fields[1];
 	bytes += recRow.articletitle.size();
 	
-
 	recRow.monthlytotal = atol(fields[2].c_str());
 	// bytes += recRow.monthlytotal.size();
 	bytes += sizeof(uint32_t);
   	
 	recRow.hourlycounts = fields[3];
 	bytes += recRow.hourlycounts.size();
+	
+	const int k = shuff[shuffleid];
+	char key[100];
+	snprintf(key, sizeof(key), "%016d", k);
+//	cursor->set_key(cursor, key);
 
-	cursor->set_value(cursor, recRow.wikicode.c_str(), recRow.articletitle.c_str(), recRow.monthlytotal, recRow.hourlycounts.c_str());
+	cursor->set_value(cursor, key, recRow.wikicode.c_str(), recRow.articletitle.c_str(), recRow.monthlytotal, recRow.hourlycounts.c_str());
 	int ret = cursor->insert(cursor);
 	if (ret != 0) {
 		fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
 		exit(1);
 	}
-
+	shuffleid ++;
 	thread->stats.FinishedSingleOp();
     }
 
@@ -1073,7 +1093,7 @@ repeat:
     const char* wmonthlytotal;
     const char* whourlycounts;
 
-    int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
+    int ret = thread->session->open_cursor(thread->session, urii_.c_str(), NULL, NULL, &cursor);
     if (ret != 0) {
       fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
       exit(1);
@@ -1081,11 +1101,12 @@ repeat:
     int found = 0;
     for (int i = 0; i < reads_; i++) {
       const int k = thread->rand.Next() % FLAGS_num;
-      uint64_t key = k + 1;
+      char key[100];
+      snprintf(key, sizeof(key), "%016d", k);
       cursor->set_key(cursor, key);
       if (cursor->search(cursor) == 0) {
 	found++;
-        ret = cursor->get_value(cursor, &wwikicode, &warticletitle, &wmonthlytotal, &whourlycounts);
+        ret = cursor->get_value(cursor, &ckey, &wwikicode, &warticletitle, &wmonthlytotal, &whourlycounts);
       }
       thread->stats.FinishedSingleOp();
     }

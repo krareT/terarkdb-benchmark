@@ -1,6 +1,7 @@
 record_num=800000
-read_num=400000
-dirname=/mnt/datamemory
+read_num=800000
+#dirname=/mnt/datamemory
+dirname=/experiment
 value=128
 
 rm -rf $dirname/*
@@ -21,27 +22,27 @@ date
 echo "####nark benchmark finish"
 du -s -b $dirname
 
-#echo "####Now, running nark benchmark"
-#echo 3 > /proc/sys/vm/drop_caches
-#free -m
-#date
-#export NarkDb_WrSegCacheSizeMB=64
-#../db_bench_nark_index --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname
-#free -m
-#date
-#echo "####nark benchmark finish"
-#du -s -b $dirname
-
 echo "####Now, running nark benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export NarkDb_WrSegCacheSizeMB=64
-../db_bench_nark_index --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --sync_index=0 --threads=2 --db=$dirname
+../db_bench_nark_index --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --sync_index=0 --threads=4 --db=$dirname
 free -m
 date
 echo "####nark benchmark finish"
 du -s -b $dirname
+
+#echo "####Now, running nark benchmark"
+#echo 3 > /proc/sys/vm/drop_caches
+#free -m
+#date
+#export NarkDb_WrSegCacheSizeMB=64
+#../db_bench_nark_index --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --sync_index=0 --threads=2 --db=$dirname
+#free -m
+#date
+#echo "####nark benchmark finish"
+#du -s -b $dirname
 #
 #echo "####Now, running nark benchmark"
 #echo 3 > /proc/sys/vm/drop_caches

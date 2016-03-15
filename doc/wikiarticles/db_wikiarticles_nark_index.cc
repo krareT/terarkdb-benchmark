@@ -703,7 +703,7 @@ class Benchmark {
 	thread->stats.FinishedSingleOp();	
     }
     
-    tab->syncFinishWriting();
+    //tab->syncFinishWriting();
     thread->stats.AddBytes(bytes);
 
     printf("tab->numDataRows()=%lld\n", tab->numDataRows());
@@ -784,8 +784,8 @@ class Benchmark {
 			  }
 			  for (size_t i = 0; i < idvec.size(); ++i) {
 				  recId = idvec[i];
-				  ctxr->getValue(recId, &val);
-				  // tab->selectOneColumn(recId, 1, &val, ctxr.get());
+				  // ctxr->getValue(recId, &val);
+				  tab->selectOneColumn(recId, 1, &val, ctxr.get());
 			  }
 			  if(idvec.size() > 0)
 				found++;

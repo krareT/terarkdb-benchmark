@@ -343,7 +343,6 @@ class Benchmark {
  private:
 
   nark::db::CompositeTablePtr tab;
-  nark::db::DbContextPtr ctx;
 
   int num_;
   int value_size_;
@@ -431,7 +430,6 @@ class Benchmark {
  public:
   Benchmark()
   : tab(NULL),
-    ctx(NULL),
 
     num_(FLAGS_num),
     value_size_(FLAGS_value_size),
@@ -573,7 +571,6 @@ class Benchmark {
 */
         } else {
           tab = NULL;
-	  ctx = NULL;
           Open();
         }
       }
@@ -744,13 +741,11 @@ class Benchmark {
   }
 
   void Open() {
-    assert(tab == NULL && ctx == NULL);
+    assert(tab == NULL);
     std::cout << "Create database " << FLAGS_db << std::endl;
     
     tab = nark::db::CompositeTable::createTable(FLAGS_db_table);
-    ctx = tab->createDbContext();
     tab->load(FLAGS_db);
-    ctx->syncIndex = FLAGS_sync_index;
   }
 
   void WriteSeq(ThreadState* thread) {
@@ -762,6 +757,12 @@ class Benchmark {
   }
 
   void DoWrite(ThreadState* thread, bool seq) {
+
+    nark::db::DbContextPtr ctxw;
+    ctxw = tab->createDbContext();
+    ctxw->syncIndex = FLAGS_sync_index;
+
+
     if (num_ != FLAGS_num) {
       char msg[100];
       snprintf(msg, sizeof(msg), "(%d ops)", num_);
@@ -787,8 +788,8 @@ class Benchmark {
 	rowBuilder << recRow;
 	nark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
         
-	if (ctx->insertRow(binRow) < 0) {
-		printf("Insert failed: %s\n", ctx->errMsg.c_str());
+	if (ctxw->insertRow(binRow) < 0) {
+		printf("Insert failed: %s\n", ctxw->errMsg.c_str());
 		exit(-1);	
 	}
  
@@ -876,7 +877,7 @@ class Benchmark {
     nark::valvec<nark::byte> keyHit, val;
     nark::valvec<nark::llong> idvec;
     const int range = (FLAGS_num + 99) / 100;
-    
+/*    
     for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
 		  nark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
 		  const nark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
@@ -917,6 +918,7 @@ class Benchmark {
       			  thread->stats.FinishedSingleOp();
 		  }
 	  }
+*/
    }
 
   void SeekRandom(ThreadState* thread) {

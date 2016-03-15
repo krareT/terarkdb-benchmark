@@ -1012,7 +1012,6 @@ class Benchmark {
                 return;
         }
       }
-
       // Do not count any of the preceding work/delay in stats.
       thread->stats.Start();
 */

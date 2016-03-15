@@ -767,7 +767,7 @@ class Benchmark {
 	    }
     }
     
-    tab->syncFinishWriting();
+    // tab->syncFinishWriting();
     thread->stats.AddBytes(bytes);
     printf("tab->numDataRows()=%lld\n", tab->numDataRows());
   }
@@ -810,9 +810,14 @@ class Benchmark {
 
 	  nark::valvec<nark::byte> keyHit, val;
 	  nark::valvec<nark::llong> idvec;
+	  nark::valvec<size_t> cols;
 	  nark::db::DbContextPtr ctxr;
           ctxr = tab->createDbContext();
           ctxr->syncIndex = FLAGS_sync_index;
+	  
+	  for (size_t i = 1; i < 10; i++) {
+		cols.push_back(i);
+	  }
 
     	  int found = 0;
 	  for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
@@ -847,8 +852,9 @@ class Benchmark {
 			  }
 			  for (size_t i = 0; i < idvec.size(); ++i) {
 				  recId = idvec[i];
-				  ctxr->getValue(recId, &val);
+				  // ctxr->getValue(recId, &val);
 				  // tab->selectOneColumn(recId, 1, &val, ctxr.get());
+				  tab->selectColumns(recId, cols, &val, ctxr.get());
 			  }
 			  if(idvec.size() > 0)
 				found++;
