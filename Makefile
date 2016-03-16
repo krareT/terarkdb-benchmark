@@ -30,7 +30,7 @@ REDIS_INCLUDE_PATH=-I/data/dbengine/hiredis-0.13.3
 WIREDTIGER_INCLUDE_PATH=-I/data/dbengine/wiredtiger-2.7.0
 #libwiredtiger-2.7.0.so, libbwiredtiger_snappy.so
 
-NARK_INCLUDE_PATH=-I/data/dbengine/nark/nark-db/src -I/data/dbengine/nark/nark-bone/src -I/data/dbengine/nark/nark-serialization/src -I/data/dbengine/nark/nark-hashmap/src
+NARK_INCLUDE_PATH=-I/data/dbengine/terark/nark-db/src -I/data/dbengine/terark/nark-db/terark-base/src
 
 CFLAGS += -I. -I./include $(PLATFORM_CCFLAGS) $(OPT)
 CXXFLAGS += -I. -I./include $(ROCKDB_NEW_INCLUDE_PATH) $(WIREDTIGER_INCLUDE_PATH) $(REDIS_INCLUDE_PATH) $(NARK_INCLUDE_PATH) $(PLATFORM_CXXFLAGS) $(OPT) -std=gnu++14
@@ -67,14 +67,15 @@ TESTS = \
 	write_batch_test
 
 PROGRAMS = db_bench $(TESTS)
-#BENCHMARKS = db_bench_bdb db_bench_leveldb db_bench_mdb db_bench_sqlite3 \
+BENCHMARKS = db_bench_bdb db_bench_leveldb db_bench_mdb db_bench_sqlite3 \
 	     db_bench_tree_db db_bench_wiredtiger db_bench_rocksdb db_bench_redis \
-	     db_bench_nark_index db_bench_nark_no_index db_bench_rocksdb_new \
-	     db_movies_nark db_movies_rocksdb db_movies_redis db_movies_wiredtiger \
-	     db_pagecounts_nark db_pagecounts_rocksdb db_pagecounts_redis db_pagecounts_wiredtiger \
-	     db_humangenome_nark db_humangenome_rocksdb db_humangenome_redis db_humangenome_wiredtiger \
-	    db_wikiarticles_nark db_wikiarticles_rocksdb db_wikiarticles_redis db_wikiarticles_wiredtiger \
-	    db_wikiarticles_wiredtiger_overwrite db_movies_wiredtiger_overwrite db_humangenome_wiredtiger_overwrite db_pagecounts_wiredtiger_overwrite	
+	     db_bench_terark_index db_bench_terark_no_index db_bench_rocksdb_new \
+	     db_movies_terark db_movies_rocksdb db_movies_redis db_movies_wiredtiger \
+	     db_pagecounts_terark db_pagecounts_rocksdb db_pagecounts_redis db_pagecounts_wiredtiger \
+	     db_humangenome_terark db_humangenome_rocksdb db_humangenome_redis db_humangenome_wiredtiger \
+	    db_wikiarticles_terark db_wikiarticles_rocksdb db_wikiarticles_redis db_wikiarticles_wiredtiger \
+	    db_wikiarticles_wiredtiger_overwrite db_movies_wiredtiger_overwrite db_humangenome_wiredtiger_overwrite db_pagecounts_wiredtiger_overwrite \
+	    db_wikiarticles_terark_index db_humangenome_terark_index db_movies_terark_index db_pagecounts_terark_index	
 
 LIBRARY = libleveldb.a
 MEMENVLIBRARY = libmemenv.a
@@ -149,20 +150,20 @@ db_bench_rocksdb_new: doc/bench/db_bench_rocksdb_new.o $(LIBOBJECTS) $(TESTUTIL)
 db_bench_redis: doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lhiredis
 
-db_bench_nark_index: doc/bench/db_bench_nark_index.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/bench/db_bench_nark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+db_bench_terark_index: doc/bench/db_bench_terark_index.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/bench/db_bench_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
-#db_bench_nark_index: doc/bench/db_bench_nark_index.o $(LIBOBJECTS) $(TESTUTIL)
-#	$(CXX) doc/bench/db_bench_nark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+#db_bench_terark_index: doc/bench/db_bench_terark_index.o $(LIBOBJECTS) $(TESTUTIL)
+#	$(CXX) doc/bench/db_bench_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
-db_bench_nark_no_index: doc/bench/db_bench_nark_no_index.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/bench/db_bench_nark_no_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+db_bench_terark_no_index: doc/bench/db_bench_terark_no_index.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/bench/db_bench_terark_no_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
-db_movies_nark: doc/movies/db_movies_nark.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/movies/db_movies_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+db_movies_terark: doc/movies/db_movies_terark.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/movies/db_movies_terark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
-db_movies_nark_index: doc/movies/db_movies_nark_index.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/movies/db_movies_nark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+db_movies_terark_index: doc/movies/db_movies_terark_index.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/movies/db_movies_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
 db_movies_wiredtiger: doc/movies/db_movies_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/movies/db_movies_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.7.0 -lwiredtiger_snappy
@@ -176,11 +177,11 @@ db_movies_redis: doc/movies/db_movies_redis.o $(LIBOBJECTS) $(TESTUTIL)
 db_movies_rocksdb: doc/movies/db_movies_rocksdb.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/movies/db_movies_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb-4.1
 
-db_humangenome_nark: doc/humangenome/db_humangenome_nark.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/humangenome/db_humangenome_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+db_humangenome_terark: doc/humangenome/db_humangenome_terark.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/humangenome/db_humangenome_terark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
-db_humangenome_nark_index: doc/humangenome/db_humangenome_nark_index.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/humangenome/db_humangenome_nark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+db_humangenome_terark_index: doc/humangenome/db_humangenome_terark_index.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/humangenome/db_humangenome_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
 db_humangenome_wiredtiger: doc/humangenome/db_humangenome_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/humangenome/db_humangenome_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.7.0 -lwiredtiger_snappy
@@ -194,11 +195,11 @@ db_humangenome_redis: doc/humangenome/db_humangenome_redis.o $(LIBOBJECTS) $(TES
 db_humangenome_rocksdb: doc/humangenome/db_humangenome_rocksdb.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/humangenome/db_humangenome_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb-4.1
 
-db_pagecounts_nark: doc/pagecounts/db_pagecounts_nark.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/pagecounts/db_pagecounts_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+db_pagecounts_terark: doc/pagecounts/db_pagecounts_terark.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/pagecounts/db_pagecounts_terark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
-db_pagecounts_nark_index: doc/pagecounts/db_pagecounts_nark_index.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/pagecounts/db_pagecounts_nark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+db_pagecounts_terark_index: doc/pagecounts/db_pagecounts_terark_index.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/pagecounts/db_pagecounts_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
 db_pagecounts_wiredtiger: doc/pagecounts/db_pagecounts_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/pagecounts/db_pagecounts_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.7.0 -lwiredtiger_snappy
@@ -212,11 +213,11 @@ db_pagecounts_redis: doc/pagecounts/db_pagecounts_redis.o $(LIBOBJECTS) $(TESTUT
 db_pagecounts_rocksdb: doc/pagecounts/db_pagecounts_rocksdb.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/pagecounts/db_pagecounts_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb-4.1
 
-db_wikiarticles_nark: doc/wikiarticles/db_wikiarticles_nark.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/wikiarticles/db_wikiarticles_nark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+db_wikiarticles_terark: doc/wikiarticles/db_wikiarticles_terark.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/wikiarticles/db_wikiarticles_terark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
-db_wikiarticles_nark_index: doc/wikiarticles/db_wikiarticles_nark_index.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/wikiarticles/db_wikiarticles_nark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lnark-g++-5.3-r -lnark-NarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+db_wikiarticles_terark_index: doc/wikiarticles/db_wikiarticles_terark_index.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/wikiarticles/db_wikiarticles_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
 db_wikiarticles_rocksdb: doc/wikiarticles/db_wikiarticles_rocksdb.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/wikiarticles/db_wikiarticles_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb-4.1

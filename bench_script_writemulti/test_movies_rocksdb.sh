@@ -29,7 +29,7 @@ echo "####Now, running rocksdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-../db_movies_rocksdb --benchmarks=fillrandom --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --resource_data=$file --threads=8
+../db_movies_rocksdb --benchmarks=fillrandom --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --resource_data=$file --threads=6
 free -m
 date
 echo "####rocksdb benchmark finish"
@@ -40,7 +40,7 @@ echo "####Now, running rocksdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-../db_movies_rocksdb --benchmarks=fillrandom --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --resource_data=$file --threads=16
+../db_movies_rocksdb --benchmarks=fillrandom --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --resource_data=$file --threads=12
 free -m
 date
 echo "####rocksdb benchmark finish"
