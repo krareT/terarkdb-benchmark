@@ -1,7 +1,7 @@
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
-
+#define _CRT_SECURE_NO_WARNINGS
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,7 +19,6 @@
 #include "util/random.h"
 #include "util/testutil.h"
 
-//#include "stdafx.h"
 #include <terark/db/db_table.hpp>
 #include <terark/io/MemStream.hpp>
 #include <terark/io/DataIO.hpp>
