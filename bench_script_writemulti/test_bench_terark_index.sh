@@ -1,7 +1,7 @@
-record_num=800000
+record_num=10000000
 read_num=800000
 dirname=/mnt/datamemory
-value=128
+value=512
 
 rm -rf $dirname/*
 export TMPDIR=$dirname
@@ -12,10 +12,9 @@ echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export NarkDb_WrSegCacheSizeMB=256
-../db_bench_terark_index --benchmarks=fillrandom --value_size=$value --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --threads=8
+../db_bench_terark_index --benchmarks=fillrandom --value_size=$value --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --threads=6
 free -m
 date
 echo "####terark benchmark finish"
 du -s -b $dirname
-
 

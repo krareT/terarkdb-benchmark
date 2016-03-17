@@ -409,6 +409,8 @@ class Benchmark {
   }
 
   ~Benchmark() {
+	tab->safeStopAndWaitForCompress();
+        tab = NULL;
   }
 
   void Run() {
@@ -529,6 +531,7 @@ class Benchmark {
       if (method != NULL) {
         RunBenchmark(num_threads, name, method);
       }
+      tab->syncFinishWriting();
     }
   }
 
@@ -739,7 +742,7 @@ class Benchmark {
 
     // tab->syncFinishWriting();
     thread->stats.AddBytes(bytes);
-    printf("tab->numDataRows()=%lld\n", tab->numDataRows());
+    printf("DoWrite Done!\n");
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -1058,6 +1061,5 @@ int main(int argc, char** argv) {
   leveldb::Benchmark benchmark;
   benchmark.Run();
   fprintf(stdout, "db movies terark completed\n");
-  terark::db::CompositeTable::safeStopAndWaitForCompress();
   return 0;
 }

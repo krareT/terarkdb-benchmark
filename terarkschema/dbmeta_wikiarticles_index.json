@@ -1,7 +1,7 @@
 ﻿{
 	"RowSchema": {
 		"columns" : {
-			"title"      : { "type" : "strzero", "colstore": false },
+			"key"      : { "type" : "strzero", "colstore": false },
 			"content"        : { "type" : "strzero", "colstore": true,
 							  "nltDelims": " \\t,.:?<",
 							  "minFragLen": 8, "maxFragLen": 100,
@@ -15,7 +15,7 @@
 	"MaxWrSegSize" : 4294967296,
 	"ReadonlyDataMemSize" : 1288490188,
 	"TableIndex" : [
-		{ "fields": "title"  , "ordered" : true }
+		{ "fields": "key"  , "ordered" : true }
 	]
 
 }

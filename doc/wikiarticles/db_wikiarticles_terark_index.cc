@@ -301,11 +301,11 @@ struct ThreadState {
 };
 
 struct TestRow {
-	std::string title; 
+	std::string key; 
 	std::string content;
 	
 	DATA_IO_LOAD_SAVE(TestRow,
-			&terark::db::Schema::StrZero(title)
+			&terark::db::Schema::StrZero(key)
 			&terark::db::Schema::StrZero(content)
 			)
 };
@@ -408,6 +408,8 @@ class Benchmark {
   }
 
   ~Benchmark() {
+	tab->safeStopAndWaitForCompress();
+        tab = NULL;
   }
 
   void Run() {
@@ -528,6 +530,7 @@ class Benchmark {
       if (method != NULL) {
         RunBenchmark(num_threads, name, method);
       }
+      tab->syncFinishWriting();
     }
   }
 
@@ -687,9 +690,9 @@ class Benchmark {
 	const int k = shuff[shuffleid];
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
-	recRow.title = std::string(key);
+	recRow.key = key;
 	recRow.content = str;
-	bytes += recRow.title.size() + recRow.content.size();
+	bytes += recRow.key.size() + recRow.content.size();
 
 	rowBuilder.rewind();
 	rowBuilder << recRow;
@@ -702,11 +705,9 @@ class Benchmark {
 	shuffleid ++;
 	thread->stats.FinishedSingleOp();	
     }
-    
-    //tab->syncFinishWriting();
+    tab->syncFinishWriting();
     thread->stats.AddBytes(bytes);
-
-    printf("tab->numDataRows()=%lld\n", tab->numDataRows());
+    printf("DoWrite Done!\n");
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -1021,6 +1022,5 @@ int main(int argc, char** argv) {
   leveldb::Benchmark benchmark;
   benchmark.Run();
   fprintf(stdout, "db movies terark completed\n");
-  terark::db::CompositeTable::safeStopAndWaitForCompress();
   return 0;
 }

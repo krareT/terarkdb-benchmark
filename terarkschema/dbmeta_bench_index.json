@@ -12,7 +12,7 @@
                                                           "useFastZip": true }
 		}
 	},
-	"MaxWrSegSize" : 2147483648,
+	"MaxWrSegSize" : 4147483648,
 	"ReadonlyDataMemSize" : 1288490188,
 	"SufarrCompressMinFreqXX": 5,
 	"TableIndex" : [
