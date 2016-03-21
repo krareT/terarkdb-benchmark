@@ -632,7 +632,6 @@ class Benchmark {
           Open();
         }
       } else if (FLAGS_use_existing_db) {
-	std::cout << "use_existing_db" << std::endl;
           /*
      * We get here if we don't want to use a fresh db and
      * don't want to skip this benchmark.  We just want to
@@ -1384,7 +1383,7 @@ repeat:
       ReadRandom(thread);
     } else {
 	int64_t num = 0;
-        while(true) {
+      //  while(true) {
             WT_CURSOR *cursor;
             std::stringstream cur_config;
             cur_config.str("");
@@ -1403,7 +1402,6 @@ repeat:
             while(getline(ifs, str)) {
                     if (str.find("product/productId:") == 0) {
                             recRow.productId = str.substr(19);
-			    std::cout << recRow.productId << std::endl;
                     }
                     if (str.find("review/userId:") == 0) {
                             recRow.userId = str.substr(15);
@@ -1439,15 +1437,16 @@ repeat:
                                     exit(1);
                             }
                             num ++;
+			    std::cout << "insert " <<  num << std::endl;
                     }
                     MutexLock l(&thread->shared->mu);
                     if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
                             printf("extra write operations number %d\n", num);
-                            return;
+                            break;
                     }
             }
             cursor->close(cursor);
-        }
+      //  }
     }
   }
 

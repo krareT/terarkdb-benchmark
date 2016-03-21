@@ -31,22 +31,22 @@ case "$1" in
 		echo "building wiredtiger"
 		case $2 in	
 			movie)
-				make db_movies_wiredtiger
+				make db_movies_wiredtiger_overwrite
 				;;
 			page)
-				make db_pagecounts_wiredtiger
+				make db_pagecounts_wiredtiger_overwrite
 				;;
 			human)
-				make db_humangenome_wiredtiger
+				make db_humangenome_wiredtiger_overwrite
 				;;
 			wiki)
-				make db_wikiarticles_wiredtiger
+				make db_wikiarticles_wiredtiger_overwrite
 				;;
 			all)
-				make db_movies_wiredtiger
-				make db_pagecounts_wiredtiger
-				make db_humangenome_wiredtiger
-				make db_wikiarticles_wiredtiger
+				make db_movies_wiredtiger_overwrite
+				make db_pagecounts_wiredtiger_overwrite
+				make db_humangenome_wiredtiger_overwrite
+				make db_wikiarticles_wiredtiger_overwrite
 		esac
 		;;
 	terarkdb)

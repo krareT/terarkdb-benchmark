@@ -1,3 +1,5 @@
+#nohup dstat -tcm --output /home/panfengfeng/trace_log_2/in-memory/movies/readwhilewriting_wiredtiger_no_lsm_256_append 2 > nohup.out &
+
 file=/data/publicdata/movies/movies.txt
 record_num=7911684
 read_num=4000000
@@ -19,8 +21,7 @@ dirname=/mnt/datamemory
 ##cachesize=`du -s -b -b $dirname | awk '{print $1}'`
 #echo "####wiredtiger benchmark finish"
 #free -m
-
-#nohup dstat -tcm --output /home/panfengfeng/trace_log_2/in-memory/movies/readwhilewriting_wiredtiger_no_lsm_256_append 2 > nohup.out &
+#
 
 echo "####Now, running wiredtiger benchmark"
 echo 3 > /proc/sys/vm/drop_caches

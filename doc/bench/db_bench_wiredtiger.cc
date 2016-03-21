@@ -355,6 +355,7 @@ class Benchmark {
  private:
   WT_CONNECTION *conn_;
   std::string uri_;
+  std::string urii_;
   int db_num_;
   int num_;
   int value_size_;
@@ -832,10 +833,16 @@ class Benchmark {
         FLAGS_use_lsm ? "lsm" : "table", ++db_num_);
     uri_ = uri;
 
+    char urii[100];
+    snprintf(urii, sizeof(urii), "index:dbbench_wt-%d:key", db_num_);
+    urii_ = urii;
+
     if (!FLAGS_use_existing_db) {
       // Create tuning options and create the data file
       config.str("");
-      config << "key_format=S,value_format=S";
+      //config << "key_format=S,value_format=S";
+      config << "key_format=r,value_format=SS";
+      config << ",columns=[id, key, value]";
       config << ",prefix_compression=true";
       config << ",checksum=off";
       if (FLAGS_cache_size < SMALL_CACHE && FLAGS_cache_size > 0) {
@@ -871,6 +878,14 @@ class Benchmark {
         fprintf(stderr, "create error: %s\n", wiredtiger_strerror(ret));
         exit(1);
       }
+
+      fprintf(stderr, "Creating index %s\n",urii_.c_str());
+      ret = session->create(session, urii_.c_str(), "columns=(key)");
+      if (ret != 0) {
+              fprintf(stderr, "create error: %s\n", wiredtiger_strerror(ret));
+              exit(1);
+      }
+
       session->close(session, NULL);
     }
 
@@ -905,7 +920,8 @@ class Benchmark {
     WT_CURSOR *cursor;
     std::stringstream cur_config;
     cur_config.str("");
-    cur_config << "overwrite";
+    // cur_config << "overwrite";
+    cur_config << "append";
     if (seq && FLAGS_threads == 1)
   	cur_config << ",bulk=true";
     if (FLAGS_stagger)
@@ -927,9 +943,10 @@ class Benchmark {
           continue; /* Wired Tiger does not support 0 keys. */
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
-        cursor->set_key(cursor, key);
+        // cursor->set_key(cursor, key);
         std::string value = gen.Generate(value_size_).ToString();
-        cursor->set_value(cursor, value.c_str());
+        // cursor->set_value(cursor, value.c_str());
+        cursor->set_value(cursor, key, value.c_str());
         int ret = cursor->insert(cursor);
         if (ret != 0) {
           fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
@@ -1041,7 +1058,7 @@ repeat:
   void ReadRandom(ThreadState* thread) {
     const char *ckey;
     WT_CURSOR *cursor;
-    int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
+    int ret = thread->session->open_cursor(thread->session, urii_.c_str(), NULL, NULL, &cursor);
     if (ret != 0) {
       fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
       exit(1);
@@ -1185,7 +1202,6 @@ repeat:
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
-/*
       // Special thread that keeps writing until other threads are done.
       RandomGenerator gen;
       while (true) {
@@ -1202,17 +1218,21 @@ repeat:
         std::stringstream cur_config;
         cur_config.str("");
         cur_config << "overwrite";
+       // cur_config << "append";
         int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
         if (ret != 0) {
           fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
         exit(1);
         }
         const int k = thread->rand.Next() % FLAGS_num;
+	if(k == 0)
+		continue;
         char key[100];
         snprintf(key, sizeof(key), "%016d", k);
-        cursor->set_key(cursor, key);
+        cursor->set_key(cursor, k);
         std::string value = gen.Generate(value_size_).ToString();
-        cursor->set_value(cursor, value.c_str());
+        // cursor->set_value(cursor, value.c_str());
+        cursor->set_value(cursor, key, value.c_str());
         ret = cursor->insert(cursor);
         if (ret != 0) {
           fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
@@ -1223,7 +1243,6 @@ repeat:
 
       // Do not count any of the preceding work/delay in stats.
       thread->stats.Start();
-*/
     }
   }
 

@@ -963,6 +963,7 @@ class Benchmark {
         if (thread->tid > 0) { // read
 		printf("read thread %d\n",thread->tid);
       		ReadRandom(thread);
+/*
         } else if (thread->tid % 3 == 1) { // write
 		printf("write thread %d\n",thread->tid);
 		int64_t num = 0; 
@@ -1029,6 +1030,7 @@ class Benchmark {
 				}
 			}
 		}
+*/
         } else {  // del
 		printf("del thread %d\n",thread->tid);
 		terark::valvec<terark::byte> keyHit, val;
