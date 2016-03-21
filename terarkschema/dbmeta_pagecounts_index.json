@@ -10,7 +10,7 @@
 							  "minFragLen": 8, "maxFragLen": 100,
 							  "rsX": -256,
 							  "SufarrCompressMinFreq": 5,
-							  "dictZipSampleRatio": 0.07,
+							  "dictZipSampleRatio": -1,
 							  "dictZipLocalMatch": true,
 							  "useFastZip": true }
 

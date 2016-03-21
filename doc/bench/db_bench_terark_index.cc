@@ -880,8 +880,8 @@ class Benchmark {
 			  }
 			  for (size_t i = 0; i < idvec.size(); ++i) {
 				  recId = idvec[i];
-				  ctxr->getValue(recId, &val);
-				  // tab->selectOneColumn(recId, 1, &val, ctxr.get());
+				  // ctxr->getValue(recId, &val);
+				  tab->selectOneColumn(recId, 1, &val, ctxr.get());
 			  }
 			  if(idvec.size() > 0)
 				found++;
@@ -981,28 +981,51 @@ class Benchmark {
   }
 
   void DoDelete(ThreadState* thread, bool seq) {
-    fprintf(stderr, "DoDelete not supported\n");
-    return;
-/*
-    RandomGenerator gen;
-    WriteBatch batch;
-    Status s;
-    for (int i = 0; i < num_; i += entries_per_batch_) {
-      batch.Clear();
-      for (int j = 0; j < entries_per_batch_; j++) {
-        const int k = seq ? i+j : (thread->rand.Next() % FLAGS_num);
-        char key[100];
-        snprintf(key, sizeof(key), "%016d", k);
-        batch.Delete(key);
-        thread->stats.FinishedSingleOp();
-      }
-      s = db_->Write(write_options_, &batch);
-      if (!s.ok()) {
-        fprintf(stderr, "del error: %s\n", s.ToString().c_str());
-        exit(1);
-      }
-    }
-*/
+	  terark::valvec<terark::byte> keyHit, val;
+	  terark::valvec<terark::llong> idvec;
+	  terark::db::DbContextPtr ctxr;
+          ctxr = tab->createDbContext();
+          ctxr->syncIndex = FLAGS_sync_index;
+
+    	  int found = 0;
+	  for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
+		  terark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
+		  const terark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
+		  std::string keyData;
+		  for (size_t i = 0; i < reads_; ++i) {
+			  const int k = thread->rand.Next() % FLAGS_num;
+			  char key[100];
+			  switch (indexId) {
+				  default:
+					  assert(0);
+					  break;
+				  case 0:
+			  		  snprintf(key, sizeof(key), "%016d", k);
+					  keyData = key;
+					  break;
+			  }
+			  idvec.resize(0);
+			  terark::llong recId;
+	  		  // std::cout << "ReadRandom thread id " << thread->tid << " i "<< i << std::endl;
+			  int ret = indexIter->seekLowerBound(keyData, &recId, &keyHit);
+			  if (ret == 0) { // found exact key
+				  idvec.push_back(recId);
+				  int hasNext; // int as bool
+				  while ((hasNext = indexIter->increment(&recId, &keyHit))
+						  && terark::fstring(keyHit) == keyData) {
+					  assert(recId < tab->numDataRows());
+					  idvec.push_back(recId);
+				  }
+				  if (hasNext)
+					  idvec.push_back(recId);
+			  }
+			  for (size_t i = 0; i < idvec.size(); ++i) {
+				  recId = idvec[i];
+				  ctxr->removeRow(recId);
+			  }
+      			  thread->stats.FinishedSingleOp();
+		  }
+	  }
   }
 
   void DeleteSeq(ThreadState* thread) {

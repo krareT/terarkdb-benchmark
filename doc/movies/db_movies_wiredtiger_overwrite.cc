@@ -1119,6 +1119,8 @@ repeat:
   }
 
   void ReadRandom(ThreadState* thread) {
+
+    printf("read random keyv/alue!\n");
     const char *ckey;
     WT_CURSOR *cursor;
     
@@ -1284,43 +1286,74 @@ repeat:
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
-      // Special thread that keeps writing until other threads are done.
-      RandomGenerator gen;
-      while (true) {
-        {
-          MutexLock l(&thread->shared->mu);
-          if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
-            // Other threads have finished
-            break;
-          }
-        }
+	printf("write begin!\n");
+	int64_t num = 0;
+	while(true) {
+	    WT_CURSOR *cursor;
+	    std::stringstream cur_config;
+	    cur_config.str("");
+	    cur_config << "overwrite";
 
-        const char *ckey;
-        WT_CURSOR *cursor;
-        std::stringstream cur_config;
-        cur_config.str("");
-        cur_config << "overwrite";
-        int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
-        if (ret != 0) {
-          fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
-        exit(1);
-        }
-        const int k = thread->rand.Next() % FLAGS_num;
-        char key[100];
-        snprintf(key, sizeof(key), "%016d", k);
-        cursor->set_key(cursor, key);
-        std::string value = gen.Generate(value_size_).ToString();
-        cursor->set_value(cursor, value.c_str());
-        ret = cursor->insert(cursor);
-        if (ret != 0) {
-          fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
-          exit(1);
-        }
-        cursor->close(cursor);
-      }
+	    int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
+	    if (ret != 0) {
+		    fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+		    exit(1);
+	    }
 
-      // Do not count any of the preceding work/delay in stats.
-      thread->stats.Start();
+	    std::ifstream ifs(FLAGS_resource_data);
+	    std::string str;
+	    printf("FLAGS_resource_data %s\n", FLAGS_resource_data);
+	    TestRow recRow;
+
+	    while(getline(ifs, str)) {
+		    if (str.find("product/productId:") == 0) {
+			    recRow.productId = str.substr(19);
+		    }
+		    if (str.find("review/userId:") == 0) {
+			    recRow.userId = str.substr(15);
+		    }
+		    if (str.find("review/profileName:") == 0) {
+			    recRow.profileName = str.substr(20);
+		    }
+		    if (str.find("review/helpfulness:") == 0) {
+			    char* pos2 = NULL;
+			    recRow.helpfulness1 = strtol(str.data()+20, &pos2, 10);
+			    recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+		    }
+		    if (str.find("review/score:") == 0) {
+			    recRow.score = atol(str.substr(14).c_str());
+		    }
+		    if (str.find("review/time:") == 0) {
+			    recRow.time = atol(str.substr(13).c_str());
+		    }
+		    if (str.find("review/summary:") == 0) {
+			    recRow.summary = str.substr(16);
+		    }
+		    if (str.find("review/text:") == 0) {
+			    recRow.text = str.substr(13);
+		    }
+		    if (str == "") {
+			    const int k = thread->rand.Next() % FLAGS_num;
+			    char key[100];
+			    snprintf(key, sizeof(key), "%016d", k);
+			    cursor->set_key(cursor, key);
+			    cursor->set_value(cursor, recRow.productId.c_str(), recRow.userId.c_str(), recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
+			    int ret = cursor->insert(cursor);
+			    if (ret != 0) {
+				    fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+				    exit(1);
+			    }
+			    num ++;
+		    	    printf("write random key/value!\n");
+		    }
+		    MutexLock l(&thread->shared->mu);
+                    if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
+                            printf("extra write operations number %d\n", num);
+                            return;
+                    }
+	    }
+	    cursor->close(cursor);
+	}
     }
   }
 

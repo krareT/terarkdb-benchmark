@@ -14,7 +14,7 @@ echo "####Now, running terark benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export NarkDb_WrSegCacheSizeMB=64
+export TerarkDb_WrSegCacheSizeMB=64
 ../db_wikiarticles_terark --benchmarks=fillrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --resource_data=$file
 free -m
 date
@@ -25,7 +25,7 @@ echo "####Now, running terark benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export NarkDb_WrSegCacheSizeMB=64
+export TerarkDb_WrSegCacheSizeMB=64
 ../db_wikiarticles_terark --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --resource_data=$file
 free -m
 date
@@ -36,7 +36,7 @@ echo "####Now, running terark benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export NarkDb_WrSegCacheSizeMB=64
+export TerarkDb_WrSegCacheSizeMB=64
 ../db_wikiarticles_terark --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=0 --threads=8 --db=$dirname --resource_data=$file
 free -m
 date
@@ -47,7 +47,7 @@ echo "####Now, running terark benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export NarkDb_WrSegCacheSizeMB=64
+export TerarkDb_WrSegCacheSizeMB=64
 ../db_wikiarticles_terark --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=0 --threads=16 --db=$dirname --resource_data=$file
 free -m
 date
@@ -58,7 +58,7 @@ echo "####Now, running terark benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export NarkDb_WrSegCacheSizeMB=64
+export TerarkDb_WrSegCacheSizeMB=64
 ../db_wikiarticles_terark --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=0 --threads=24 --db=$dirname --resource_data=$file
 free -m
 date

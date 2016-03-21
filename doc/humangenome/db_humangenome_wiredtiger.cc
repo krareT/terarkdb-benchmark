@@ -576,6 +576,8 @@ class Benchmark {
       } else if (name == Slice("readwhilewriting")) {
         num_threads++;  // Add extra thread for writing
         method = &Benchmark::ReadWhileWriting;
+      } else if (name == Slice("readwritedel")) {
+        method = &Benchmark::ReadWriteDel;
       } else if (name == Slice("compact")) {
         method = &Benchmark::Compact;
       } else if (name == Slice("crc32c")) {
@@ -1114,7 +1116,7 @@ repeat:
       cursor->set_key(cursor, key);
       if (cursor->search(cursor) == 0) {
 	found++;
-        ret = cursor->get_value(cursor, &ckey, &windex, &whumangenome);
+        // ret = cursor->get_value(cursor, &ckey, &windex, &whumangenome);
       }
       thread->stats.FinishedSingleOp();
     }
@@ -1250,47 +1252,159 @@ repeat:
     DoDelete(thread, false);
   }
 
+  void ReadWriteDel(ThreadState* thread) {
+          if (thread->tid % 3 == 0) { // read
+                ReadRandom(thread);
+          } else if (thread->tid % 3 == 1) { // write
+		  int64_t num = 0;
+		  while(true) {
+			  WT_CURSOR *cursor;
+			  std::stringstream cur_config;
+			  cur_config.str("");
+			  cur_config << "append";
+
+			  int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
+			  if (ret != 0) {
+				  fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+				  exit(1);
+			  }
+
+			  std::ifstream ifs(FLAGS_resource_data);
+			  std::string str;
+			  TestRow recRow;
+			  int first = 1;
+
+			  while(getline(ifs, str)) {
+				  if (str.find(">") == 0) {
+					  if (first) {
+						  recRow.index = str.substr(1);
+						  first = 0;
+					  } else {
+						  const int k = thread->rand.Next() % FLAGS_num;
+						  char key[100];
+						  snprintf(key, sizeof(key), "%016d", k);
+						  cursor->set_value(cursor, key, recRow.index.c_str(), recRow.humangenome.c_str());
+						  ret = cursor->insert(cursor);
+						  if (ret != 0) {
+							  fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+							  exit(1);
+						  }
+						  num ++;
+						  recRow.index = str.substr(1);
+						  recRow.humangenome.clear();
+					  }
+				  } else {
+					  recRow.humangenome.append(str);
+				  }
+
+				  MutexLock l(&thread->shared->mu);
+				  if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
+					  printf("extra write operations number %d\n", num);
+					  return;
+				  }
+			  }
+			  const int k = thread->rand.Next() % FLAGS_num;
+			  char key[100];
+			  snprintf(key, sizeof(key), "%016d", k);
+			  cursor->set_value(cursor, key, recRow.index.c_str(), recRow.humangenome.c_str());
+			  ret = cursor->insert(cursor);
+			  if (ret != 0) {
+				  fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+				  exit(1);
+			  }
+			  num ++;
+			  cursor->close(cursor);
+		  }
+          } else {                       // del
+		int64_t num = 0;
+                WT_CURSOR *cursor;
+                int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
+                if (ret != 0) {
+                        fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+                        exit(1);
+                }
+
+                while(true) {
+                        const int k = thread->rand.Next() % FLAGS_num;
+                        char key[100];
+                        snprintf(key, sizeof(key), "%016d", k);
+                        cursor->set_key(cursor, key);
+                        ret = cursor->remove(cursor);
+                        num++;
+                        MutexLock l(&thread->shared->mu);
+                        if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
+                                printf("extra del operations number %d\n", num);
+                                break;
+                        }
+                }
+                cursor->close(cursor);
+          }
+  }
+
+
   void ReadWhileWriting(ThreadState* thread) {
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
-      // Special thread that keeps writing until other threads are done.
-      RandomGenerator gen;
-      while (true) {
-        {
-          MutexLock l(&thread->shared->mu);
-          if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
-            // Other threads have finished
-            break;
-          }
-        }
+	 int64_t num = 0;
+        while(true) {
+            WT_CURSOR *cursor;
+            std::stringstream cur_config;
+            cur_config.str("");
+            cur_config << "append";
 
-        const char *ckey;
-        WT_CURSOR *cursor;
-        std::stringstream cur_config;
-        cur_config.str("");
-        cur_config << "overwrite";
-        int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
-        if (ret != 0) {
-          fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
-        exit(1);
-        }
-        const int k = thread->rand.Next() % FLAGS_num;
-        char key[100];
-        snprintf(key, sizeof(key), "%016d", k);
-        cursor->set_key(cursor, key);
-        std::string value = gen.Generate(value_size_).ToString();
-        cursor->set_value(cursor, value.c_str());
-        ret = cursor->insert(cursor);
-        if (ret != 0) {
-          fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
-          exit(1);
-        }
-        cursor->close(cursor);
-      }
+            int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
+            if (ret != 0) {
+                    fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+                    exit(1);
+            }
 
-      // Do not count any of the preceding work/delay in stats.
-      thread->stats.Start();
+            std::ifstream ifs(FLAGS_resource_data);
+            std::string str;
+            TestRow recRow;
+            int first = 1;
+
+            while(getline(ifs, str)) {
+                    if (str.find(">") == 0) {
+                            if (first) {
+                                    recRow.index = str.substr(1);
+                                    first = 0;
+                            } else {
+                                    const int k = thread->rand.Next() % FLAGS_num;
+                                    char key[100];
+                                    snprintf(key, sizeof(key), "%016d", k);
+                                    cursor->set_value(cursor, key, recRow.index.c_str(), recRow.humangenome.c_str());
+                                    ret = cursor->insert(cursor);
+                                    if (ret != 0) {
+                                            fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+                                            exit(1);
+                                    }
+                                    num ++;
+                                    recRow.index = str.substr(1);
+                                    recRow.humangenome.clear();
+                            }
+                    } else {
+                            recRow.humangenome.append(str);
+                    }
+
+                    MutexLock l(&thread->shared->mu);
+                    if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
+                            printf("extra write operations number %d\n", num);
+                            return;
+                    }
+            }
+	    const int k = thread->rand.Next() % FLAGS_num;
+            char key[100];
+            snprintf(key, sizeof(key), "%016d", k);
+            cursor->set_value(cursor, key, recRow.index.c_str(), recRow.humangenome.c_str());
+            ret = cursor->insert(cursor);
+            if (ret != 0) {
+                    fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+                    exit(1);
+            }
+            num ++;
+            cursor->close(cursor);
+        }
     }
   }
 

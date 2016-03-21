@@ -1,4 +1,4 @@
-nohup dstat -tcm --output /home/panfengfeng/trace_log_2/in-memory/wikiarticles/fillrando_readandom_mulit_wiredtiger_no_lsm_256_append 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log_2/in-memory/wikiarticles/fillrandom_readrandom_mulit_wiredtiger_no_lsm_256_append 2 > nohup.out &
 
 file=/data/publicdata/wikiarticles/enwiki-latest.text
 record_num=3977902

@@ -1,4 +1,4 @@
-nohup dstat -tcm --output /home/panfengfeng/trace_log_2/in-memory/humangenome/fillrandom_readrandom_mulit_terark_index_256_4g 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log_2/in-memory/humangenome/fillrandom_readrandom_mulit_terark_index_256_4g_old 2 > nohup.out &
 
 file=/data/publicdata/humangenome/xenoMrna.fa
 record_num=17448961
@@ -16,7 +16,7 @@ echo "####Now, running terarkdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export NarkDb_WrSegCacheSizeMB=256
+export TerarkDb_WrSegCacheSizeMB=256
 ../db_humangenome_terark_index --benchmarks=fillrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --resource_data=$file
 free -m
 date
@@ -28,7 +28,7 @@ echo "####Now, running terarkdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export NarkDb_WrSegCacheSizeMB=256
+export TerarkDb_WrSegCacheSizeMB=256
 ../db_humangenome_terark_index --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --resource_data=$file
 free -m
 date
@@ -40,7 +40,7 @@ echo "####Now, running terarkdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export NarkDb_WrSegCacheSizeMB=256
+export TerarkDb_WrSegCacheSizeMB=256
 ../db_humangenome_terark_index --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --threads=8 --resource_data=$file
 free -m
 date
@@ -51,7 +51,7 @@ echo "####Now, running terarkdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export NarkDb_WrSegCacheSizeMB=256
+export TerarkDb_WrSegCacheSizeMB=256
 ../db_humangenome_terark_index --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --threads=16 --resource_data=$file
 free -m
 date

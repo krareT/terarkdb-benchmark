@@ -1,4 +1,4 @@
-nohup dstat -tcm --output /home/panfengfeng/trace_log_2/in-memory/wikiarticles/fillrandom_readandom_mulit_terark_index_256_4g 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log_2/in-memory/wikiarticles/fillrandom_readandom_mulit_terark_index_256_4g_old 2 > nohup.out &
 
 file=/data/publicdata/wikiarticles/enwiki-latest.text
 record_num=3977902
@@ -16,7 +16,7 @@ echo "####Now, running terark benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export NarkDb_WrSegCacheSizeMB=256
+export TerarkDb_WrSegCacheSizeMB=256
 ../db_wikiarticles_terark_index --benchmarks=fillrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --resource_data=$file
 free -m
 date
@@ -27,7 +27,7 @@ echo "####Now, running terark benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export NarkDb_WrSegCacheSizeMB=256
+export TerarkDb_WrSegCacheSizeMB=256
 ../db_wikiarticles_terark_index --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --resource_data=$file
 free -m
 date
@@ -38,7 +38,7 @@ echo "####Now, running terark benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export NarkDb_WrSegCacheSizeMB=256
+export TerarkDb_WrSegCacheSizeMB=256
 ../db_wikiarticles_terark_index --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=0 --threads=8 --db=$dirname --resource_data=$file
 free -m
 date
@@ -49,7 +49,7 @@ echo "####Now, running terark benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export NarkDb_WrSegCacheSizeMB=256
+export TerarkDb_WrSegCacheSizeMB=256
 ../db_wikiarticles_terark_index --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=0 --threads=16 --db=$dirname --resource_data=$file
 free -m
 date

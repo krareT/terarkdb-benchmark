@@ -26,7 +26,7 @@ echo "####Now, running wiredtiger benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-../db_pagecounts_wiredtiger_overwrite --benchmarks=fillrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --resource_data=$file --threads=6
+../db_pagecounts_wiredtiger_overwrite --benchmarks=fillrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --resource_data=$file --threads=4
 free -m
 date
 du -s -b $dirname
@@ -38,7 +38,7 @@ echo "####Now, running wiredtiger benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-../db_pagecounts_wiredtiger_overwrite --benchmarks=fillrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --resource_data=$file --threads=12
+../db_pagecounts_wiredtiger_overwrite --benchmarks=fillrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --resource_data=$file --threads=8
 free -m
 date
 du -s -b $dirname

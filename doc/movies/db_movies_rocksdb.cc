@@ -539,6 +539,8 @@ class Benchmark {
       } else if (name == rocksdb::Slice("readwhilewriting")) {
         num_threads++;  // Add extra thread for writing
         method = &Benchmark::ReadWhileWriting;
+      } else if (name == rocksdb::Slice("readwritedel")) {
+        method = &Benchmark::ReadWriteDel;
       } else if (name == rocksdb::Slice("compact")) {
         method = &Benchmark::Compact;
       } else if (name == rocksdb::Slice("crc32c")) {
@@ -983,33 +985,153 @@ class Benchmark {
     DoDelete(thread, false);
   }
 
+  void ReadWriteDel(ThreadState* thread) {
+	if (thread->tid % 3 == 0) { // read
+      		ReadRandom(thread);
+	} else if (thread->tid % 3 == 1) { // write
+		int64_t num = 0; 
+		while(true) {
+			std::ifstream ifs(FLAGS_resource_data);  
+			std::string str;  
+			std::string value; 
+			value.clear(); 
+			rocksdb::Status s;	
+
+			while(getline(ifs, str)) {
+				if (str.find("product/productId:") == 0) {
+					value += str.substr(19);
+					value += " ";
+				}
+				if (str.find("review/userId:") == 0) {
+					value += str.substr(15);
+					value += " ";
+				}
+				if (str.find("review/profileName:") == 0) {
+					value += str.substr(20);
+					value += " ";
+				}
+				if (str.find("review/helpfulness:") == 0) {
+					value += str.substr(20);
+					value += " ";
+				}
+				if (str.find("review/score:") == 0) {
+					value += str.substr(14);
+					value += " ";
+				}
+				if (str.find("review/time:") == 0) {
+					value += str.substr(13);
+					value += " ";
+				}
+				if (str.find("review/summary:") == 0) {
+					value += str.substr(16);
+					value += " ";
+				}
+				if (str.find("review/text:") == 0) {
+					value += str.substr(13);
+				}
+
+				if (str == "") {
+					const int k = thread->rand.Next() % FLAGS_num;
+					char key[100];
+					snprintf(key, sizeof(key), "%016d", k);
+					s = db_->Put(write_options_, key, value);
+					if (!s.ok()) {
+						fprintf(stderr, "put error: %s\n", s.ToString().c_str());
+						exit(1);
+					}
+					num++;
+					value.clear();
+				}
+				MutexLock l(&thread->shared->mu);
+				if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
+					printf("extra write operations number %d\n", num);
+					return;
+				}
+			}
+		}
+	} else {  // del
+		int64_t num = 0;
+    		rocksdb::Status s;
+		while(true) {
+			const int k = thread->rand.Next() % FLAGS_num;
+			char key[100];
+			snprintf(key, sizeof(key), "%016d", k);
+			s = db_->Delete(write_options_, key);
+			MutexLock l(&thread->shared->mu);
+			num++;
+			if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
+				printf("extra del operations number %d\n", num);
+				break;
+			}
+		}
+	} 
+  }
+
+
   void ReadWhileWriting(ThreadState* thread) {
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
-      // Special thread that keeps writing until other threads are done.
-      RandomGenerator gen;
-      while (true) {
-        {
-          MutexLock l(&thread->shared->mu);
-          if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
-            // Other threads have finished
-            break;
-          }
-        }
+	int64_t num = 0; 
+	while(true) {
+	    std::ifstream ifs(FLAGS_resource_data);  
+	    std::string str;  
+	    std::string value; 
+	    value.clear(); 
+	    rocksdb::Status s;	
 
-        const int k = thread->rand.Next() % FLAGS_num;
-        char key[100];
-        snprintf(key, sizeof(key), "%016d", k);
-        rocksdb::Status s = db_->Put(write_options_, key, gen.Generate(value_size_));
-        if (!s.ok()) {
-          fprintf(stderr, "put error: %s\n", s.ToString().c_str());
-          exit(1);
-        }
-      }
+	    while(getline(ifs, str)) {
+		    if (str.find("product/productId:") == 0) {
+			    value += str.substr(19);
+			    value += " ";
+		    }
+		    if (str.find("review/userId:") == 0) {
+			    value += str.substr(15);
+			    value += " ";
+		    }
+		    if (str.find("review/profileName:") == 0) {
+			    value += str.substr(20);
+			    value += " ";
+		    }
+		    if (str.find("review/helpfulness:") == 0) {
+			    value += str.substr(20);
+			    value += " ";
+		    }
+		    if (str.find("review/score:") == 0) {
+			    value += str.substr(14);
+			    value += " ";
+		    }
+		    if (str.find("review/time:") == 0) {
+			    value += str.substr(13);
+			    value += " ";
+		    }
+		    if (str.find("review/summary:") == 0) {
+			    value += str.substr(16);
+			    value += " ";
+		    }
+		    if (str.find("review/text:") == 0) {
+			    value += str.substr(13);
+		    }
 
-      // Do not count any of the preceding work/delay in stats.
-      thread->stats.Start();
+		    if (str == "") {
+			    const int k = thread->rand.Next() % FLAGS_num;
+			    char key[100];
+			    snprintf(key, sizeof(key), "%016d", k);
+			    s = db_->Put(write_options_, key, value);
+			    if (!s.ok()) {
+				    fprintf(stderr, "put error: %s\n", s.ToString().c_str());
+				    exit(1);
+			    }
+			    num++;
+			    value.clear();
+		    }
+		    MutexLock l(&thread->shared->mu);
+		    if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
+			    printf("extra write operations number %d\n", num);
+			    return;
+		    }
+	    }
+	}
     }
   }
 

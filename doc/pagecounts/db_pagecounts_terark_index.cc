@@ -506,6 +506,8 @@ class Benchmark {
       } else if (name == Slice("readwhilewriting")) {
         num_threads++;  // Add extra thread for writing
         method = &Benchmark::ReadWhileWriting;
+      } else if (name == Slice("readwritedel")) {
+        method = &Benchmark::ReadWriteDel;
       } else if (name == Slice("compact")) {
         method = &Benchmark::Compact;
       } else if (name == Slice("crc32c")) {
@@ -913,32 +915,161 @@ class Benchmark {
     DoDelete(thread, false);
   }
 
+   void ReadWriteDel(ThreadState* thread) {
+        if (thread->tid % 3 == 0) { // read
+                ReadRandom(thread);
+        } else if (thread->tid % 3 == 1) { // write
+		int64_t num = 0;
+		while(true) {
+			terark::db::DbContextPtr ctxw;
+			ctxw = tab->createDbContext();
+			ctxw->syncIndex = FLAGS_sync_index;
+
+			terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+			std::ifstream ifs(FLAGS_resource_data);  
+			std::string str;  
+
+			TestRow recRow;
+			std::vector<std::string> fields;
+
+			while(getline(ifs, str)) {
+				boost::split(fields, str, boost::is_any_of(" "));
+				assert(fields.size() == 4);
+
+				const int k = thread->rand.Next() % FLAGS_num;
+				char key[100];
+				snprintf(key, sizeof(key), "%016d", k);
+				recRow.key = std::string(key);
+
+				recRow.wikicode = fields[0];
+
+				recRow.articletitle = fields[1];
+
+				recRow.monthlytotal = atoi(fields[2].c_str());
+
+				recRow.hourlycounts = fields[3];
+
+				rowBuilder.rewind();
+				rowBuilder << recRow;
+				terark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+				if (ctxw->insertRow(binRow) < 0) {
+					printf("Insert failed: %s\n", ctxw->errMsg.c_str());
+					exit(-1);	
+				}
+				num ++;
+				MutexLock l(&thread->shared->mu);
+				if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
+					printf("extra write operations number %d\n", num);
+					return;
+				}
+			}
+		}
+	} else { // del
+		terark::valvec<terark::byte> keyHit, val;
+                terark::valvec<terark::llong> idvec;
+                terark::db::DbContextPtr ctxr;
+                ctxr = tab->createDbContext();
+                ctxr->syncIndex = FLAGS_sync_index;
+                int64_t num = 0;
+                while(true) {
+                        for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
+                                terark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
+                                const terark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
+                                std::string keyData;
+                                for (size_t i = 0; i < reads_; ++i) {
+                                        const int k = thread->rand.Next() % FLAGS_num;
+                                        char key[100];
+                                        switch (indexId) {
+                                                default:
+                                                        assert(0);
+                                                        break;
+                                                case 0:
+                                                        snprintf(key, sizeof(key), "%016d", k);
+                                                        keyData = key;
+                                                        break;
+                                        }
+                                        idvec.resize(0);
+                                        terark::llong recId;
+                                        int ret = indexIter->seekLowerBound(keyData, &recId, &keyHit);
+                                        if (ret == 0) { // found exact key
+                                                idvec.push_back(recId);
+                                                int hasNext; // int as bool
+                                                while ((hasNext = indexIter->increment(&recId, &keyHit))
+                                                                && terark::fstring(keyHit) == keyData) {
+                                                        assert(recId < tab->numDataRows());
+                                                        idvec.push_back(recId);
+                                                }
+                                                if (hasNext)
+                                                        idvec.push_back(recId);
+                                        }
+                                        for (size_t i = 0; i < idvec.size(); ++i) {
+                                                recId = idvec[i];
+                                                ctxr->removeRow(recId);
+                                        }
+                                        num++;
+                                        MutexLock l(&thread->shared->mu);
+                                        if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
+                                                printf("extra del operations number %d\n", num);
+                                                return;
+                                        }
+                                }
+                        }
+                }
+        }
+  }
+
   void ReadWhileWriting(ThreadState* thread) {
-/*
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
-      // Special thread that keeps writing until other threads are done.
-      RandomGenerator gen;
-      while (true) {
-        {
-          MutexLock l(&thread->shared->mu);
-          if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
-            // Other threads have finished
-            break;
-          }
-        }
+	int64_t num = 0;
+	while(true) {
+	    terark::db::DbContextPtr ctxw;
+	    ctxw = tab->createDbContext();
+	    ctxw->syncIndex = FLAGS_sync_index;
 
-        const int k = thread->rand.Next() % FLAGS_num;
-        char key[100];
-        snprintf(key, sizeof(key), "%016d", k);
-	
-      }
+	    terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+	    std::ifstream ifs(FLAGS_resource_data);  
+	    std::string str;  
 
-      // Do not count any of the preceding work/delay in stats.
-      thread->stats.Start();
+	    TestRow recRow;
+	    std::vector<std::string> fields;
+
+	    while(getline(ifs, str)) {
+		    boost::split(fields, str, boost::is_any_of(" "));
+		    assert(fields.size() == 4);
+		 
+ 		    const int k = thread->rand.Next() % FLAGS_num;
+		    char key[100];
+		    snprintf(key, sizeof(key), "%016d", k);
+		    recRow.key = std::string(key);
+
+		    recRow.wikicode = fields[0];
+
+		    recRow.articletitle = fields[1];
+
+		    recRow.monthlytotal = atoi(fields[2].c_str());
+
+		    recRow.hourlycounts = fields[3];
+
+		    rowBuilder.rewind();
+		    rowBuilder << recRow;
+		    terark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+		    if (ctxw->insertRow(binRow) < 0) {
+			    printf("Insert failed: %s\n", ctxw->errMsg.c_str());
+			    exit(-1);	
+		    }
+		    num ++;
+		    MutexLock l(&thread->shared->mu);
+                    if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
+                            printf("extra write operations number %d\n", num);
+                            return;
+                    }
+	    }
+	}
     }
-*/
   }
 
   void Compact(ThreadState* thread) {
