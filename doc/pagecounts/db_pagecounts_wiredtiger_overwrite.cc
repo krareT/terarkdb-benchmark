@@ -1095,7 +1095,7 @@ repeat:
       cursor->set_key(cursor, key);
       if (cursor->search(cursor) == 0) {
 	found++;
-        // ret = cursor->get_value(cursor, &wwikicode, &warticletitle, &wmonthlytotal, &whourlycounts);
+        ret = cursor->get_value(cursor, &wwikicode, &warticletitle, &wmonthlytotal, &whourlycounts);
       }
       thread->stats.FinishedSingleOp();
     }

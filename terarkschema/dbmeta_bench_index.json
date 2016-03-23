@@ -1,20 +1,23 @@
 ﻿{
 	"RowSchema": {
 		"columns" : {
-			"key"   : { "type" : "strzero", "colstore": false },
-			"value"  : { "type" : "strzero", "colstore": true,
-                                                          "nltDelims": " \\t,.:?<",
-                                                          "minFragLen": 8, "maxFragLen": 100,
-                                                          "rsX": -256,
-                                                          "SufarrCompressMinFreqX": 5,
-                                                          "dictZipSampleRatio": 0.07,
-                                                          "dictZipLocalMatch": true,
-                                                          "useFastZip": true }
+			"key"   	: { "type" : "strzero" },
+			"value"  	: { "type" : "strzero" }
 		}
 	},
-	"MaxWrSegSize" : 4147483648,
+	"ColumnGroups": {
+                "str34": {
+                        "fields": [ "value" ],
+                        "inplaceUpdatable": false,
+                        "nltDelims": " \\t,.:?<",
+                        "minFragLen": 8, "maxFragLen": 100,
+                        "dictZipSampleRatio": 0.07,
+                        "dictZipLocalMatch": true,
+                        "useFastZip": true
+                }
+        },
 	"ReadonlyDataMemSize" : 1288490188,
-	"SufarrCompressMinFreqXX": 5,
+	"MaxWrSegSize" : 4147483648,
 	"TableIndex" : [
 		{ "fields": "key"  , "ordered" : true }
 	]

@@ -1104,7 +1104,7 @@ repeat:
       cursor->set_key(cursor, key);
       if (cursor->search(cursor) == 0) {
 	found++;
-        // ret = cursor->get_value(cursor, &windex, &whumangenome);
+        ret = cursor->get_value(cursor, &windex, &whumangenome);
       }
       thread->stats.FinishedSingleOp();
     }
@@ -1271,7 +1271,8 @@ repeat:
                                                   const int k = thread->rand.Next() % FLAGS_num;
                                                   char key[100];
                                                   snprintf(key, sizeof(key), "%016d", k);
-                                                  cursor->set_value(cursor, key, recRow.index.c_str(), recRow.humangenome.c_str());
+						  cursor->set_key(cursor, key);
+                                                  cursor->set_value(cursor, recRow.index.c_str(), recRow.humangenome.c_str());
                                                   ret = cursor->insert(cursor);
                                                   if (ret != 0) {
                                                           fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));

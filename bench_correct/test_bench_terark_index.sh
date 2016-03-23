@@ -1,5 +1,5 @@
-record_num=1000000
-read_num=1000000
+record_num=10000
+read_num=10000
 dirname=/mnt/datamemory
 #dirname=/experiment
 value=512
@@ -27,7 +27,7 @@ echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export TerarkDb_WrSegCacheSizeMB=64
-../db_bench_terark_index --benchmarks=deleterandom --value_size=$value --num=$record_num --reads=$read_num --threads=1 --db=$dirname
+../db_bench_terark_index --benchmarks=readrandom --value_size=$value --num=$record_num --reads=$read_num --threads=1 --db=$dirname
 free -m
 date
 echo "####terark benchmark finish"
