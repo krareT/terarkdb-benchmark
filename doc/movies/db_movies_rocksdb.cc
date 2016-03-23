@@ -764,12 +764,13 @@ class Benchmark {
       assert(FLAGS_min_level_to_compress <= FLAGS_num_levels);
       options.compression_per_level.resize(FLAGS_num_levels);
       for (int i = 0; i < FLAGS_min_level_to_compress; i++) {
-        options.compression_per_level[i] = rocksdb::kNoCompression;
+        options.compression_per_level[i] = FLAGS_compression_type;
+        //options.compression_per_level[i] = rocksdb::kNoCompression;
       }
       for (int i = FLAGS_min_level_to_compress;
            i < FLAGS_num_levels; i++) {
-        // options.compression_per_level[i] = FLAGS_compression_type;
-        options.compression_per_level[i] = rocksdb::kNoCompression;
+        options.compression_per_level[i] = FLAGS_compression_type;
+        //options.compression_per_level[i] = rocksdb::kNoCompression;
       }
     }
 

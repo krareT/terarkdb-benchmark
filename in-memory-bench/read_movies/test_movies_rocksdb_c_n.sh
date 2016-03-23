@@ -1,10 +1,9 @@
-#nohup dstat -tcm --output /home/panfengfeng/trace_log_2/movies/rocksdb_c_n_2 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log_2/movies/rocksdb_c_n 2 > nohup.out &
 
 file=/data/publicdata/movies/movies.txt
 record_num=7911684
 read_num=4000000
-#dirname=/mnt/datamemory
-dirname=/experiment
+dirname=/mnt/datamemory
 writebuffer=268435456
 
 rm -rf $dirname/*
