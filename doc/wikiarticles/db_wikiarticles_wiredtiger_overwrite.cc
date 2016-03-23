@@ -1078,7 +1078,7 @@ repeat:
       cursor->set_key(cursor, key);
       if (cursor->search(cursor) == 0) {
        found++;
-       // ret = cursor->get_value(cursor, &value); 
+       ret = cursor->get_value(cursor, &value); 
       }
       thread->stats.FinishedSingleOp();
     }

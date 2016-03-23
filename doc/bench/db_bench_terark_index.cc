@@ -839,59 +839,34 @@ class Benchmark {
   }
 
   void ReadRandom(ThreadState* thread) {
-
 	  terark::valvec<terark::byte> keyHit, val;
 	  terark::valvec<terark::llong> idvec;
 	  terark::db::DbContextPtr ctxr;
-          ctxr = tab->createDbContext();
-          ctxr->syncIndex = FLAGS_sync_index;
+	  ctxr = tab->createDbContext();
+	  ctxr->syncIndex = FLAGS_sync_index;
 
-    	  int found = 0;
-	  for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
-		  terark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
-		  const terark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
-		  std::string keyData;
-		  for (size_t i = 0; i < reads_; ++i) {
-			  const int k = thread->rand.Next() % FLAGS_num;
-			  char key[100];
-			  switch (indexId) {
-				  default:
-					  assert(0);
-					  break;
-				  case 0:
-			  		  snprintf(key, sizeof(key), "%016d", k);
-					  keyData = key;
-					  break;
-			  }
-			  idvec.resize(0);
-			  terark::llong recId;
-	  		  // std::cout << "ReadRandom thread id " << thread->tid << " i "<< i << std::endl;
-			  int ret = indexIter->seekLowerBound(keyData, &recId, &keyHit);
-			  if (ret == 0) { // found exact key
-				  idvec.push_back(recId);
-				  int hasNext; // int as bool
-				  while ((hasNext = indexIter->increment(&recId, &keyHit))
-						  && terark::fstring(keyHit) == keyData) {
-					  assert(recId < tab->numDataRows());
-					  idvec.push_back(recId);
-				  }
-				  if (hasNext)
-					  idvec.push_back(recId);
-			  }
-			  for (size_t i = 0; i < idvec.size(); ++i) {
-				  recId = idvec[i];
-				  // ctxr->getValue(recId, &val);
-				  tab->selectOneColumn(recId, 1, &val, ctxr.get());
-			  }
-			  if(idvec.size() > 0)
-				found++;
-      			  thread->stats.FinishedSingleOp();
+	  int found = 0;
+	  size_t indexId = 0;
+	  terark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
+	  const terark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
+	  for (size_t i = 0; i < reads_; ++i) {
+		  const int k = thread->rand.Next() % FLAGS_num;
+		  char keybuf[24];
+		  int  keylen = snprintf(keybuf, sizeof(keybuf), "%016d", k);
+		  terark::fstring key(keybuf, keylen);
+		  tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
+		  for (auto recId : idvec) {
+			  tab->selectOneColumn(recId, 1, &val, ctxr.get());
 		  }
+		  if(idvec.size() > 0)
+			  found++;
+		  thread->stats.FinishedSingleOp();
 	  }
-    char msg[100];
-    snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
-    thread->stats.AddMessage(msg);
+	  char msg[100];
+	  snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
+	  thread->stats.AddMessage(msg);
   }
+
 
   void ReadMissing(ThreadState* thread) {
     fprintf(stderr, "ReadMissing not supported\n");
