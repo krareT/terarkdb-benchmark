@@ -777,28 +777,28 @@ class Benchmark {
     int64_t bytes = 0;
 
     terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
-    for (int i = 0; i < num_; i += entries_per_batch_) {
-      for (int j = 0; j < entries_per_batch_; j++) {
-    	TestRow recRow;
-        const int k = seq ? i+j : shuff[i+j];
-        char key[100];
-	snprintf(key, sizeof(key), "%016d", k);
-	recRow.key = std::string(key);
-	recRow.value = gen.Generate(value_size_).ToString();
- 
-	rowBuilder.rewind();
-	rowBuilder << recRow;
-	terark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
-        
-	if (ctxw->insertRow(binRow) < 0) {
-		printf("Insert failed: %s\n", ctxw->errMsg.c_str());
-		exit(-1);	
+	for (int i = 0; i < num_; i += entries_per_batch_) {
+		for (int j = 0; j < entries_per_batch_; j++) {
+			TestRow recRow;
+			const int k = seq ? i + j : shuff[i + j];
+			char key[100];
+			snprintf(key, sizeof(key), "%016d", k);
+			recRow.key = std::string(key);
+			recRow.value = gen.Generate(value_size_).ToString();
+
+			rowBuilder.rewind();
+			rowBuilder << recRow;
+			terark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+			if (ctxw->insertRow(binRow) < 0) {
+				printf("Insert failed: %s\n", ctxw->errMsg.c_str());
+				exit(-1);
+			}
+
+			bytes += value_size_ + strlen(key);
+			thread->stats.FinishedSingleOp();
+		}
 	}
- 
-        bytes += value_size_ + strlen(key);
-        thread->stats.FinishedSingleOp();
-      }
-    }
     thread->stats.AddBytes(bytes);
     // tab->syncFinishWriting();
     printf("DoWrite Done!\n");
@@ -984,47 +984,34 @@ class Benchmark {
 	  terark::valvec<terark::byte> keyHit, val;
 	  terark::valvec<terark::llong> idvec;
 	  terark::db::DbContextPtr ctxr;
-          ctxr = tab->createDbContext();
-          ctxr->syncIndex = FLAGS_sync_index;
+	  ctxr = tab->createDbContext();
+	  ctxr->syncIndex = FLAGS_sync_index;
 
-    	  int found = 0;
-	  for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
-		  terark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
-		  const terark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
-		  std::string keyData;
-		  for (size_t i = 0; i < reads_; ++i) {
-			  const int k = thread->rand.Next() % FLAGS_num;
-			  char key[100];
-			  switch (indexId) {
-				  default:
-					  assert(0);
-					  break;
-				  case 0:
-			  		  snprintf(key, sizeof(key), "%016d", k);
-					  keyData = key;
-					  break;
-			  }
-			  idvec.resize(0);
-			  terark::llong recId;
-	  		  // std::cout << "ReadRandom thread id " << thread->tid << " i "<< i << std::endl;
-			  int ret = indexIter->seekLowerBound(keyData, &recId, &keyHit);
-			  if (ret == 0) { // found exact key
+	  int found = 0;
+	  size_t indexId = 0;
+	  terark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
+	  const terark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
+	  for (size_t i = 0; i < reads_; ++i) {
+		  const int k = thread->rand.Next() % FLAGS_num;
+		  char keybuf[24];
+		  int  keylen = snprintf(keybuf, sizeof(keybuf), "%016d", k);
+		  idvec.resize(0);
+		  terark::fstring key(keybuf, keylen);
+		  terark::llong recId;
+	  // std::cout << "ReadRandom thread id " << thread->tid << " i "<< i << std::endl;
+		  int ret = indexIter->seekLowerBound(key, &recId, &keyHit);
+		  if (ret == 0) { // found exact key
+			  do {
+				  assert(recId < tab->numDataRows());
 				  idvec.push_back(recId);
-				  int hasNext; // int as bool
-				  while ((hasNext = indexIter->increment(&recId, &keyHit))
-						  && terark::fstring(keyHit) == keyData) {
-					  assert(recId < tab->numDataRows());
-					  idvec.push_back(recId);
-				  }
-				  if (hasNext)
-					  idvec.push_back(recId);
-			  }
-			  for (size_t i = 0; i < idvec.size(); ++i) {
-				  recId = idvec[i];
-				  ctxr->removeRow(recId);
-			  }
-      			  thread->stats.FinishedSingleOp();
+			  } while (indexIter->increment(&recId, &keyHit)
+						&& terark::fstring(keyHit) == key);
 		  }
+		  for (size_t i = 0; i < idvec.size(); ++i) {
+			  recId = idvec[i];
+			  ctxr->removeRow(recId);
+		  }
+		  thread->stats.FinishedSingleOp();
 	  }
   }
 
