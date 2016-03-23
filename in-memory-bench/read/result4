@@ -1,0 +1,99 @@
+####Now, running rocksdb benchmark
+              total        used        free      shared  buff/cache   available
+Mem:          64163        1150       60135          17        2877       62652
+Swap:         17165           0       17165
+Wed Mar 23 15:34:11 CST 2016
+FLAGS_write_buffer_size 268435456
+ cache size 268435456
+RocksDB:    version 4.1
+Keys:       16 bytes each
+Values:     100 bytes each (50 bytes after compression)
+Entries:    7911684
+RawSize:    875.2 MB (estimated)
+FileSize:   498.0 MB (estimated)
+------------------------------------------------
+ Run() 
+268435456
+Create database /experiment
+ frehs_db==> DestroyDB
+268435456
+Create database /experiment
+fillrandom   :      20.691 micros/op;   49.0 MB/s
+              total        used        free      shared  buff/cache   available
+Mem:          64163        1137       44738          17       18286       62584
+Swap:         17165           0       17165
+Wed Mar 23 15:36:56 CST 2016
+####rocksdb benchmark finish
+6517505759	/experiment
+####Now, running rocksdb benchmark
+              total        used        free      shared  buff/cache   available
+Mem:          64163        1140       59820          17        3202       62655
+Swap:         17165           0       17165
+Wed Mar 23 15:36:57 CST 2016
+FLAGS_write_buffer_size 268435456
+ cache size 268435456
+RocksDB:    version 4.1
+Keys:       16 bytes each
+Values:     100 bytes each (50 bytes after compression)
+Entries:    7911684
+RawSize:    875.2 MB (estimated)
+FileSize:   498.0 MB (estimated)
+------------------------------------------------
+ Run() 
+268435456
+Create database /experiment
+readrandom   :      51.822 micros/op; (4000000 of 7911684 found)
+              total        used        free      shared  buff/cache   available
+Mem:          64163        1139       53773          17        9249       62583
+Swap:         17165           0       17165
+Wed Mar 23 15:40:29 CST 2016
+####rocksdb benchmark finish
+6424675717	/experiment
+####Now, running rocksdb benchmark
+              total        used        free      shared  buff/cache   available
+Mem:          64163        1139       60144          17        2879       62662
+Swap:         17165           0       17165
+Wed Mar 23 15:40:30 CST 2016
+FLAGS_write_buffer_size 268435456
+ cache size 268435456
+RocksDB:    version 4.1
+Keys:       16 bytes each
+Values:     100 bytes each (50 bytes after compression)
+Entries:    7911684
+RawSize:    875.2 MB (estimated)
+FileSize:   498.0 MB (estimated)
+------------------------------------------------
+ Run() 
+268435456
+Create database /experiment
+readrandom   :      31.050 micros/op; (4000000 of 7911684 found)
+              total        used        free      shared  buff/cache   available
+Mem:          64163        1144       53868          17        9150       62598
+Swap:         17165           0       17165
+Wed Mar 23 15:42:38 CST 2016
+####rocksdb benchmark finish
+6415308514	/experiment
+####Now, running rocksdb benchmark
+              total        used        free      shared  buff/cache   available
+Mem:          64163        1143       60131          17        2888       62654
+Swap:         17165           0       17165
+Wed Mar 23 15:42:39 CST 2016
+FLAGS_write_buffer_size 268435456
+ cache size 268435456
+RocksDB:    version 4.1
+Keys:       16 bytes each
+Values:     100 bytes each (50 bytes after compression)
+Entries:    7911684
+RawSize:    875.2 MB (estimated)
+FileSize:   498.0 MB (estimated)
+------------------------------------------------
+ Run() 
+268435456
+Create database /experiment
+readrandom   :      27.146 micros/op; (4000000 of 7911684 found)
+              total        used        free      shared  buff/cache   available
+Mem:          64163        1144       53890          17        9128       62626
+Swap:         17165           0       17165
+Wed Mar 23 15:44:32 CST 2016
+####rocksdb benchmark finish
+6414777947	/experiment
