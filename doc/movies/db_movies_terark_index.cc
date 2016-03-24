@@ -30,6 +30,8 @@
 #include <terark/io/RangeStream.hpp>
 #include <terark/lcast.hpp>
 
+using namespace terark;
+using namespace db;
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -312,16 +314,16 @@ struct TestRow {
 	std::string text;
 	
 	DATA_IO_LOAD_SAVE(TestRow,
-			&terark::db::Schema::StrZero(key)
-			&terark::db::Schema::StrZero(productId)
-			&terark::db::Schema::StrZero(userId)
-			&terark::db::Schema::StrZero(profileName)
+			&Schema::StrZero(key)
+			&Schema::StrZero(productId)
+			&Schema::StrZero(userId)
+			&Schema::StrZero(profileName)
 			&helpfulness1
 			&helpfulness2
 			&score
 			&time
-			&terark::db::Schema::StrZero(summary)
-			&terark::db::Schema::StrZero(text)
+			&Schema::StrZero(summary)
+			&Schema::StrZero(text)
 			)
 };
 
@@ -330,7 +332,7 @@ struct TestRow {
 class Benchmark {
  private:
 
-  terark::db::CompositeTablePtr tab;
+  CompositeTablePtr tab;
 
   int num_;
   int value_size_;
@@ -668,7 +670,7 @@ class Benchmark {
     assert(tab == NULL);
     std::cout << "Create database " << FLAGS_db << std::endl;
     
-    tab = terark::db::CompositeTable::createTable(FLAGS_db_table);
+    tab = CompositeTable::createTable(FLAGS_db_table);
     tab->load(FLAGS_db);
   }
 
@@ -683,7 +685,7 @@ class Benchmark {
   void DoWrite(ThreadState* thread, bool seq) {
     std::cout << " DoWrite now! num_ " << num_ << " FLAGS_num " << FLAGS_num << std::endl;
 
-    terark::db::DbContextPtr ctxw;
+    DbContextPtr ctxw;
     ctxw = tab->createDbContext();
     ctxw->syncIndex = FLAGS_sync_index;
 
@@ -707,7 +709,7 @@ class Benchmark {
     int64_t shuffleid = 0;
      
     while(getline(ifs, str)) {
-	    terark::fstring fstr(str);
+	    fstring fstr(str);
 	    if (fstr.startsWith("product/productId:")) {
 		    recRow.productId = str.substr(19);
 		    bytes += recRow.productId.size();
@@ -731,12 +733,12 @@ class Benchmark {
 		    num++;
 	    }
 	    if (fstr.startsWith("review/score:")) {
-		    recRow.score = terark::lcast(fstr.substr(14));
+		    recRow.score = lcast(fstr.substr(14));
 		    bytes += sizeof(uint32_t);
 		    num++;
 	    }
 	    if (fstr.startsWith("review/time:")) {
-		    recRow.time = terark::lcast(fstr.substr(13));
+		    recRow.time = lcast(fstr.substr(13));
 		    bytes += sizeof(uint32_t);
 		    num++;
 	    }
@@ -760,7 +762,7 @@ class Benchmark {
 
 		    rowBuilder.rewind();
 		    rowBuilder << recRow;
-		    terark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+		    fstring binRow(rowBuilder.begin(), rowBuilder.tell());
 
 		    if (ctxw->insertRow(binRow) < 0) {
 			    printf("Insert failed: %s\n", ctxw->errMsg.c_str());
@@ -811,30 +813,35 @@ class Benchmark {
   }
 
   void ReadRandom(ThreadState* thread) {
-
-	  terark::valvec<terark::byte> keyHit, val;
-	  terark::valvec<terark::llong> idvec;
-	  terark::valvec<size_t> cols;
-	  terark::db::DbContextPtr ctxr;
+	  valvec<byte> keyHit, val;
+	  valvec<valvec<byte> > cgDataVec;
+	  valvec<llong> idvec;
+	  valvec<size_t> cols;
+	  valvec<size_t> colgroups;
+	  DbContextPtr ctxr;
           ctxr = tab->createDbContext();
           ctxr->syncIndex = FLAGS_sync_index;
 	  
 	  for (size_t i = 1; i < 10; i++) {
 		cols.push_back(i);
 	  }
+	  for (size_t i = tab->getIndexNum(); i < tab->getColgroupNum(); i++) {
+		colgroups.push_back(i);
+	  }
 
 	  int found = 0;
 	  size_t indexId = 0;
-	  terark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
-	  const terark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
+	  IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
+	  const Schema& indexSchema = tab->getIndexSchema(indexId);
 	  for (size_t i = 0; i < reads_; ++i) {
 		  const int k = thread->rand.Next() % FLAGS_num;
 		  char keybuf[24];
 		  int  keylen = snprintf(keybuf, sizeof(keybuf), "%016d", k);
-		  terark::fstring key(keybuf, keylen);
+		  fstring key(keybuf, keylen);
 		  tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
 		  for (auto recId : idvec) {
-			  tab->selectColumns(recId, cols, &val, ctxr.get());
+			  //tab->selectColumns(recId, cols, &val, ctxr.get());
+			  tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
 		  }
 		  if(idvec.size() > 0)
 			  found++;
@@ -862,10 +869,10 @@ class Benchmark {
   }
 
   void ReadHot(ThreadState* thread) {
-    terark::valvec<terark::byte> val;
-    terark::llong recId;
+    valvec<byte> val;
+    llong recId;
 
-    terark::db::DbContextPtr ctxr;
+    DbContextPtr ctxr;
     ctxr = tab->createDbContext();
     ctxr->syncIndex = FLAGS_sync_index;
     const int range = (FLAGS_num + 99) / 100;
@@ -941,7 +948,7 @@ class Benchmark {
 		printf("write thread %d\n",thread->tid);
 		int64_t num = 0; 
 		while(true) {
-			terark::db::DbContextPtr ctxw;
+			DbContextPtr ctxw;
 			ctxw = tab->createDbContext();
 			ctxw->syncIndex = FLAGS_sync_index;
 
@@ -952,7 +959,7 @@ class Benchmark {
 			TestRow recRow;
 
 			while(getline(ifs, str)) {
-				terark::fstring fstr(str);
+				fstring fstr(str);
 				if (fstr.startsWith("product/productId:")) {
 					recRow.productId = str.substr(19);
 				}
@@ -968,10 +975,10 @@ class Benchmark {
 					recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
 				}
 				if (fstr.startsWith("review/score:")) {
-					recRow.score = terark::lcast(fstr.substr(14));
+					recRow.score = lcast(fstr.substr(14));
 				}
 				if (fstr.startsWith("review/time:")) {
-					recRow.time = terark::lcast(fstr.substr(13));
+					recRow.time = lcast(fstr.substr(13));
 				}
 				if (fstr.startsWith("review/summary:")) {
 					recRow.summary = str.substr(16);
@@ -988,7 +995,7 @@ class Benchmark {
 
 					rowBuilder.rewind();
 					rowBuilder << recRow;
-					terark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+					fstring binRow(rowBuilder.begin(), rowBuilder.tell());
 
 					if (ctxw->insertRow(binRow) < 0) {
 						printf("Insert failed: %s\n", ctxw->errMsg.c_str());
@@ -1006,16 +1013,16 @@ class Benchmark {
 */
         } else {  // del
 		printf("del thread %d\n",thread->tid);
-		terark::valvec<terark::byte> keyHit, val;
-		terark::valvec<terark::llong> idvec;
-		terark::db::DbContextPtr ctxr;
+		valvec<byte> keyHit, val;
+		valvec<llong> idvec;
+		DbContextPtr ctxr;
 		ctxr = tab->createDbContext();
 		ctxr->syncIndex = FLAGS_sync_index;
 		int64_t num = 0;
 		while(true) {
 			for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
-				terark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
-				const terark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
+				IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
+				const Schema& indexSchema = tab->getIndexSchema(indexId);
 				std::string keyData;
 				for (size_t i = 0; i < reads_; ++i) {
 					const int k = thread->rand.Next() % FLAGS_num;
@@ -1030,13 +1037,13 @@ class Benchmark {
 							break;
 					}
 					idvec.resize(0);
-					terark::llong recId;
+					llong recId;
 					int ret = indexIter->seekLowerBound(keyData, &recId, &keyHit);
 					if (ret == 0) { // found exact key
 						idvec.push_back(recId);
 						int hasNext; // int as bool
 						while ((hasNext = indexIter->increment(&recId, &keyHit))
-								&& terark::fstring(keyHit) == keyData) {
+								&& fstring(keyHit) == keyData) {
 							assert(recId < tab->numDataRows());
 							idvec.push_back(recId);
 						}
@@ -1065,7 +1072,7 @@ class Benchmark {
     } else {
 	int64_t num = 0; 
 	while(true) {
-	    terark::db::DbContextPtr ctxw;
+	    DbContextPtr ctxw;
 	    ctxw = tab->createDbContext();
 	    ctxw->syncIndex = FLAGS_sync_index;
 
@@ -1076,7 +1083,7 @@ class Benchmark {
 	    TestRow recRow;
 
 	    while(getline(ifs, str)) {
-		    terark::fstring fstr(str);
+		    fstring fstr(str);
 		    if (fstr.startsWith("product/productId:")) {
 			    recRow.productId = str.substr(19);
 		    }
@@ -1092,10 +1099,10 @@ class Benchmark {
 			    recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
 		    }
 		    if (fstr.startsWith("review/score:")) {
-			    recRow.score = terark::lcast(fstr.substr(14));
+			    recRow.score = lcast(fstr.substr(14));
 		    }
 		    if (fstr.startsWith("review/time:")) {
-			    recRow.time = terark::lcast(fstr.substr(13));
+			    recRow.time = lcast(fstr.substr(13));
 		    }
 		    if (fstr.startsWith("review/summary:")) {
 			    recRow.summary = str.substr(16);
@@ -1112,7 +1119,7 @@ class Benchmark {
 
 			    rowBuilder.rewind();
 			    rowBuilder << recRow;
-			    terark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+			    fstring binRow(rowBuilder.begin(), rowBuilder.tell());
 
 			    if (ctxw->insertRow(binRow) < 0) {
 				    printf("Insert failed: %s\n", ctxw->errMsg.c_str());
