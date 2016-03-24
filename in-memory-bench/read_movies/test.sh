@@ -1,5 +1,5 @@
 ##moives
-./test_movies_terark_index.sh > /home/panfengfeng/result-2/movies/terark_newselect_newjson
+./test_movies_terark_index.sh > /home/panfengfeng/result-2/movies/terark_newselect_newjson_2
 
 #./test_movies_rocksdb.sh > /home/panfengfeng/result-2/movies/rocksdb
 #./test_movies_rocksdb_c_n.sh > /home/panfengfeng/result-2/movies/rocksdb_c_n
