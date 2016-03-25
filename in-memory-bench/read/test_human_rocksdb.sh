@@ -1,16 +1,13 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log_2/on-disk/humangenome/fillrandom_readrandom_mulit_rocksdb_1024_1024 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/human/readrandom_multi_rocksdb_256_3 2 > nohup.out &
 
 file=/data/publicdata/humangenome/xenoMrna.fa
 record_num=17448961
-read_num=10000000
-dirname=/experiment
-#writebuffer=268435456
-#cachesize=268435456
-writebuffer=1073741824
-cachesize=1073741824
+read_num=17448961
+dirname=/mnt/datamemory
+writebuffer=268435456
+cachesize=5816320
 
 rm -rf $dirname/*
-
 echo "####Now, running rocksdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m

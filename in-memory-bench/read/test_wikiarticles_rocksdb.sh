@@ -1,16 +1,13 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log_2/on-disk/wikiarticles/fillrandom_readandom_mulit_rocksdb_1024_1024 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/wikiarticles/readrandom_multi_rocksdb_256_3 2 > nohup.out &
 
 file=/data/publicdata/wikiarticles/enwiki-latest.text
 record_num=3977902
-read_num=2000000
-dirname=/experiment
-#writebuffer=268435456
-#cachesize=268435456
-writebuffer=1073741824
-cachesize=1073741824
+read_num=3977902
+dirname=/mnt/datamemory
+writebuffer=268435456
+cachesize=1325967
 
 rm -rf $dirname/*
-
 echo "####Now, running rocksdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m

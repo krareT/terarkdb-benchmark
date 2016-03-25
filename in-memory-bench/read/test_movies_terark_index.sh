@@ -1,17 +1,13 @@
-#nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log_2/on-disk/movies/fillrandom_readrandom_mulit_terark_index_256 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readrandom_multi_terark_index_256 2 > nohup.out &
 
 file=/data/publicdata/movies/movies.txt
 record_num=7911684
-read_num=4000000
+read_num=7911684
 dirname=/mnt/datamemory
 
 rm -rf $dirname/*
-
 export TMPDIR=$dirname
-echo $TMPDIR
-
 cp ../../terarkschema/dbmeta_movies_index.json $dirname/dbmeta.json
-
 echo "####Now, running terarkdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
@@ -21,11 +17,10 @@ export TerarkDb_WrSegCacheSizeMB=256
 free -m
 date
 du -s -b $dirname
-#cachesize=`du -s -b $dirname | awk '{print $1}'`
 echo "####terarkdb benchmark finish"
-free -m
 
 echo "####Now, running terarkdb benchmark"
+export TMPDIR=$dirname
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
@@ -37,6 +32,7 @@ echo "####terarkdb benchmark finish"
 du -s -b $dirname
 
 echo "####Now, running terarkdb benchmark"
+export TMPDIR=$dirname
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
@@ -46,8 +42,9 @@ free -m
 date
 echo "####terarkdb benchmark finish"
 du -s -b $dirname
-#
+
 echo "####Now, running terarkdb benchmark"
+export TMPDIR=$dirname
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
@@ -57,7 +54,6 @@ free -m
 date
 echo "####terarkdb benchmark finish"
 du -s -b $dirname
-
 
 dstatpid=`ps aux | grep dstat | awk '{if($0 !~ "grep"){print $2}}'`
 for i in $dstatpid

@@ -1,8 +1,8 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log_2/on-disk/wikiarticles/fillrandom_readandom_mulit_wiredtiger_no_lsm_1024_over 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/wikiarticles/readrandom_multi_wiredtiger_no_lsm_3_over 2 > nohup.out &
 
 file=/data/publicdata/wikiarticles/enwiki-latest.text
 record_num=3977902
-read_num=2000000
+read_num=3977902
 #cachesize=268435456
 #dirname=/mnt/datamemory
 cachesize=1073741824

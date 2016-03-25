@@ -1,14 +1,12 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log_2/on-disk/movies/fillrandom_readrandom_mulit_wiredtiger_no_lsm_1024_over 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readrandom_multi_wiredtiger_no_lsm_3_over 2 > nohup.out &
 
 file=/data/publicdata/movies/movies.txt
 record_num=7911684
-read_num=4000000
-#cachesize=268435456
-cachesize=1073741824
-dirname=/experiment
+read_num=7911684
+cachesize=3110962490
+dirname=/mnt/datamemory
 
 rm -rf $dirname/*
-
 echo "####Now, running wiredtiger benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
@@ -17,9 +15,7 @@ date
 free -m
 date
 du -s -b $dirname
-#cachesize=`du -s -b -b $dirname | awk '{print $1}'`
 echo "####wiredtiger benchmark finish"
-free -m
 
 echo "####Now, running wiredtiger benchmark"
 echo 3 > /proc/sys/vm/drop_caches
@@ -40,7 +36,6 @@ free -m
 date
 echo "####wiredtiger benchmark finish"
 du -s -b $dirname
-#cachesize=`du -s -b -b $dirname | awk '{print $1}'`
 
 echo "####Now, running wiredtiger benchmark"
 echo 3 > /proc/sys/vm/drop_caches
