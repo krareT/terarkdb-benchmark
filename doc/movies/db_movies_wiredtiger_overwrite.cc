@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sstream>
+#include <vector>
 
 #include <iostream>
 #include <fstream>  
@@ -358,8 +359,8 @@ struct ThreadState {
 };
 
 struct TestRow {
-	std::string productId; 
-	std::string userId;
+    std::string product_userId;
+    std::string productuserId;
 	std::string profileName;
 	uint32_t helpfulness1;
 	uint32_t helpfulness2;
@@ -383,6 +384,8 @@ class Benchmark {
   int sync_;
   int reads_;
   int heap_counter_;
+
+  std::vector<std::string> allkeys_;
 
   void PrintHeader() {
     const int kKeySize = 16;
@@ -488,6 +491,7 @@ class Benchmark {
   }
 
   ~Benchmark() {
+    allkeys_.clear();
   }
 
   void Run() {
@@ -567,6 +571,29 @@ class Benchmark {
         method = &Benchmark::ReadReverse;
       } else if (name == Slice("readrandom")) {
         method = &Benchmark::ReadRandom;
+
+        std::ifstream ifs(FLAGS_resource_data);
+        std::string str;
+        std::string key1;
+        std::string key2;
+
+        while(getline(ifs, str)) {
+            if (str.find("product/productId:") == 0) {
+                key1 = str.substr(19);
+                continue;
+            }
+            if (str.find("review/userId:") == 0) {
+                key2 = str.substr(15);
+                continue;
+            }
+            if (str == "") {
+                allkeys_.push_back(key1 + " " + key2);
+                continue;
+            }
+        }
+
+        assert(allkeys_.size() == FLAGS_num);
+
       } else if (name == Slice("readmissing")) {
         method = &Benchmark::ReadMissing;
       } else if (name == Slice("seekrandom")) {
@@ -583,8 +610,54 @@ class Benchmark {
       } else if (name == Slice("readwhilewriting")) {
         num_threads++;  // Add extra thread for writing
         method = &Benchmark::ReadWhileWriting;
+
+        std::ifstream ifs(FLAGS_resource_data);
+        std::string str;
+        std::string key1;
+        std::string key2;
+
+        while(getline(ifs, str)) {
+            if (str.find("product/productId:") == 0) {
+                key1 = str.substr(19);
+                continue;
+            }
+            if (str.find("review/userId:") == 0) {
+                key2 = str.substr(15);
+                continue;
+            }
+            if (str == "") {
+                allkeys_.push_back(key1 + " " + key2);
+                continue;
+            }
+        }
+
+        assert(allkeys_.size() == FLAGS_num);
+
       } else if (name == Slice("readwritedel")) {
         method = &Benchmark::ReadWriteDel;
+
+        std::ifstream ifs(FLAGS_resource_data);
+        std::string str;
+        std::string key1;
+        std::string key2;
+
+        while(getline(ifs, str)) {
+            if (str.find("product/productId:") == 0) {
+                key1 = str.substr(19);
+                continue;
+            }
+            if (str.find("review/userId:") == 0) {
+                key2 = str.substr(15);
+                continue;
+            }
+            if (str == "") {
+                allkeys_.push_back(key1 + " " + key2);
+                continue;
+            }
+        }
+
+        assert(allkeys_.size() == FLAGS_num);
+
       } else if (name == Slice("compact")) {
         method = &Benchmark::Compact;
       } else if (name == Slice("crc32c")) {
@@ -858,8 +931,8 @@ class Benchmark {
     if (!FLAGS_use_existing_db) {
       // Create tuning options and create the data file
       config.str("");
-      config << "key_format=S,value_format=SSSLLLLSS";
-      config << ",columns=[key, productId, userId, profileName, helpfulness1, helpfulness2, score, time, summary, text]";
+      config << "key_format=S,value_format=SLLLLSS";
+      config << ",columns=[product_userId, profileName, helpfulness1, helpfulness2, score, time, summary, text]";
       // config << ",prefix_compression=true";
       config << ",prefix_compression=false";
       config << ",checksum=off";
@@ -918,9 +991,6 @@ class Benchmark {
    
     if (!seq)
           thread->rand.Shuffle(shuff, num_);
-    RandomGenerator gen;
-    int64_t bytes = 0;
-    int stagger = 0;
     std::stringstream txn_config;
     txn_config.str("");
     txn_config << "isolation=snapshot";
@@ -935,8 +1005,6 @@ class Benchmark {
     cur_config << "overwrite";
     if (seq && FLAGS_threads == 1)
   	cur_config << ",bulk=true";
-    if (FLAGS_stagger)
-      stagger = (FLAGS_num / FLAGS_threads) * thread->tid;
 
     int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
     if (ret != 0) {
@@ -945,75 +1013,61 @@ class Benchmark {
     }
 
     std::ifstream ifs(FLAGS_resource_data);  
-    int64_t num = 0; 
     std::string str;  
+    std::string key1;  
+    std::string key2;  
     TestRow recRow;
-    int64_t shuffleid = 0;
  
     while(getline(ifs, str)) {
 	    if (str.find("product/productId:") == 0) {
-		    recRow.productId = str.substr(19);
-		    bytes += recRow.productId.size();
-		    num++;
+		    key1 = str.substr(19);
+            continue;
 	    }
 	    if (str.find("review/userId:") == 0) {
-		    recRow.userId = str.substr(15);
-		    bytes += recRow.userId.size();	
-		    num++;
+		    key2 = str.substr(15);
+            continue;
 	    }
 	    if (str.find("review/profileName:") == 0) {
 		    recRow.profileName = str.substr(20);
-		    bytes += recRow.profileName.size();
-		    num++;
+            continue;
 	    }
 	    if (str.find("review/helpfulness:") == 0) {
 		    char* pos2 = NULL;
 		    recRow.helpfulness1 = strtol(str.data()+20, &pos2, 10);
 		    recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
-		    bytes += sizeof(uint32_t)*2;
-		    num++;
+            continue;
 	    }
 	    if (str.find("review/score:") == 0) {
 		    recRow.score = atol(str.substr(14).c_str());
-		    bytes += sizeof(uint32_t);
-		    num++;
+            continue;
 	    }
 	    if (str.find("review/time:") == 0) {
 		    recRow.time = atol(str.substr(13).c_str());
-		    // recRow.time = str.substr(13);
-		    bytes += sizeof(uint32_t);
-		    num++;
+            continue;
 	    }
 	    if (str.find("review/summary:") == 0) {
 		    recRow.summary = str.substr(16);
-		    bytes += recRow.summary.size();	
-		    num++;
+            continue;
 	    }
 	    if (str.find("review/text:") == 0) {
 		    recRow.text = str.substr(13);
-		    bytes += recRow.text.size();	
-		    num++;
+            continue;
 	    }
 
 	    if (str == "") {
-		    const int k = shuff[shuffleid];
-                    char key[100];
-                    snprintf(key, sizeof(key), "%016d", k);
-		    cursor->set_key(cursor, key);
-		    cursor->set_value(cursor, recRow.productId.c_str(), recRow.userId.c_str(), recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
+            recRow.product_userId = key1 + " " + key2;
+		    cursor->set_key(cursor, recRow.product_userId.c_str());
+		    cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
 		    int ret = cursor->insert(cursor);
 		    if (ret != 0) {
 			    fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
 			    exit(1);
 		    }
-		    shuffleid ++;
 		    thread->stats.FinishedSingleOp();
-		    num = 0;
+            continue;
 	    }
     }
     cursor->close(cursor);
-
-    thread->stats.AddBytes(bytes);
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -1112,7 +1166,6 @@ repeat:
   }
 
   void ReadRandom(ThreadState* thread) {
-
     const char *ckey;
     WT_CURSOR *cursor;
     
@@ -1133,12 +1186,10 @@ repeat:
     int found = 0;
     for (int i = 0; i < reads_; i++) {
       const int k = thread->rand.Next() % FLAGS_num;
-      char key[100];
-      snprintf(key, sizeof(key), "%016d", k);
-      cursor->set_key(cursor, key);
+      cursor->set_key(cursor, allkeys_.at(k).c_str());
       if (cursor->search(cursor) == 0) {
-	found++;
-        ret = cursor->get_value(cursor, &wproductId, &wuserId, &wprofileName, &whelpfulness1, &whelpfulness2, &wscore, &wtime, &wsummary, &wtext);
+	    found++;
+        ret = cursor->get_value(cursor, &wprofileName, &whelpfulness1, &whelpfulness2, &wscore, &wtime, &wsummary, &wtext);
       }
       thread->stats.FinishedSingleOp();
     }
@@ -1275,173 +1326,170 @@ repeat:
   }
 
   void ReadWriteDel(ThreadState* thread) {
-        if (thread->tid % 3 == 0) { // read
-                ReadRandom(thread);
-        } else if (thread->tid % 3 == 1) { // write
-                int64_t num = 0;
-                while(true) {
-                        WT_CURSOR *cursor;
-                        std::stringstream cur_config;
-                        cur_config.str("");
-                        cur_config << "overwrite";
+      if (thread->tid % 3 == 0) { // read
+          ReadRandom(thread);
+      } else if (thread->tid % 3 == 1) { // write
+          int64_t num = 0;
+          while(true) {
+              WT_CURSOR *cursor;
+              std::stringstream cur_config;
+              cur_config.str("");
+              cur_config << "overwrite";
 
-                        int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
-                        if (ret != 0) {
-                                fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
-                                exit(1);
-                        }
+              int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
+              if (ret != 0) {
+                  fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+                  exit(1);
+              }
 
-                        std::ifstream ifs(FLAGS_resource_data);
-                        std::string str;
-                        TestRow recRow;
+              std::ifstream ifs(FLAGS_resource_data);
+              std::string str;
+              std::string key1;
+              std::string key2;
+              TestRow recRow;
 
-                        while(getline(ifs, str)) {
-                                if (str.find("product/productId:") == 0) {
-                                        recRow.productId = str.substr(19);
-                                }
-                                if (str.find("review/userId:") == 0) {
-                                        recRow.userId = str.substr(15);
-                                }
-                                if (str.find("review/profileName:") == 0) {
-                                        recRow.profileName = str.substr(20);
-                                }
-                                if (str.find("review/helpfulness:") == 0) {
-                                        char* pos2 = NULL;
-                                        recRow.helpfulness1 = strtol(str.data()+20, &pos2, 10);
-                                        recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
-                                }
-                                if (str.find("review/score:") == 0) {
-                                        recRow.score = atol(str.substr(14).c_str());
-                                }
-                                if (str.find("review/time:") == 0) {
-                                        recRow.time = atol(str.substr(13).c_str());
-                                }
-                                if (str.find("review/summary:") == 0) {
-                                        recRow.summary = str.substr(16);
-                                }
-                                if (str.find("review/text:") == 0) {
-                                        recRow.text = str.substr(13);
-                                }
-				if (str == "") {
-                                        const int k = thread->rand.Next() % FLAGS_num;
-                                        char key[100];
-                                        snprintf(key, sizeof(key), "%016d", k);
-					cursor->set_key(cursor, key);
-                                        cursor->set_value(cursor, recRow.productId.c_str(), recRow.userId.c_str(), recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
-                                        int ret = cursor->insert(cursor);
-                                        if (ret != 0) {
-                                                fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
-                                                exit(1);
-                                        }
-                                        num ++;
-                                }
-                                MutexLock l(&thread->shared->mu);
-                                if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
-                                        printf("extra write operations number %d\n", num);
-                                        cursor->close(cursor);
-                                        return;
-                                }
-                        }
-                        cursor->close(cursor);
-                }
-        } else {  // del
-                int64_t num = 0;
-                WT_CURSOR *cursor;
-                int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
-                if (ret != 0) {
-                        fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
-                        exit(1);
-                }
+              while(getline(ifs, str)) {
+                  if (str.find("product/productId:") == 0) {
+                      key1 = str.substr(19);
+                  }
+                  if (str.find("review/userId:") == 0) {
+                      key2 = str.substr(15);
+                  }
+                  if (str.find("review/profileName:") == 0) {
+                      recRow.profileName = str.substr(20);
+                  }
+                  if (str.find("review/helpfulness:") == 0) {
+                      char* pos2 = NULL;
+                      recRow.helpfulness1 = strtol(str.data()+20, &pos2, 10);
+                      recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+                  }
+                  if (str.find("review/score:") == 0) {
+                      recRow.score = atol(str.substr(14).c_str());
+                  }
+                  if (str.find("review/time:") == 0) {
+                      recRow.time = atol(str.substr(13).c_str());
+                  }
+                  if (str.find("review/summary:") == 0) {
+                      recRow.summary = str.substr(16);
+                  }
+                  if (str.find("review/text:") == 0) {
+                      recRow.text = str.substr(13);
+                  }
+                  if (str == "") {
+                      recRow.product_userId = key1 + " " + key2;
+                      cursor->set_key(cursor, recRow.product_userId.c_str());
+                      cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
+                      int ret = cursor->insert(cursor);
+                      if (ret != 0) {
+                          fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+                          exit(1);
+                      }
+                      num ++;
+                  }
+                  MutexLock l(&thread->shared->mu);
+                  if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
+                      printf("extra write operations number %d\n", num);
+                      cursor->close(cursor);
+                      return;
+                  }
+              }
+              cursor->close(cursor);
+          }
+      } else {  // del
+          int64_t num = 0;
+          WT_CURSOR *cursor;
+          int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
+          if (ret != 0) {
+              fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+              exit(1);
+          }
 
-                while(true) {
-                        const int k = thread->rand.Next() % FLAGS_num;
-                        char key[100];
-                        snprintf(key, sizeof(key), "%016d", k);
-                        cursor->set_key(cursor, key);
-                        ret = cursor->remove(cursor);
-                        num++;
-                        MutexLock l(&thread->shared->mu);
-                        if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
-                                printf("extra del operations number %d\n", num);
-                                break;
-                        }
-                }
-                cursor->close(cursor);
-        }
-   }
+          while(true) {
+              const int k = thread->rand.Next() % FLAGS_num;
+              cursor->set_key(cursor, allkeys_.at(k).c_str());
+              ret = cursor->remove(cursor);
+              num++;
+              MutexLock l(&thread->shared->mu);
+              if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
+                  printf("extra del operations number %d\n", num);
+                  break;
+              }
+          }
+          cursor->close(cursor);
+      }
+  }
 
 
   void ReadWhileWriting(ThreadState* thread) {
-    if (thread->tid > 0) {
-      ReadRandom(thread);
-    } else {
-	int64_t num = 0;
-	while(true) {
-	    WT_CURSOR *cursor;
-	    std::stringstream cur_config;
-	    cur_config.str("");
-	    cur_config << "overwrite";
+      if (thread->tid > 0) {
+          ReadRandom(thread);
+      } else {
+          int64_t num = 0;
+          while(true) {
+              WT_CURSOR *cursor;
+              std::stringstream cur_config;
+              cur_config.str("");
+              cur_config << "overwrite";
 
-	    int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
-	    if (ret != 0) {
-		    fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
-		    exit(1);
-	    }
+              int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
+              if (ret != 0) {
+                  fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+                  exit(1);
+              }
 
-	    std::ifstream ifs(FLAGS_resource_data);
-	    std::string str;
-	    printf("FLAGS_resource_data %s\n", FLAGS_resource_data);
-	    TestRow recRow;
+              std::ifstream ifs(FLAGS_resource_data);
+              std::string str;
+              std::string key1;
+              std::string key2;
+              TestRow recRow;
 
-	    while(getline(ifs, str)) {
-		    if (str.find("product/productId:") == 0) {
-			    recRow.productId = str.substr(19);
-		    }
-		    if (str.find("review/userId:") == 0) {
-			    recRow.userId = str.substr(15);
-		    }
-		    if (str.find("review/profileName:") == 0) {
-			    recRow.profileName = str.substr(20);
-		    }
-		    if (str.find("review/helpfulness:") == 0) {
-			    char* pos2 = NULL;
-			    recRow.helpfulness1 = strtol(str.data()+20, &pos2, 10);
-			    recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
-		    }
-		    if (str.find("review/score:") == 0) {
-			    recRow.score = atol(str.substr(14).c_str());
-		    }
-		    if (str.find("review/time:") == 0) {
-			    recRow.time = atol(str.substr(13).c_str());
-		    }
-		    if (str.find("review/summary:") == 0) {
-			    recRow.summary = str.substr(16);
-		    }
-		    if (str.find("review/text:") == 0) {
-			    recRow.text = str.substr(13);
-		    }
-		    if (str == "") {
-			    const int k = thread->rand.Next() % FLAGS_num;
-			    char key[100];
-			    snprintf(key, sizeof(key), "%016d", k);
-			    cursor->set_key(cursor, key);
-			    cursor->set_value(cursor, recRow.productId.c_str(), recRow.userId.c_str(), recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
-			    int ret = cursor->insert(cursor);
-			    if (ret != 0) {
-				    fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
-				    exit(1);
-			    }
-			    num ++;
-		    }
-		    MutexLock l(&thread->shared->mu);
-                    if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
-                            printf("extra write operations number %d\n", num);
-                            return;
-                    }
-	    }
-	    cursor->close(cursor);
-	}
-    }
+              while(getline(ifs, str)) {
+                  if (str.find("product/productId:") == 0) {
+                      key1 = str.substr(19);
+                  }
+                  if (str.find("review/userId:") == 0) {
+                      key2 = str.substr(15);
+                  }
+                  if (str.find("review/profileName:") == 0) {
+                      recRow.profileName = str.substr(20);
+                  }
+                  if (str.find("review/helpfulness:") == 0) {
+                      char* pos2 = NULL;
+                      recRow.helpfulness1 = strtol(str.data()+20, &pos2, 10);
+                      recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+                  }
+                  if (str.find("review/score:") == 0) {
+                      recRow.score = atol(str.substr(14).c_str());
+                  }
+                  if (str.find("review/time:") == 0) {
+                      recRow.time = atol(str.substr(13).c_str());
+                  }
+                  if (str.find("review/summary:") == 0) {
+                      recRow.summary = str.substr(16);
+                  }
+                  if (str.find("review/text:") == 0) {
+                      recRow.text = str.substr(13);
+                  }
+                  if (str == "") {
+                      recRow.product_userId = key1 + " " + key2;
+                      cursor->set_key(cursor, recRow.product_userId.c_str());
+                      cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
+                      int ret = cursor->insert(cursor);
+                      if (ret != 0) {
+                          fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+                          exit(1);
+                      }
+                      num ++;
+                  }
+                  MutexLock l(&thread->shared->mu);
+                  if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
+                      printf("extra write operations number %d\n", num);
+                      return;
+                  }
+              }
+              cursor->close(cursor);
+          }
+      }
   }
 
   void Compact(ThreadState* thread) {
@@ -1601,7 +1649,6 @@ int main(int argc, char** argv) {
       default_db_path += "/dbbench";
       FLAGS_db = default_db_path.c_str();
   }
-
 #ifdef RAND_SHUFFLE
   shuff = (int *)malloc(FLAGS_num * sizeof(int));
   for (int i=0; i<FLAGS_num; i++)

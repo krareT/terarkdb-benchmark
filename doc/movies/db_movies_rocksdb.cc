@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sstream>
+#include <vector>
 
 #include <iostream>
 #include <fstream>
@@ -340,6 +341,8 @@ class Benchmark {
   std::shared_ptr<const rocksdb::FilterPolicy> filter_policy_;
   rocksdb::DB* db_;
 
+  std::vector<std::string> allkeys_;
+
   int num_;
   int value_size_;
   int entries_per_batch_;
@@ -448,6 +451,7 @@ class Benchmark {
   }
 
   ~Benchmark() {
+    allkeys_.clear();
     delete db_;
   }
 
@@ -523,6 +527,30 @@ class Benchmark {
         method = &Benchmark::ReadReverse;
       } else if (name == rocksdb::Slice("readrandom")) {
         method = &Benchmark::ReadRandom;
+        
+        std::ifstream ifs(FLAGS_resource_data);
+        std::string str;
+        std::string key1;
+        std::string key2;
+        int64_t keynum = 0;
+
+        while(getline(ifs, str)) {
+            if (str.find("product/productId:") == 0) {
+                key1 = str.substr(19);
+                continue;
+            }
+            if (str.find("review/userId:") == 0) {
+                key2 = str.substr(15);
+                continue;
+            }
+            if (str == "") {
+                allkeys_.push_back(key1 + " " + key2);
+                continue;
+            }
+        }
+
+        assert(allkeys_.size() == FLAGS_num);
+
       } else if (name == rocksdb::Slice("readmissing")) {
         method = &Benchmark::ReadMissing;
       } else if (name == rocksdb::Slice("seekrandom")) {
@@ -539,8 +567,56 @@ class Benchmark {
       } else if (name == rocksdb::Slice("readwhilewriting")) {
         num_threads++;  // Add extra thread for writing
         method = &Benchmark::ReadWhileWriting;
+
+        std::ifstream ifs(FLAGS_resource_data);
+        std::string str;
+        std::string key1;
+        std::string key2;
+        int64_t keynum = 0;
+
+        while(getline(ifs, str)) {
+            if (str.find("product/productId:") == 0) {
+                key1 = str.substr(19);
+                continue;
+            }
+            if (str.find("review/userId:") == 0) {
+                key2 = str.substr(15);
+                continue;
+            }
+            if (str == "") {
+                allkeys_.push_back(key1 + " " + key2);
+                continue;
+            }
+        }
+
+        assert(allkeys_.size() == FLAGS_num);
+
       } else if (name == rocksdb::Slice("readwritedel")) {
         method = &Benchmark::ReadWriteDel;
+
+        std::ifstream ifs(FLAGS_resource_data);
+        std::string str;
+        std::string key1;
+        std::string key2;
+        int64_t keynum = 0;
+
+        while(getline(ifs, str)) {
+            if (str.find("product/productId:") == 0) {
+                key1 = str.substr(19);
+                continue;
+            }
+            if (str.find("review/userId:") == 0) {
+                key2 = str.substr(15);
+                continue;
+            }
+            if (str == "") {
+                allkeys_.push_back(key1 + " " + key2);
+                continue;
+            }
+        }
+
+        assert(allkeys_.size() == FLAGS_num);
+
       } else if (name == rocksdb::Slice("compact")) {
         method = &Benchmark::Compact;
       } else if (name == rocksdb::Slice("crc32c")) {
@@ -799,76 +875,67 @@ class Benchmark {
 
     if (!seq)
 	  thread->rand.Shuffle(shuff, num_);
-    RandomGenerator gen;
-    int64_t bytes = 0;
 
     std::ifstream ifs(FLAGS_resource_data);  
-    int64_t num = 0; 
-    std::string str;  
+    std::string str;
+
+    std::string key1; 
+    std::string key2; 
+    std::string key; 
     std::string value; 
-    value.clear(); 
-    int64_t shuffleid = 0;
     rocksdb::Status s;	
 
     while(getline(ifs, str)) {
 	    if (str.find("product/productId:") == 0) {
-		    value += str.substr(19);
-		    value += " ";
-		    num++;
+		    key1 = str.substr(19);
+            continue;
 	    }
 	    if (str.find("review/userId:") == 0) {
-		    value += str.substr(15);
-		    value += " ";
-		    num++;
+		    key2 = str.substr(15);
+            continue;
 	    }
 	    if (str.find("review/profileName:") == 0) {
 		    value += str.substr(20);
 		    value += " ";
-		    num++;
+            continue;
 	    }
 	    if (str.find("review/helpfulness:") == 0) {
 		    value += str.substr(20);
 		    value += " ";
-		    num++;
+            continue;
 	    }
 	    if (str.find("review/score:") == 0) {
 		    value += str.substr(14);
 		    value += " ";
-		    num++;
+            continue;
 	    }
 	    if (str.find("review/time:") == 0) {
 		    value += str.substr(13);
 		    value += " ";
-		    num++;
+            continue;
 	    }
 	    if (str.find("review/summary:") == 0) {
 		    value += str.substr(16);
 		    value += " ";
-		    num++;
+            continue;
 	    }
 	    if (str.find("review/text:") == 0) {
 		    value += str.substr(13);
-		    num++;
+            continue;
 	    }
 
 	    if (str == "") {
-		    const int k = shuff[shuffleid];
-		    char key[100];
-		    snprintf(key, sizeof(key), "%016d", k);
+            key = key1 + " " + key2;
 		    s = db_->Put(write_options_, key, value);
 		    if (!s.ok()) {
 			    fprintf(stderr, "put error: %s\n", s.ToString().c_str());
 			    exit(1);
 		    }
-
-                    bytes += value.size() + strlen(key);
 		    value.clear();
-		    shuffleid ++; 
 		    thread->stats.FinishedSingleOp();
-		    num = 0;
+            continue;
 	    }
     }
-    thread->stats.AddBytes(bytes);
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -902,10 +969,8 @@ class Benchmark {
     std::string value;
     int found = 0;
     for (int i = 0; i < reads_; i++) {
-      char key[100];
       const int k = thread->rand.Next() % FLAGS_num;
-      snprintf(key, sizeof(key), "%016d", k);
-      if (db_->Get(options, key, &value).ok()) {
+      if (db_->Get(options, allkeys_.at(k), &value).ok()) {
         found++;
       }
       thread->stats.FinishedSingleOp();
@@ -995,18 +1060,19 @@ class Benchmark {
 		while(true) {
 			std::ifstream ifs(FLAGS_resource_data);  
 			std::string str;  
+			std::string key1;  
+			std::string key2;  
+			std::string key;  
 			std::string value; 
 			value.clear(); 
 			rocksdb::Status s;	
 
 			while(getline(ifs, str)) {
 				if (str.find("product/productId:") == 0) {
-					value += str.substr(19);
-					value += " ";
+                    key1 = str.substr(19);
 				}
 				if (str.find("review/userId:") == 0) {
-					value += str.substr(15);
-					value += " ";
+                    key2 = str.substr(15);
 				}
 				if (str.find("review/profileName:") == 0) {
 					value += str.substr(20);
@@ -1033,15 +1099,13 @@ class Benchmark {
 				}
 
 				if (str == "") {
-					const int k = thread->rand.Next() % FLAGS_num;
-					char key[100];
-					snprintf(key, sizeof(key), "%016d", k);
+                    key = key1 + " " + key2;
 					s = db_->Put(write_options_, key, value);
 					if (!s.ok()) {
 						fprintf(stderr, "put error: %s\n", s.ToString().c_str());
 						exit(1);
 					}
-					num++;
+                    num++;
 					value.clear();
 				}
 				MutexLock l(&thread->shared->mu);
@@ -1053,12 +1117,10 @@ class Benchmark {
 		}
 	} else {  // del
 		int64_t num = 0;
-    		rocksdb::Status s;
+    	rocksdb::Status s;
 		while(true) {
 			const int k = thread->rand.Next() % FLAGS_num;
-			char key[100];
-			snprintf(key, sizeof(key), "%016d", k);
-			s = db_->Delete(write_options_, key);
+			s = db_->Delete(write_options_, allkeys_.at(k));
 			MutexLock l(&thread->shared->mu);
 			num++;
 			if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
@@ -1069,72 +1131,70 @@ class Benchmark {
 	} 
   }
 
-
   void ReadWhileWriting(ThreadState* thread) {
-    if (thread->tid > 0) {
-      ReadRandom(thread);
-    } else {
-	int64_t num = 0; 
-	while(true) {
-	    std::ifstream ifs(FLAGS_resource_data);  
-	    std::string str;  
-	    std::string value; 
-	    value.clear(); 
-	    rocksdb::Status s;	
+      if (thread->tid > 0) {
+          ReadRandom(thread);
+      } else {
+          int64_t num = 0; 
+          while(true) {
+              std::ifstream ifs(FLAGS_resource_data);  
+              std::string str;  
+              std::string key1;  
+              std::string key2;  
+              std::string key;  
+              std::string value; 
+              value.clear(); 
+              rocksdb::Status s;	
 
-	    while(getline(ifs, str)) {
-		    if (str.find("product/productId:") == 0) {
-			    value += str.substr(19);
-			    value += " ";
-		    }
-		    if (str.find("review/userId:") == 0) {
-			    value += str.substr(15);
-			    value += " ";
-		    }
-		    if (str.find("review/profileName:") == 0) {
-			    value += str.substr(20);
-			    value += " ";
-		    }
-		    if (str.find("review/helpfulness:") == 0) {
-			    value += str.substr(20);
-			    value += " ";
-		    }
-		    if (str.find("review/score:") == 0) {
-			    value += str.substr(14);
-			    value += " ";
-		    }
-		    if (str.find("review/time:") == 0) {
-			    value += str.substr(13);
-			    value += " ";
-		    }
-		    if (str.find("review/summary:") == 0) {
-			    value += str.substr(16);
-			    value += " ";
-		    }
-		    if (str.find("review/text:") == 0) {
-			    value += str.substr(13);
-		    }
+              while(getline(ifs, str)) {
+                  if (str.find("product/productId:") == 0) {
+                      key1 = str.substr(19);
+                  }
+                  if (str.find("review/userId:") == 0) {
+                      key2 = str.substr(15);
+                  }
+                  if (str.find("review/profileName:") == 0) {
+                      value += str.substr(20);
+                      value += " ";
+                  }
+                  if (str.find("review/helpfulness:") == 0) {
+                      value += str.substr(20);
+                      value += " ";
+                  }
+                  if (str.find("review/score:") == 0) {
+                      value += str.substr(14);
+                      value += " ";
+                  }
+                  if (str.find("review/time:") == 0) {
+                      value += str.substr(13);
+                      value += " ";
+                  }
+                  if (str.find("review/summary:") == 0) {
+                      value += str.substr(16);
+                      value += " ";
+                  }
+                  if (str.find("review/text:") == 0) {
+                      value += str.substr(13);
+                  }
 
-		    if (str == "") {
-			    const int k = thread->rand.Next() % FLAGS_num;
-			    char key[100];
-			    snprintf(key, sizeof(key), "%016d", k);
-			    s = db_->Put(write_options_, key, value);
-			    if (!s.ok()) {
-				    fprintf(stderr, "put error: %s\n", s.ToString().c_str());
-				    exit(1);
-			    }
-			    num++;
-			    value.clear();
-		    }
-		    MutexLock l(&thread->shared->mu);
-		    if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
-			    printf("extra write operations number %d\n", num);
-			    return;
-		    }
-	    }
-	}
-    }
+                  if (str == "") {
+                      key = key1 + " " + key2;
+                      s = db_->Put(write_options_, key, value);
+                      if (!s.ok()) {
+                          fprintf(stderr, "put error: %s\n", s.ToString().c_str());
+                          exit(1);
+                      }
+                      num++;
+                      value.clear();
+                  }
+                  MutexLock l(&thread->shared->mu);
+                  if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
+                      printf("extra write operations number %d\n", num);
+                      return;
+                  }
+              }
+          }
+      }
   }
 
   void Compact(ThreadState* thread) {

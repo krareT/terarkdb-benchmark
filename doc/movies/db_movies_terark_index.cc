@@ -302,9 +302,7 @@ struct ThreadState {
 };
 
 struct TestRow {
-	std::string key; 
-	std::string productId; 
-	std::string userId;
+	std::string product_userId; 
 	std::string profileName;
 	uint32_t helpfulness1;
 	uint32_t helpfulness2;
@@ -314,9 +312,7 @@ struct TestRow {
 	std::string text;
 	
 	DATA_IO_LOAD_SAVE(TestRow,
-			&Schema::StrZero(key)
-			&Schema::StrZero(productId)
-			&Schema::StrZero(userId)
+			&Schema::StrZero(product_userId)
 			&Schema::StrZero(profileName)
 			&helpfulness1
 			&helpfulness2
@@ -331,8 +327,9 @@ struct TestRow {
 
 class Benchmark {
  private:
-
   CompositeTablePtr tab;
+
+  std::vector<std::string> allkeys_;
 
   int num_;
   int value_size_;
@@ -501,6 +498,30 @@ class Benchmark {
         method = &Benchmark::ReadReverse;
       } else if (name == Slice("readrandom")) {
         method = &Benchmark::ReadRandom;
+
+        std::ifstream ifs(FLAGS_resource_data);
+        std::string str;
+        std::string key1;
+        std::string key2;
+        int64_t keynum = 0;
+
+        while(getline(ifs, str)) {
+            if (str.find("product/productId:") == 0) {
+                key1 = str.substr(19);
+                continue;
+            }
+            if (str.find("review/userId:") == 0) {
+                key2 = str.substr(15);
+                continue;
+            }
+            if (str == "") {
+                allkeys_.push_back(key1 + " " + key2);
+                continue;
+            }
+        }
+
+        assert(allkeys_.size() == FLAGS_num);
+
       } else if (name == Slice("readmissing")) {
         method = &Benchmark::ReadMissing;
       } else if (name == Slice("seekrandom")) {
@@ -517,8 +538,56 @@ class Benchmark {
       } else if (name == Slice("readwhilewriting")) {
         num_threads++;  // Add extra thread for writing
         method = &Benchmark::ReadWhileWriting;
+
+        std::ifstream ifs(FLAGS_resource_data);
+        std::string str;
+        std::string key1;
+        std::string key2;
+        int64_t keynum = 0;
+
+        while(getline(ifs, str)) {
+            if (str.find("product/productId:") == 0) {
+                key1 = str.substr(19);
+                continue;
+            }
+            if (str.find("review/userId:") == 0) {
+                key2 = str.substr(15);
+                continue;
+            }
+            if (str == "") {
+                allkeys_.push_back(key1 + " " + key2);
+                continue;
+            }
+        }
+
+        assert(allkeys_.size() == FLAGS_num);
+
       } else if (name == Slice("readwritedel")) {
         method = &Benchmark::ReadWriteDel;
+
+        std::ifstream ifs(FLAGS_resource_data);
+        std::string str;
+        std::string key1;
+        std::string key2;
+        int64_t keynum = 0;
+
+        while(getline(ifs, str)) {
+            if (str.find("product/productId:") == 0) {
+                key1 = str.substr(19);
+                continue;
+            }
+            if (str.find("review/userId:") == 0) {
+                key2 = str.substr(15);
+                continue;
+            }
+            if (str == "") {
+                allkeys_.push_back(key1 + " " + key2);
+                continue;
+            }
+        }
+
+        assert(allkeys_.size() == FLAGS_num);
+
       } else if (name == Slice("compact")) {
         method = &Benchmark::Compact;
       } else if (name == Slice("crc32c")) {
@@ -697,68 +766,55 @@ class Benchmark {
 
     if (!seq)
 	  thread->rand.Shuffle(shuff, num_);
-    int64_t bytes = 0;
 
     terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
     std::cout << "data_resource " << FLAGS_resource_data << std::endl;
     std::ifstream ifs(FLAGS_resource_data);  
-    std::string str;  
-    int64_t num = 0; 
+    std::string str; 
+    std::string key1; 
+    std::string key2; 
     
     TestRow recRow;
-    int64_t shuffleid = 0;
      
     while(getline(ifs, str)) {
 	    fstring fstr(str);
 	    if (fstr.startsWith("product/productId:")) {
-		    recRow.productId = str.substr(19);
-		    bytes += recRow.productId.size();
-		    num++;
+		    key1 = str.substr(19);
+            continue;
 	    }
 	    if (fstr.startsWith("review/userId:")) {
-		    recRow.userId = str.substr(15);
-		    bytes += recRow.userId.size();	
-		    num++;
+		    key2 = str.substr(15);
+            continue;
 	    }
 	    if (fstr.startsWith("review/profileName:")) {
 		    recRow.profileName = str.substr(20);
-		    bytes += recRow.profileName.size();
-		    num++;
+            continue;
 	    }
 	    if (fstr.startsWith("review/helpfulness:")) {
 		    char* pos2 = NULL;
 		    recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
 		    recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
-		    bytes += sizeof(uint32_t)*2;
-		    num++;
+            continue;
 	    }
 	    if (fstr.startsWith("review/score:")) {
 		    recRow.score = lcast(fstr.substr(14));
-		    bytes += sizeof(uint32_t);
-		    num++;
+            continue;
 	    }
 	    if (fstr.startsWith("review/time:")) {
 		    recRow.time = lcast(fstr.substr(13));
-		    bytes += sizeof(uint32_t);
-		    num++;
+            continue;
 	    }
 	    if (fstr.startsWith("review/summary:")) {
 		    recRow.summary = str.substr(16);
-		    bytes += recRow.summary.size();	
-		    num++;
+            continue;
 	    }
 	    if (fstr.startsWith("review/text:")) {
 		    recRow.text = str.substr(13);
-		    bytes += recRow.text.size();	
-		    num++;
+            continue;
 	    }
 
 	    if (str == "") {
-		    const int k = shuff[shuffleid];
-		    char key[100];
-		    snprintf(key, sizeof(key), "%016d", k);
-		    recRow.key = std::string(key);
-		    bytes += recRow.key.size();	
+		    recRow.product_userId = key1 + " " + key2;
 
 		    rowBuilder.rewind();
 		    rowBuilder << recRow;
@@ -768,9 +824,8 @@ class Benchmark {
 			    printf("Insert failed: %s\n", ctxw->errMsg.c_str());
 			    exit(-1);	
 		    }
-		    shuffleid ++;
 		    thread->stats.FinishedSingleOp();
-		    num = 0;
+            continue;
 	    }
     }
     
@@ -816,15 +871,11 @@ class Benchmark {
 	  valvec<byte> keyHit, val;
 	  valvec<valvec<byte> > cgDataVec;
 	  valvec<llong> idvec;
-	  valvec<size_t> cols;
 	  valvec<size_t> colgroups;
-	  DbContextPtr ctxr;
-          ctxr = tab->createDbContext();
-          ctxr->syncIndex = FLAGS_sync_index;
-	  
-	  for (size_t i = 1; i < 10; i++) {
-		cols.push_back(i);
-	  }
+      DbContextPtr ctxr;
+      ctxr = tab->createDbContext();
+      ctxr->syncIndex = FLAGS_sync_index;
+
 	  for (size_t i = tab->getIndexNum(); i < tab->getColgroupNum(); i++) {
 		colgroups.push_back(i);
 	  }
@@ -835,12 +886,9 @@ class Benchmark {
 	  const Schema& indexSchema = tab->getIndexSchema(indexId);
 	  for (size_t i = 0; i < reads_; ++i) {
 		  const int k = thread->rand.Next() % FLAGS_num;
-		  char keybuf[24];
-		  int  keylen = snprintf(keybuf, sizeof(keybuf), "%016d", k);
-		  fstring key(keybuf, keylen);
+		  fstring key(allkeys_.at(k));
 		  tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
 		  for (auto recId : idvec) {
-			  //tab->selectColumns(recId, cols, &val, ctxr.get());
 			  tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
 		  }
 		  if(idvec.size() > 0)
@@ -939,203 +987,167 @@ class Benchmark {
     DoDelete(thread, false);
   }
 
-   void ReadWriteDel(ThreadState* thread) {
-        if (thread->tid > 0) { // read
-		printf("read thread %d\n",thread->tid);
-      		ReadRandom(thread);
-/*
-        } else if (thread->tid % 3 == 1) { // write
-		printf("write thread %d\n",thread->tid);
-		int64_t num = 0; 
-		while(true) {
-			DbContextPtr ctxw;
-			ctxw = tab->createDbContext();
-			ctxw->syncIndex = FLAGS_sync_index;
+  void ReadWriteDel(ThreadState* thread) {
+      if (thread->tid > 0) { // read
+          printf("read thread %d\n",thread->tid);
+          ReadRandom(thread);
+      } else if (thread->tid % 3 == 1) { // write
+          printf("write thread %d\n",thread->tid);
+          int64_t num = 0; 
+          while(true) {
+              DbContextPtr ctxw;
+              ctxw = tab->createDbContext();
+              ctxw->syncIndex = FLAGS_sync_index;
 
-			terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
-			std::ifstream ifs(FLAGS_resource_data);  
-			std::string str;  
+              terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+              std::ifstream ifs(FLAGS_resource_data);  
+              std::string str;  
+              std::string key1;  
+              std::string key2;  
 
-			TestRow recRow;
+              TestRow recRow;
 
-			while(getline(ifs, str)) {
-				fstring fstr(str);
-				if (fstr.startsWith("product/productId:")) {
-					recRow.productId = str.substr(19);
-				}
-				if (fstr.startsWith("review/userId:")) {
-					recRow.userId = str.substr(15);
-				}
-				if (fstr.startsWith("review/profileName:")) {
-					recRow.profileName = str.substr(20);
-				}
-				if (fstr.startsWith("review/helpfulness:")) {
-					char* pos2 = NULL;
-					recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
-					recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
-				}
-				if (fstr.startsWith("review/score:")) {
-					recRow.score = lcast(fstr.substr(14));
-				}
-				if (fstr.startsWith("review/time:")) {
-					recRow.time = lcast(fstr.substr(13));
-				}
-				if (fstr.startsWith("review/summary:")) {
-					recRow.summary = str.substr(16);
-				}
-				if (fstr.startsWith("review/text:")) {
-					recRow.text = str.substr(13);
-				}
+              while(getline(ifs, str)) {
+                  fstring fstr(str);
+                  if (fstr.startsWith("product/productId:")) {
+                      key1 = str.substr(19);
+                  }
+                  if (fstr.startsWith("review/userId:")) {
+                      key2 = str.substr(15);
+                  }
+                  if (fstr.startsWith("review/profileName:")) {
+                      recRow.profileName = str.substr(20);
+                  }
+                  if (fstr.startsWith("review/helpfulness:")) {
+                      char* pos2 = NULL;
+                      recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
+                      recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+                  }
+                  if (fstr.startsWith("review/score:")) {
+                      recRow.score = lcast(fstr.substr(14));
+                  }
+                  if (fstr.startsWith("review/time:")) {
+                      recRow.time = lcast(fstr.substr(13));
+                  }
+                  if (fstr.startsWith("review/summary:")) {
+                      recRow.summary = str.substr(16);
+                  }
+                  if (fstr.startsWith("review/text:")) {
+                      recRow.text = str.substr(13);
+                  }
 
-				if (str == "") {
-					const int k = thread->rand.Next() % FLAGS_num;
-					char key[100];
-					snprintf(key, sizeof(key), "%016d", k);
-					recRow.key = std::string(key);
+                  if (str == "") {
+                      recRow.product_userId = key1 + " " + key2; 
 
-					rowBuilder.rewind();
-					rowBuilder << recRow;
-					fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+                      rowBuilder.rewind();
+                      rowBuilder << recRow;
+                      fstring binRow(rowBuilder.begin(), rowBuilder.tell());
 
-					if (ctxw->insertRow(binRow) < 0) {
-						printf("Insert failed: %s\n", ctxw->errMsg.c_str());
-						exit(-1);	
-					}
-					num ++;
-				}
-				MutexLock l(&thread->shared->mu);
-				if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
-					printf("extra write operations number %d\n", num);
-					return;
-				}
-			}
-		}
-*/
-        } else {  // del
-		printf("del thread %d\n",thread->tid);
-		valvec<byte> keyHit, val;
-		valvec<llong> idvec;
-		DbContextPtr ctxr;
-		ctxr = tab->createDbContext();
-		ctxr->syncIndex = FLAGS_sync_index;
-		int64_t num = 0;
-		while(true) {
-			for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
-				IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
-				const Schema& indexSchema = tab->getIndexSchema(indexId);
-				std::string keyData;
-				for (size_t i = 0; i < reads_; ++i) {
-					const int k = thread->rand.Next() % FLAGS_num;
-					char key[100];
-					switch (indexId) {
-						default:
-							assert(0);
-							break;
-						case 0:
-							snprintf(key, sizeof(key), "%016d", k);
-							keyData = key;
-							break;
-					}
-					idvec.resize(0);
-					llong recId;
-					int ret = indexIter->seekLowerBound(keyData, &recId, &keyHit);
-					if (ret == 0) { // found exact key
-						idvec.push_back(recId);
-						int hasNext; // int as bool
-						while ((hasNext = indexIter->increment(&recId, &keyHit))
-								&& fstring(keyHit) == keyData) {
-							assert(recId < tab->numDataRows());
-							idvec.push_back(recId);
-						}
-						if (hasNext)
-							idvec.push_back(recId);
-					}
-					for (size_t i = 0; i < idvec.size(); ++i) {
-						recId = idvec[i];
-						ctxr->removeRow(recId);	
-					}
-					num++;
-					MutexLock l(&thread->shared->mu);
-					if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
-						printf("extra del operations number %d\n", num);
-						return;
-					}
-				}
-			}
-		}
-	}
-   }
+                      if (ctxw->insertRow(binRow) < 0) {
+                          printf("Insert failed: %s\n", ctxw->errMsg.c_str());
+                          exit(-1);	
+                      }
+                      num ++;
+                  }
+                  MutexLock l(&thread->shared->mu);
+                  if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
+                      printf("extra write operations number %d\n", num);
+                      return;
+                  }
+              }
+          }
+      } else {  // del
+          valvec<byte> keyHit, val;
+          valvec<llong> idvec;
+          DbContextPtr ctxr;
+          ctxr = tab->createDbContext();
+          ctxr->syncIndex = FLAGS_sync_index;
+          int64_t num = 0;
 
-  void ReadWhileWriting(ThreadState* thread) {
-    if (thread->tid > 0) {
-      ReadRandom(thread);
-    } else {
-	int64_t num = 0; 
-	while(true) {
-	    DbContextPtr ctxw;
-	    ctxw = tab->createDbContext();
-	    ctxw->syncIndex = FLAGS_sync_index;
-
-	    terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
-	    std::ifstream ifs(FLAGS_resource_data);  
-	    std::string str;  
-
-	    TestRow recRow;
-
-	    while(getline(ifs, str)) {
-		    fstring fstr(str);
-		    if (fstr.startsWith("product/productId:")) {
-			    recRow.productId = str.substr(19);
-		    }
-		    if (fstr.startsWith("review/userId:")) {
-			    recRow.userId = str.substr(15);
-		    }
-		    if (fstr.startsWith("review/profileName:")) {
-			    recRow.profileName = str.substr(20);
-		    }
-		    if (fstr.startsWith("review/helpfulness:")) {
-			    char* pos2 = NULL;
-			    recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
-			    recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
-		    }
-		    if (fstr.startsWith("review/score:")) {
-			    recRow.score = lcast(fstr.substr(14));
-		    }
-		    if (fstr.startsWith("review/time:")) {
-			    recRow.time = lcast(fstr.substr(13));
-		    }
-		    if (fstr.startsWith("review/summary:")) {
-			    recRow.summary = str.substr(16);
-		    }
-		    if (fstr.startsWith("review/text:")) {
-			    recRow.text = str.substr(13);
-		    }
-
-		    if (str == "") {
-			    const int k = thread->rand.Next() % FLAGS_num;
-			    char key[100];
-			    snprintf(key, sizeof(key), "%016d", k);
-			    recRow.key = std::string(key);
-
-			    rowBuilder.rewind();
-			    rowBuilder << recRow;
-			    fstring binRow(rowBuilder.begin(), rowBuilder.tell());
-
-			    if (ctxw->insertRow(binRow) < 0) {
-				    printf("Insert failed: %s\n", ctxw->errMsg.c_str());
-				    exit(-1);	
-			    }
-			    num ++;
-		    }
-		    MutexLock l(&thread->shared->mu);
-                    if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
-                            printf("extra write operations number %d\n", num);
-                            return;
-                    }
-	    }
-	}
-    }
+          int found = 0;
+          size_t indexId = 0;
+          IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
+          const Schema& indexSchema = tab->getIndexSchema(indexId);
+          for (size_t i = 0; i < reads_; ++i) {
+              const int k = thread->rand.Next() % FLAGS_num;
+              fstring key(allkeys_.at(k));
+              tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
+              for (auto recId : idvec) {
+                  ctxr->removeRow(recId);	
+              }
+          }
+      }
   }
+
+   void ReadWhileWriting(ThreadState* thread) {
+       if (thread->tid > 0) {
+           ReadRandom(thread);
+       } else {
+           int64_t num = 0; 
+           while(true) {
+               DbContextPtr ctxw;
+               ctxw = tab->createDbContext();
+               ctxw->syncIndex = FLAGS_sync_index;
+
+               terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+               std::ifstream ifs(FLAGS_resource_data);  
+               std::string str;  
+               std::string key1;  
+               std::string key2;  
+
+               TestRow recRow;
+
+               while(getline(ifs, str)) {
+                   fstring fstr(str);
+                   if (fstr.startsWith("product/productId:")) {
+                       key1 = str.substr(19);
+                   }
+                   if (fstr.startsWith("review/userId:")) {
+                       key2 = str.substr(15);
+                   }
+                   if (fstr.startsWith("review/profileName:")) {
+                       recRow.profileName = str.substr(20);
+                   }
+                   if (fstr.startsWith("review/helpfulness:")) {
+                       char* pos2 = NULL;
+                       recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
+                       recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+                   }
+                   if (fstr.startsWith("review/score:")) {
+                       recRow.score = lcast(fstr.substr(14));
+                   }
+                   if (fstr.startsWith("review/time:")) {
+                       recRow.time = lcast(fstr.substr(13));
+                   }
+                   if (fstr.startsWith("review/summary:")) {
+                       recRow.summary = str.substr(16);
+                   }
+                   if (fstr.startsWith("review/text:")) {
+                       recRow.text = str.substr(13);
+                   }
+
+                   if (str == "") {
+                       recRow.product_userId = key1 + " " + key2;
+
+                       rowBuilder.rewind();
+                       rowBuilder << recRow;
+                       fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+                       if (ctxw->insertRow(binRow) < 0) {
+                           printf("Insert failed: %s\n", ctxw->errMsg.c_str());
+                           exit(-1);	
+                       }
+                       num ++;
+                   }
+                   MutexLock l(&thread->shared->mu);
+                   if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
+                       printf("extra write operations number %d\n", num);
+                       return;
+                   }
+               }
+           }
+       }
+   }
 
   void Compact(ThreadState* thread) {
     fprintf(stderr, "Compact not supported\n");
