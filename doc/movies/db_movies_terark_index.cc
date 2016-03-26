@@ -828,9 +828,6 @@ class Benchmark {
             continue;
 	    }
     }
-    
-    thread->stats.AddBytes(bytes);
-    printf("DoWrite Done!\n");
   }
 
   void ReadSequential(ThreadState* thread) {
