@@ -3,10 +3,8 @@ nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/wikiarticles/rea
 file=/data/publicdata/wikiarticles/enwiki-latest.text
 record_num=3977902
 read_num=3977902
-#cachesize=268435456
-#dirname=/mnt/datamemory
-cachesize=1073741824
-dirname=/experiment
+cachesize=4439627824
+dirname=/mnt/datamemory
 
 rm -rf $dirname/*
 
@@ -40,7 +38,7 @@ free -m
 date
 echo "####wiredtiger benchmark finish"
 du -s -b $dirname
-#
+
 echo "####Now, running wiredtiger benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m

@@ -1,13 +1,11 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log_2/on-disk/pagecounts/fillrandom_readrandom_mulit_rocksdb_1024_1024 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/pagecounts/readrandom_multi_rocksdb_256_3 2 > nohup.out &
 
 file=/data/publicdata/pagecounts/pagecounts-2015-12-views-ge-5
 record_num=65187562
-read_num=32000000
-dirname=/experiment
-#writebuffer=268435456
-#cachesize=268435456
-writebuffer=1073741824
-cachesize=1073741824
+read_num=65187562
+dirname=/mnt/datamemory
+writebuffer=268435456
+cachesize=21729187
 
 rm -rf $dirname/*
 

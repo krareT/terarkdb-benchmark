@@ -1,23 +1,20 @@
-nohup dstat -tcm --output /home/panfengfeng/trace_log_2/in-memory/wikiarticles/readwhilewriting_terark_index_256_4g 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/wikiarticles/readwhilewriting_terark_index_256 2 > nohup.out &
 
 file=/data/publicdata/wikiarticles/enwiki-latest.text
 record_num=3977902
-read_num=2000000
+read_num=3977902
 dirname=/mnt/datamemory
 
 rm -rf $dirname/*
-
 export TMPDIR=$dirname
 echo $TMPDIR
-
-cp ../terarkschema/dbmeta_wikiarticles_index.json $dirname/dbmeta.json
-
+cp ../../terarkschema/dbmeta_wikiarticles_index.json $dirname/dbmeta.json
 echo "####Now, running terark benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export TerarkDb_WrSegCacheSizeMB=256
-../db_wikiarticles_terark_index --benchmarks=fillrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --resource_data=$file
+../../db_wikiarticles_terark_index --benchmarks=fillrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --resource_data=$file
 free -m
 date
 echo "####terark benchmark finish"
@@ -28,7 +25,7 @@ echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export TerarkDb_WrSegCacheSizeMB=256
-../db_wikiarticles_terark_index --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --sync_index=0 --threads=8 --db=$dirname --resource_data=$file
+../../db_wikiarticles_terark_index --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --sync_index=1 --threads=8 --db=$dirname --resource_data=$file
 free -m
 date
 echo "####terark benchmark finish"

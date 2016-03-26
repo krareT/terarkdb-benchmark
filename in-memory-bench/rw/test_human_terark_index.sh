@@ -1,35 +1,31 @@
-nohup dstat -tcm --output /home/panfengfeng/trace_log_2/in-memory/humangenome/readwhilewriting_terark_index_256_4g_old 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/humangenome/readwhilewriting_terark_index_256 2 > nohup.out &
 
 file=/data/publicdata/humangenome/xenoMrna.fa
 record_num=17448961
-read_num=10000000
+read_num=17448961
 dirname=/mnt/datamemory
 
 rm -rf $dirname/*
-
 export TMPDIR=$dirname
 echo $TMPDIR
-
-cp ../terarkschema/dbmeta_humangenome_index.json $dirname/dbmeta.json
-
+cp ../../terarkschema/dbmeta_humangenome_index.json $dirname/dbmeta.json
 echo "####Now, running terarkdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export TerarkDb_WrSegCacheSizeMB=256
-../db_humangenome_terark_index --benchmarks=fillrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --resource_data=$file
+../../db_humangenome_terark_index --benchmarks=fillrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --resource_data=$file
 free -m
 date
 du -s -b $dirname
 echo "####terarkdb benchmark finish"
-free -m
 
 echo "####Now, running terarkdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export TerarkDb_WrSegCacheSizeMB=256
-../db_humangenome_terark_index --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --threads=8 --resource_data=$file
+../../db_humangenome_terark_index --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --sync_index=1 --db=$dirname --threads=8 --resource_data=$file
 free -m
 date
 echo "####terarkdb benchmark finish"
