@@ -1,21 +1,19 @@
 ﻿{
 	"RowSchema": {
 		"columns" : {
-			"key"         : { "type" : "strzero" },
-			"productId"   : { "type" : "strzero" },
-			"userId"      : { "type" : "strzero" },
-			"profileName" : { "type" : "strzero" },
-			"helpfulness1": { "type" : "uint32"  },
-			"helpfulness2": { "type" : "uint32"  },
-			"score"       : { "type" : "uint32"  },
-			"time"        : { "type" : "uint32"  },
-			"summary"     : { "type" : "strzero" },
-			"text"        : { "type" : "strzero" }
+			"product_userId"    : { "type" : "strzero" },
+			"profileName"       : { "type" : "strzero" },
+			"helpfulness1"      : { "type" : "uint32"  },
+			"helpfulness2"      : { "type" : "uint32"  },
+			"score"             : { "type" : "uint32"  },
+			"time"              : { "type" : "uint32"  },
+			"summary"           : { "type" : "strzero" },
+			"text"              : { "type" : "strzero" }
 		}
 	},
 	"ColumnGroups": {
 		"str34": {
-			"fields": [ "text","productId","userId","profileName","helpfulness1","helpfulness2","score","time","summary" ],
+			"fields": [ "text","product_userId","profileName","helpfulness1","helpfulness2","score","time","summary" ],
 			"inplaceUpdatable": false,
 			"nltDelims": " \\t,.:?<",
 			"minFragLen": 8, "maxFragLen": 100,
@@ -28,7 +26,7 @@
 	"MaxWrSegSize" : 4147483648,
 	"TableIndex" : [
 		{
-		   	"fields": "key",
+		   	"fields": "product_userId",
 		   	"ordered" : true,
 			"nltNestLevel": 2
 	   	}
