@@ -13,7 +13,7 @@
 	},
 	"ColumnGroups": {
 		"str34": {
-			"fields": [ "text","product_userId","profileName","helpfulness1","helpfulness2","score","time","summary" ],
+			"fields": [ "profileName","helpfulness1","helpfulness2","score","time","summary","text" ],
 			"inplaceUpdatable": false,
 			"nltDelims": " \\t,.:?<",
 			"minFragLen": 8, "maxFragLen": 100,

@@ -2,7 +2,7 @@ nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readwhile
 
 file=/data/publicdata/movies/movies.txt
 record_num=7911684
-read_num=7911684
+read_num=1000000
 dirname=/mnt/datamemory
 
 rm -rf $dirname/*

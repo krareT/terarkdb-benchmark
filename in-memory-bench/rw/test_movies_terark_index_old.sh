@@ -25,7 +25,7 @@ echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export TerarkDb_WrSegCacheSizeMB=256
-../../db_movies_terark_index --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --threads=8 --resource_data=$file
+../../db_movies_terark_index --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --sync_index=1 --db=$dirname --threads=8 --resource_data=$file
 free -m
 date
 echo "####terarkdb benchmark finish"

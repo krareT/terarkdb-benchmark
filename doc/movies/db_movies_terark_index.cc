@@ -557,7 +557,7 @@ class Benchmark {
                 continue;
             }
         }
-
+	// std::cout << "read keys finished, size is " << allkeys_.size() << " FLAGS_num " << FLAGS_num << std::endl;
 	assert(allkeys_.size() == FLAGS_num);
 
       } else if (name == Slice("readwritedel")) {
@@ -862,10 +862,10 @@ class Benchmark {
 	  valvec<valvec<byte> > cgDataVec;
 	  valvec<llong> idvec;
 	  valvec<size_t> colgroups;
-      DbContextPtr ctxr;
-      ctxr = tab->createDbContext();
-      ctxr->syncIndex = FLAGS_sync_index;
-
+	  DbContextPtr ctxr;
+	  ctxr = tab->createDbContext();
+	  ctxr->syncIndex = FLAGS_sync_index;
+	  // std::cout << " tab->getIndexNum() " << tab->getIndexNum() << " tab->getColgroupNum() " << tab->getColgroupNum() << std::endl;
 	  for (size_t i = tab->getIndexNum(); i < tab->getColgroupNum(); i++) {
 		colgroups.push_back(i);
 	  }
@@ -880,6 +880,7 @@ class Benchmark {
 		  tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
 		  for (auto recId : idvec) {
 			  tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
+			  //tab->selectOneColumn(recId, 1, &val, ctxr.get());
 		  }
 		  if(idvec.size() > 0)
 			  found++;
@@ -981,13 +982,13 @@ class Benchmark {
       if (thread->tid > 0) { // read
           ReadRandom(thread);
       } else if (thread->tid % 3 == 1) { // write
-          int64_t num = 0; 
-          while(true) {
-              DbContextPtr ctxw;
-              ctxw = tab->createDbContext();
-              ctxw->syncIndex = FLAGS_sync_index;
+          int64_t num = 0;
+          terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+	  DbContextPtr ctxw;
+	  ctxw = tab->createDbContext();
+	  ctxw->syncIndex = FLAGS_sync_index;
 
-              terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+          while(true) {
               std::ifstream ifs(FLAGS_resource_data);  
               std::string str;  
               std::string key1;  
@@ -1050,17 +1051,22 @@ class Benchmark {
           ctxr->syncIndex = FLAGS_sync_index;
           int64_t num = 0;
 
-          int found = 0;
           size_t indexId = 0;
           IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
           const Schema& indexSchema = tab->getIndexSchema(indexId);
-          for (size_t i = 0; i < reads_; ++i) {
+          while(true) {
               const int k = thread->rand.Next() % FLAGS_num;
               fstring key(allkeys_.at(k));
               tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
               for (auto recId : idvec) {
                   ctxr->removeRow(recId);	
               }
+	      num ++;
+	      MutexLock l(&thread->shared->mu);
+	      if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
+		      printf("extra del operations number %d\n", num);
+		      return;
+	      }
           }
       }
   }

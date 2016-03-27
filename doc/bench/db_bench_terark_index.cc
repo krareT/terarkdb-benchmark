@@ -25,6 +25,7 @@
 #include <terark/io/RangeStream.hpp>
 #include <terark/lcast.hpp>
 
+using namespace terark;
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -840,9 +841,15 @@ class Benchmark {
   void ReadRandom(ThreadState* thread) {
 	  terark::valvec<terark::byte> keyHit, val;
 	  terark::valvec<terark::llong> idvec;
+	  valvec<valvec<byte> > cgDataVec;
+	  valvec<size_t> colgroups;
 	  terark::db::DbContextPtr ctxr;
 	  ctxr = tab->createDbContext();
 	  ctxr->syncIndex = FLAGS_sync_index;
+
+	  for (size_t i = tab->getIndexNum(); i < tab->getColgroupNum(); i++) {
+                colgroups.push_back(i);
+          }
 
 	  int found = 0;
 	  size_t indexId = 0;
@@ -855,7 +862,8 @@ class Benchmark {
 		  terark::fstring key(keybuf, keylen);
 		  tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
 		  for (auto recId : idvec) {
-			  tab->selectOneColumn(recId, 1, &val, ctxr.get());
+			  // tab->selectOneColumn(recId, 1, &val, ctxr.get());
+			  tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
 		  }
 		  if(idvec.size() > 0)
 			  found++;
@@ -1001,42 +1009,43 @@ class Benchmark {
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
-      // Special thread that keeps writing until other threads are done.
+	    // Special thread that keeps writing until other threads are done.
 	    RandomGenerator gen;
 	    terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
 	    terark::db::DbContextPtr ctxw;
 	    ctxw = tab->createDbContext();
 	    ctxw->syncIndex = FLAGS_sync_index;
+	   int64_t num = 0;
 
-      while (true) {
-        {
-          MutexLock l(&thread->shared->mu);
-          if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
-            // Other threads have finished
-            break;
-          }
-        }
+	    while (true) {
+		    {
+			    MutexLock l(&thread->shared->mu);
+			    if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
+				    // Other threads have finished
+				    printf("extra write operation number %d\n", num);
+				    break;
+			    }
+		    }
 
-	TestRow recRow;
-        const int k = thread->rand.Next() % FLAGS_num;
-        char key[100];
-        snprintf(key, sizeof(key), "%016d", k);
-	recRow.key = std::string(key);
-	recRow.value = gen.Generate(value_size_).ToString();
-	
-	rowBuilder.rewind();
-	rowBuilder << recRow;
-	terark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+		    TestRow recRow;
+		    const int k = thread->rand.Next() % FLAGS_num;
+		    char key[100];
+		    snprintf(key, sizeof(key), "%016d", k);
+		    recRow.key = std::string(key);
+		    recRow.value = gen.Generate(value_size_).ToString();
 
-	if (ctxw->insertRow(binRow) < 0) {
-                printf("Insert failed: %s\n", ctxw->errMsg.c_str());
-                exit(-1);
-        }
-	
-      }
+		    rowBuilder.rewind();
+		    rowBuilder << recRow;
+		    terark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
 
-      // Do not count any of the preceding work/delay in stats.
-      thread->stats.Start();
+		    if (ctxw->insertRow(binRow) < 0) {
+			    printf("Insert failed: %s\n", ctxw->errMsg.c_str());
+			    exit(-1);
+		    }
+		    num ++;
+	    }
+	    // Do not count any of the preceding work/delay in stats.
+	    thread->stats.Start();
     }
   }
 

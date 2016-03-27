@@ -1,5 +1,4 @@
 #movies
-
 ./test_movies_rocksdb.sh > /home/panfengfeng/result/in-memory/movies/readwritedel_rocksdb_256_3
 
 ./test_movies_terark_index.sh > /home/panfengfeng/result/in-memory/movies/readwritedel_terark_index_256

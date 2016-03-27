@@ -1,0 +1,61 @@
+/mnt/datamemory
+####Now, running terarkdb benchmark
+              total        used        free      shared  buff/cache   available
+Mem:          64163        2482       61457          17         223       61400
+Swap:         17165        2101       15064
+Sun Mar 27 20:43:23 CST 2016
+NarkDB Test Begins! Run() 
+Create database /mnt/datamemory
+ DoWrite now! num_ 7911684 FLAGS_num 7911684
+data_resource /data/publicdata/movies/movies.txt
+start step[ordinal=0, threadno=0]: ZipInputData
+start step[ordinal=0, threadno=3]: ZipInputData
+start step[ordinal=0, threadno=2]: ZipInputData
+start step[ordinal=0, threadno=1]: ZipInputData
+start step[ordinal=0, threadno=4]: ZipInputData
+start step[ordinal=0, threadno=5]: ZipInputData
+start step[ordinal=0, threadno=6]: ZipInputData
+start step[ordinal=0, threadno=7]: ZipInputData
+start step[ordinal=1, threadno=0]: WriteZipData
+fillrandom   :       6.355 micros/op;
+db movies terark completed
+ended step[ordinal=0, threadno=6]: ZipInputData
+ended step[ordinal=0, threadno=5]: ZipInputData
+ended step[ordinal=0, threadno=2]: ZipInputData
+ended step[ordinal=0, threadno=4]: ZipInputData
+ended step[ordinal=0, threadno=7]: ZipInputData
+ended step[ordinal=0, threadno=1]: ZipInputData
+ended step[ordinal=0, threadno=0]: ZipInputData
+ended step[ordinal=0, threadno=3]: ZipInputData
+ended step[ordinal=1, threadno=0]: WriteZipData
+              total        used        free      shared  buff/cache   available
+Mem:          64163        2488       49946          17       11728       61284
+Swap:         17165        2101       15064
+Sun Mar 27 20:46:20 CST 2016
+2686341456	/mnt/datamemory
+####terarkdb benchmark finish
+####Now, running terarkdb benchmark
+              total        used        free      shared  buff/cache   available
+Mem:          64163        2485       58880          17        2796       61300
+Swap:         17165        2101       15064
+Sun Mar 27 20:46:21 CST 2016
+NarkDB Test Begins! Run() 
+Create database /mnt/datamemory
+INFO: loading segment: /mnt/datamemory/g-0000/rd-0000 ... done!
+INFO: loading segment: /mnt/datamemory/g-0000/rd-0001 ... done!
+INFO: loading segment: /mnt/datamemory/g-0000/rd-0002 ... done!
+read keys finished, size is 7911684 FLAGS_num 7911684
+ tab->getIndexNum() 1 tab->getColgroupNum() 2
+ tab->getIndexNum()  tab->getIndexNum()  tab->getIndexNum() 1 tab->getIndexNum() 1 tab->getColgroupNum()  tab->getColgroupNum() 221
+1 tab->getColgroupNum() 
+ tab->getIndexNum() 1 tab->getColgroupNum() 2
+2 tab->getIndexNum() 
+1 tab->getColgroupNum() 2
+ tab->getColgroupNum() 2
+ tab->getIndexNum() 1 tab->getColgroupNum() 2
+              total        used        free      shared  buff/cache   available
+Mem:          64163        2489       49005          17       12668       61286
+Swap:         17165        2101       15064
+Sun Mar 27 20:47:10 CST 2016
+####terarkdb benchmark finish
+3001063303	/mnt/datamemory
