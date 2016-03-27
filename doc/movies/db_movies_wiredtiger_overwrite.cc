@@ -912,7 +912,7 @@ class Benchmark {
     options.write_buffer_size = FLAGS_write_buffer_size;
     */
 #ifndef SYMAS_CONFIG
-    // config << ",extensions=[libwiredtiger_snappy.so]";
+    config << ",extensions=[libwiredtiger_snappy.so]";
 #endif
     //config << ",verbose=[lsm]";
     Env::Default()->CreateDir(FLAGS_db);
@@ -933,8 +933,7 @@ class Benchmark {
       config.str("");
       config << "key_format=S,value_format=SLLLLSS";
       config << ",columns=[product_userId, profileName, helpfulness1, helpfulness2, score, time, summary, text]";
-      // config << ",prefix_compression=true";
-      config << ",prefix_compression=false";
+      config << ",prefix_compression=true";
       config << ",checksum=off";
 
       if (FLAGS_cache_size < SMALL_CACHE && FLAGS_cache_size > 0) {
@@ -961,7 +960,7 @@ class Benchmark {
         config << ")";
       }
 #ifndef SYMAS_CONFIG
-      // config << ",block_compressor=snappy";
+      config << ",block_compressor=snappy";
 #endif
       fprintf(stderr, "Creating %s with config %s\n",uri_.c_str(), config.str().c_str());
       int ret = session->create(session, uri_.c_str(), config.str().c_str());

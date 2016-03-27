@@ -151,7 +151,7 @@ db_bench_redis: doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lhiredis
 
 db_bench_terark_index: doc/bench/db_bench_terark_index.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/bench/db_bench_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb_debug
+	$(CXX) doc/bench/db_bench_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
 #db_bench_terark_index: doc/bench/db_bench_terark_index.o $(LIBOBJECTS) $(TESTUTIL)
 #	$(CXX) doc/bench/db_bench_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
