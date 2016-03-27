@@ -586,13 +586,13 @@ class Benchmark {
                 key2 = str.substr(15);
                 continue;
             }
-            if (str == "") {
+            if (str.find("review/text:") == 0) {
                 allkeys_.push_back(key1 + " " + key2);
                 continue;
             }
         }
 
-        assert(allkeys_.size() == FLAGS_num);
+	assert(allkeys_.size() == FLAGS_num);
 
       } else if (name == Slice("readmissing")) {
         method = &Benchmark::ReadMissing;
@@ -625,13 +625,13 @@ class Benchmark {
                 key2 = str.substr(15);
                 continue;
             }
-            if (str == "") {
+            if (str.find("review/text:") == 0) {
                 allkeys_.push_back(key1 + " " + key2);
                 continue;
             }
         }
 
-        assert(allkeys_.size() == FLAGS_num);
+	assert(allkeys_.size() == FLAGS_num);
 
       } else if (name == Slice("readwritedel")) {
         method = &Benchmark::ReadWriteDel;
@@ -650,13 +650,13 @@ class Benchmark {
                 key2 = str.substr(15);
                 continue;
             }
-            if (str == "") {
+            if (str.find("review/text:") == 0) {
                 allkeys_.push_back(key1 + " " + key2);
                 continue;
             }
         }
 
-        assert(allkeys_.size() == FLAGS_num);
+	assert(allkeys_.size() == FLAGS_num);
 
       } else if (name == Slice("compact")) {
         method = &Benchmark::Compact;
@@ -1021,41 +1021,37 @@ class Benchmark {
     while(getline(ifs, str)) {
 	    if (str.find("product/productId:") == 0) {
 		    key1 = str.substr(19);
-            continue;
+		    continue;
 	    }
 	    if (str.find("review/userId:") == 0) {
 		    key2 = str.substr(15);
-            continue;
+		    continue;
 	    }
 	    if (str.find("review/profileName:") == 0) {
 		    recRow.profileName = str.substr(20);
-            continue;
+		    continue;
 	    }
 	    if (str.find("review/helpfulness:") == 0) {
 		    char* pos2 = NULL;
 		    recRow.helpfulness1 = strtol(str.data()+20, &pos2, 10);
 		    recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
-            continue;
+		    continue;
 	    }
 	    if (str.find("review/score:") == 0) {
 		    recRow.score = atol(str.substr(14).c_str());
-            continue;
+		    continue;
 	    }
 	    if (str.find("review/time:") == 0) {
 		    recRow.time = atol(str.substr(13).c_str());
-            continue;
+		    continue;
 	    }
 	    if (str.find("review/summary:") == 0) {
 		    recRow.summary = str.substr(16);
-            continue;
+		    continue;
 	    }
 	    if (str.find("review/text:") == 0) {
 		    recRow.text = str.substr(13);
-            continue;
-	    }
-
-	    if (str == "") {
-            recRow.product_userId = key1 + " " + key2;
+		    recRow.product_userId = key1 + " " + key2;
 		    cursor->set_key(cursor, recRow.product_userId.c_str());
 		    cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
 		    int ret = cursor->insert(cursor);
@@ -1064,7 +1060,7 @@ class Benchmark {
 			    exit(1);
 		    }
 		    thread->stats.FinishedSingleOp();
-            continue;
+		    continue;
 	    }
     }
     cursor->close(cursor);
@@ -1373,18 +1369,16 @@ repeat:
                       recRow.summary = str.substr(16);
                   }
                   if (str.find("review/text:") == 0) {
-                      recRow.text = str.substr(13);
-                  }
-                  if (str == "") {
-                      recRow.product_userId = key1 + " " + key2;
-                      cursor->set_key(cursor, recRow.product_userId.c_str());
-                      cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
-                      int ret = cursor->insert(cursor);
-                      if (ret != 0) {
-                          fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
-                          exit(1);
-                      }
-                      num ++;
+			  recRow.text = str.substr(13);
+			  recRow.product_userId = key1 + " " + key2;
+			  cursor->set_key(cursor, recRow.product_userId.c_str());
+			  cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
+			  int ret = cursor->insert(cursor);
+			  if (ret != 0) {
+				  fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+				  exit(1);
+			  }
+			  num ++;
                   }
                   MutexLock l(&thread->shared->mu);
                   if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
@@ -1408,7 +1402,7 @@ repeat:
               const int k = thread->rand.Next() % FLAGS_num;
               cursor->set_key(cursor, allkeys_.at(k).c_str());
               ret = cursor->remove(cursor);
-              num++;
+              num ++;
               MutexLock l(&thread->shared->mu);
               if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
                   printf("extra del operations number %d\n", num);
@@ -1468,18 +1462,16 @@ repeat:
                       recRow.summary = str.substr(16);
                   }
                   if (str.find("review/text:") == 0) {
-                      recRow.text = str.substr(13);
-                  }
-                  if (str == "") {
-                      recRow.product_userId = key1 + " " + key2;
-                      cursor->set_key(cursor, recRow.product_userId.c_str());
-                      cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
-                      int ret = cursor->insert(cursor);
-                      if (ret != 0) {
-                          fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
-                          exit(1);
-                      }
-                      num ++;
+			  recRow.text = str.substr(13);
+			  recRow.product_userId = key1 + " " + key2;
+			  cursor->set_key(cursor, recRow.product_userId.c_str());
+			  cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
+			  int ret = cursor->insert(cursor);
+			  if (ret != 0) {
+				  fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+				  exit(1);
+			  }
+			  num ++;
                   }
                   MutexLock l(&thread->shared->mu);
                   if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {

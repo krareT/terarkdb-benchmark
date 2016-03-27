@@ -800,7 +800,6 @@ class Benchmark {
 		}
 	}
     thread->stats.AddBytes(bytes);
-    // tab->syncFinishWriting();
     printf("DoWrite Done!\n");
   }
 
@@ -1002,10 +1001,13 @@ class Benchmark {
     if (thread->tid > 0) {
       ReadRandom(thread);
     } else {
-/*
       // Special thread that keeps writing until other threads are done.
-      RandomGenerator gen;
-      terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+	    RandomGenerator gen;
+	    terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+	    terark::db::DbContextPtr ctxw;
+	    ctxw = tab->createDbContext();
+	    ctxw->syncIndex = FLAGS_sync_index;
+
       while (true) {
         {
           MutexLock l(&thread->shared->mu);
@@ -1026,8 +1028,8 @@ class Benchmark {
 	rowBuilder << recRow;
 	terark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
 
-	if (ctx->insertRow(binRow) < 0) {
-                printf("Insert failed: %s\n", ctx->errMsg.c_str());
+	if (ctxw->insertRow(binRow) < 0) {
+                printf("Insert failed: %s\n", ctxw->errMsg.c_str());
                 exit(-1);
         }
 	
@@ -1035,7 +1037,6 @@ class Benchmark {
 
       // Do not count any of the preceding work/delay in stats.
       thread->stats.Start();
-*/
     }
   }
 

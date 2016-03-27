@@ -503,7 +503,6 @@ class Benchmark {
         std::string str;
         std::string key1;
         std::string key2;
-        int64_t keynum = 0;
 
         while(getline(ifs, str)) {
             if (str.find("product/productId:") == 0) {
@@ -514,13 +513,13 @@ class Benchmark {
                 key2 = str.substr(15);
                 continue;
             }
-            if (str == "") {
+            if (str.find("review/text:") == 0) {
                 allkeys_.push_back(key1 + " " + key2);
                 continue;
             }
         }
 
-        assert(allkeys_.size() == FLAGS_num);
+	assert(allkeys_.size() == FLAGS_num);
 
       } else if (name == Slice("readmissing")) {
         method = &Benchmark::ReadMissing;
@@ -543,7 +542,6 @@ class Benchmark {
         std::string str;
         std::string key1;
         std::string key2;
-        int64_t keynum = 0;
 
         while(getline(ifs, str)) {
             if (str.find("product/productId:") == 0) {
@@ -554,13 +552,13 @@ class Benchmark {
                 key2 = str.substr(15);
                 continue;
             }
-            if (str == "") {
+            if (str.find("review/text:") == 0) {
                 allkeys_.push_back(key1 + " " + key2);
                 continue;
             }
         }
 
-        assert(allkeys_.size() == FLAGS_num);
+	assert(allkeys_.size() == FLAGS_num);
 
       } else if (name == Slice("readwritedel")) {
         method = &Benchmark::ReadWriteDel;
@@ -569,7 +567,6 @@ class Benchmark {
         std::string str;
         std::string key1;
         std::string key2;
-        int64_t keynum = 0;
 
         while(getline(ifs, str)) {
             if (str.find("product/productId:") == 0) {
@@ -580,13 +577,13 @@ class Benchmark {
                 key2 = str.substr(15);
                 continue;
             }
-            if (str == "") {
+            if (str.find("review/text:") == 0) {
                 allkeys_.push_back(key1 + " " + key2);
                 continue;
             }
         }
 
-        assert(allkeys_.size() == FLAGS_num);
+	assert(allkeys_.size() == FLAGS_num);
 
       } else if (name == Slice("compact")) {
         method = &Benchmark::Compact;
@@ -780,40 +777,36 @@ class Benchmark {
 	    fstring fstr(str);
 	    if (fstr.startsWith("product/productId:")) {
 		    key1 = str.substr(19);
-            continue;
+		    continue;
 	    }
 	    if (fstr.startsWith("review/userId:")) {
 		    key2 = str.substr(15);
-            continue;
+		    continue;
 	    }
 	    if (fstr.startsWith("review/profileName:")) {
 		    recRow.profileName = str.substr(20);
-            continue;
+		    continue;
 	    }
 	    if (fstr.startsWith("review/helpfulness:")) {
 		    char* pos2 = NULL;
 		    recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
 		    recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
-            continue;
+		    continue;
 	    }
 	    if (fstr.startsWith("review/score:")) {
 		    recRow.score = lcast(fstr.substr(14));
-            continue;
+		    continue;
 	    }
 	    if (fstr.startsWith("review/time:")) {
 		    recRow.time = lcast(fstr.substr(13));
-            continue;
+		    continue;
 	    }
 	    if (fstr.startsWith("review/summary:")) {
 		    recRow.summary = str.substr(16);
-            continue;
+		    continue;
 	    }
 	    if (fstr.startsWith("review/text:")) {
 		    recRow.text = str.substr(13);
-            continue;
-	    }
-
-	    if (str == "") {
 		    recRow.product_userId = key1 + " " + key2;
 
 		    rowBuilder.rewind();
@@ -825,7 +818,7 @@ class Benchmark {
 			    exit(-1);	
 		    }
 		    thread->stats.FinishedSingleOp();
-            continue;
+		    continue;
 	    }
     }
   }
@@ -986,10 +979,8 @@ class Benchmark {
 
   void ReadWriteDel(ThreadState* thread) {
       if (thread->tid > 0) { // read
-          printf("read thread %d\n",thread->tid);
           ReadRandom(thread);
       } else if (thread->tid % 3 == 1) { // write
-          printf("write thread %d\n",thread->tid);
           int64_t num = 0; 
           while(true) {
               DbContextPtr ctxw;
@@ -1030,22 +1021,20 @@ class Benchmark {
                       recRow.summary = str.substr(16);
                   }
                   if (fstr.startsWith("review/text:")) {
-                      recRow.text = str.substr(13);
+			  recRow.text = str.substr(13);
+			  recRow.product_userId = key1 + " " + key2; 
+
+			  rowBuilder.rewind();
+			  rowBuilder << recRow;
+			  fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+			  if (ctxw->insertRow(binRow) < 0) {
+				  printf("Insert failed: %s\n", ctxw->errMsg.c_str());
+				  exit(-1);	
+			  }
+			  num ++;
                   }
 
-                  if (str == "") {
-                      recRow.product_userId = key1 + " " + key2; 
-
-                      rowBuilder.rewind();
-                      rowBuilder << recRow;
-                      fstring binRow(rowBuilder.begin(), rowBuilder.tell());
-
-                      if (ctxw->insertRow(binRow) < 0) {
-                          printf("Insert failed: %s\n", ctxw->errMsg.c_str());
-                          exit(-1);	
-                      }
-                      num ++;
-                  }
                   MutexLock l(&thread->shared->mu);
                   if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
                       printf("extra write operations number %d\n", num);
@@ -1081,12 +1070,12 @@ class Benchmark {
            ReadRandom(thread);
        } else {
            int64_t num = 0; 
-           while(true) {
-               DbContextPtr ctxw;
-               ctxw = tab->createDbContext();
-               ctxw->syncIndex = FLAGS_sync_index;
+           terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+           DbContextPtr ctxw;
+           ctxw = tab->createDbContext();
+           ctxw->syncIndex = FLAGS_sync_index;
 
-               terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+           while(true) {
                std::ifstream ifs(FLAGS_resource_data);  
                std::string str;  
                std::string key1;  
@@ -1120,22 +1109,20 @@ class Benchmark {
                        recRow.summary = str.substr(16);
                    }
                    if (fstr.startsWith("review/text:")) {
-                       recRow.text = str.substr(13);
+			   recRow.text = str.substr(13);
+			   recRow.product_userId = key1 + " " + key2;
+
+			   rowBuilder.rewind();
+			   rowBuilder << recRow;
+			   fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+			   if (ctxw->insertRow(binRow) < 0) {
+				   printf("Insert failed: %s\n", ctxw->errMsg.c_str());
+				   exit(-1);	
+			   }
+			   num ++;
                    }
 
-                   if (str == "") {
-                       recRow.product_userId = key1 + " " + key2;
-
-                       rowBuilder.rewind();
-                       rowBuilder << recRow;
-                       fstring binRow(rowBuilder.begin(), rowBuilder.tell());
-
-                       if (ctxw->insertRow(binRow) < 0) {
-                           printf("Insert failed: %s\n", ctxw->errMsg.c_str());
-                           exit(-1);	
-                       }
-                       num ++;
-                   }
                    MutexLock l(&thread->shared->mu);
                    if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
                        printf("extra write operations number %d\n", num);

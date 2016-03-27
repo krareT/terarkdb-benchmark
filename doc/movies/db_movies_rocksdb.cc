@@ -532,7 +532,6 @@ class Benchmark {
         std::string str;
         std::string key1;
         std::string key2;
-        int64_t keynum = 0;
 
         while(getline(ifs, str)) {
             if (str.find("product/productId:") == 0) {
@@ -543,13 +542,13 @@ class Benchmark {
                 key2 = str.substr(15);
                 continue;
             }
-            if (str == "") {
+            if (str.find("review/text:") == 0) {
                 allkeys_.push_back(key1 + " " + key2);
                 continue;
             }
         }
-
-        assert(allkeys_.size() == FLAGS_num);
+	
+	assert(allkeys_.size() == FLAGS_num);
 
       } else if (name == rocksdb::Slice("readmissing")) {
         method = &Benchmark::ReadMissing;
@@ -572,7 +571,6 @@ class Benchmark {
         std::string str;
         std::string key1;
         std::string key2;
-        int64_t keynum = 0;
 
         while(getline(ifs, str)) {
             if (str.find("product/productId:") == 0) {
@@ -583,13 +581,13 @@ class Benchmark {
                 key2 = str.substr(15);
                 continue;
             }
-            if (str == "") {
+            if (str.find("review/text:") == 0) {
                 allkeys_.push_back(key1 + " " + key2);
                 continue;
             }
         }
 
-        assert(allkeys_.size() == FLAGS_num);
+	assert(allkeys_.size() == FLAGS_num);
 
       } else if (name == rocksdb::Slice("readwritedel")) {
         method = &Benchmark::ReadWriteDel;
@@ -598,7 +596,6 @@ class Benchmark {
         std::string str;
         std::string key1;
         std::string key2;
-        int64_t keynum = 0;
 
         while(getline(ifs, str)) {
             if (str.find("product/productId:") == 0) {
@@ -609,13 +606,13 @@ class Benchmark {
                 key2 = str.substr(15);
                 continue;
             }
-            if (str == "") {
+            if (str.find("review/text:") == 0) {
                 allkeys_.push_back(key1 + " " + key2);
                 continue;
             }
         }
 
-        assert(allkeys_.size() == FLAGS_num);
+	assert(allkeys_.size() == FLAGS_num);
 
       } else if (name == rocksdb::Slice("compact")) {
         method = &Benchmark::Compact;
@@ -883,49 +880,46 @@ class Benchmark {
     std::string key2; 
     std::string key; 
     std::string value; 
-    rocksdb::Status s;	
+    rocksdb::Status s;
 
     while(getline(ifs, str)) {
 	    if (str.find("product/productId:") == 0) {
 		    key1 = str.substr(19);
-            continue;
+		    continue;
 	    }
 	    if (str.find("review/userId:") == 0) {
 		    key2 = str.substr(15);
-            continue;
+		    continue;
 	    }
 	    if (str.find("review/profileName:") == 0) {
 		    value += str.substr(20);
 		    value += " ";
-            continue;
+		    continue;
 	    }
 	    if (str.find("review/helpfulness:") == 0) {
 		    value += str.substr(20);
 		    value += " ";
-            continue;
+		    continue;
 	    }
 	    if (str.find("review/score:") == 0) {
 		    value += str.substr(14);
 		    value += " ";
-            continue;
+		    continue;
 	    }
 	    if (str.find("review/time:") == 0) {
 		    value += str.substr(13);
 		    value += " ";
-            continue;
+		    continue;
 	    }
 	    if (str.find("review/summary:") == 0) {
 		    value += str.substr(16);
 		    value += " ";
-            continue;
+		    continue;
 	    }
 	    if (str.find("review/text:") == 0) {
 		    value += str.substr(13);
-            continue;
-	    }
 
-	    if (str == "") {
-            key = key1 + " " + key2;
+		    key = key1 + " " + key2;
 		    s = db_->Put(write_options_, key, value);
 		    if (!s.ok()) {
 			    fprintf(stderr, "put error: %s\n", s.ToString().c_str());
@@ -933,7 +927,7 @@ class Benchmark {
 		    }
 		    value.clear();
 		    thread->stats.FinishedSingleOp();
-            continue;
+		    continue;
 	    }
     }
   }
@@ -1096,18 +1090,16 @@ class Benchmark {
 				}
 				if (str.find("review/text:") == 0) {
 					value += str.substr(13);
-				}
-
-				if (str == "") {
-                    key = key1 + " " + key2;
+					key = key1 + " " + key2;
 					s = db_->Put(write_options_, key, value);
 					if (!s.ok()) {
 						fprintf(stderr, "put error: %s\n", s.ToString().c_str());
 						exit(1);
 					}
-                    num++;
+					num ++;
 					value.clear();
 				}
+
 				MutexLock l(&thread->shared->mu);
 				if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
 					printf("extra write operations number %d\n", num);
@@ -1117,12 +1109,12 @@ class Benchmark {
 		}
 	} else {  // del
 		int64_t num = 0;
-    	rocksdb::Status s;
+    		rocksdb::Status s;
 		while(true) {
 			const int k = thread->rand.Next() % FLAGS_num;
 			s = db_->Delete(write_options_, allkeys_.at(k));
 			MutexLock l(&thread->shared->mu);
-			num++;
+			num ++;
 			if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
 				printf("extra del operations number %d\n", num);
 				break;
@@ -1175,18 +1167,16 @@ class Benchmark {
                   }
                   if (str.find("review/text:") == 0) {
                       value += str.substr(13);
-                  }
-
-                  if (str == "") {
-                      key = key1 + " " + key2;
+		      key = key1 + " " + key2;
                       s = db_->Put(write_options_, key, value);
                       if (!s.ok()) {
                           fprintf(stderr, "put error: %s\n", s.ToString().c_str());
                           exit(1);
                       }
-                      num++;
+                      num ++;
                       value.clear();
                   }
+
                   MutexLock l(&thread->shared->mu);
                   if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
                       printf("extra write operations number %d\n", num);
