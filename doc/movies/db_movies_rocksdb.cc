@@ -453,7 +453,6 @@ class Benchmark {
   }
 
   ~Benchmark() {
-    allkeys_.clear();
     delete db_;
   }
 
