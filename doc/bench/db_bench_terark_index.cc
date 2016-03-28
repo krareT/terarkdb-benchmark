@@ -25,6 +25,8 @@
 #include <terark/io/RangeStream.hpp>
 #include <terark/lcast.hpp>
 
+#include <thread>
+
 using namespace terark;
 
 // Comma-separated list of operations to run in the specified order
@@ -865,9 +867,11 @@ class Benchmark {
 			  // tab->selectOneColumn(recId, 1, &val, ctxr.get());
 			  tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
 		  }
-		  if(idvec.size() > 0)
-			  found++;
 		  thread->stats.FinishedSingleOp();
+		  if (idvec.size() > 0)
+			  found++;
+		  else
+			  std::this_thread::sleep_for(std::chrono::milliseconds(20));
 	  }
 	  char msg[100];
 	  snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
