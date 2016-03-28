@@ -3,6 +3,7 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include <sys/types.h>
+#include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
@@ -500,6 +501,8 @@ class Benchmark {
       } else if (name == Slice("readrandom")) {
         method = &Benchmark::ReadRandom;
 
+        struct timeval start, end;
+        gettimeofday(&start, NULL);
         std::ifstream ifs(FLAGS_resource_data);
         std::string str;
         std::string key1;
@@ -521,9 +524,11 @@ class Benchmark {
         }
 		allkeys_.shrink_to_fit();
 		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-
+	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
-
+        gettimeofday(&end, NULL);
+        int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec -start.tv_usec;
+        printf("key initialized time %d\n", timeuse/1000000);
       } else if (name == Slice("readmissing")) {
         method = &Benchmark::ReadMissing;
       } else if (name == Slice("seekrandom")) {
@@ -541,6 +546,8 @@ class Benchmark {
         num_threads++;  // Add extra thread for writing
         method = &Benchmark::ReadWhileWriting;
 
+        struct timeval start, end;
+        gettimeofday(&start, NULL);
         std::ifstream ifs(FLAGS_resource_data);
         std::string str;
         std::string key1;
@@ -563,11 +570,16 @@ class Benchmark {
 		allkeys_.shrink_to_fit();
 		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 	// std::cout << "read keys finished, size is " << allkeys_.size() << " FLAGS_num " << FLAGS_num << std::endl;
+	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
-
+        gettimeofday(&end, NULL);
+        int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec -start.tv_usec;
+        printf("key initialized time %d\n", timeuse/1000000);
       } else if (name == Slice("readwritedel")) {
         method = &Benchmark::ReadWriteDel;
 
+        struct timeval start, end;
+        gettimeofday(&start, NULL);
         std::ifstream ifs(FLAGS_resource_data);
         std::string str;
         std::string key1;
@@ -589,9 +601,11 @@ class Benchmark {
         }
 		allkeys_.shrink_to_fit();
 		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-
+	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
-
+        gettimeofday(&end, NULL);
+        int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec -start.tv_usec;
+        printf("key initialized time %d\n", timeuse/1000000);
       } else if (name == Slice("compact")) {
         method = &Benchmark::Compact;
       } else if (name == Slice("crc32c")) {
@@ -828,6 +842,7 @@ class Benchmark {
 		    continue;
 	    }
     }
+	ifs.close();
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -1049,6 +1064,7 @@ class Benchmark {
                       return;
                   }
               }
+	      ifs.close();
           }
       } else {  // del
           valvec<byte> keyHit, val;
@@ -1142,6 +1158,7 @@ class Benchmark {
                        return;
                    }
                }
+	   ifs.close();
            }
        }
    }

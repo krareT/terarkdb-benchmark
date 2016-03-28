@@ -1,11 +1,10 @@
-nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readrandom_multi_rocksdb_256_3 2 > nohup.out &
+nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readrandom_multi_rocksdb_256_3 2 > nohup.out &
 
 file=/data/publicdata/movies/movies.txt
 record_num=7911684
 read_num=7911684
-dirname=/mnt/datamemory
+dirname=/experiment
 writebuffer=268435456
-#cachesize=268435456
 cachesize=2637228
 
 rm -rf $dirname/*
