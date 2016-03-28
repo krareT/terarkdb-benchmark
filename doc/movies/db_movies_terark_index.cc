@@ -4,6 +4,7 @@
 
 #include <sys/types.h>
 #include <sys/time.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
@@ -501,8 +502,8 @@ class Benchmark {
       } else if (name == Slice("readrandom")) {
         method = &Benchmark::ReadRandom;
 
-        struct timeval start, end;
-        gettimeofday(&start, NULL);
+        struct timespec start, end;
+	clock_gettime(CLOCK_MONOTONIC, &start);
         std::ifstream ifs(FLAGS_resource_data);
         std::string str;
         std::string key1;
@@ -526,9 +527,9 @@ class Benchmark {
 		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
-        gettimeofday(&end, NULL);
-        int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec -start.tv_usec;
-        printf("key initialized time %d\n", timeuse/1000000);
+	clock_gettime(CLOCK_MONOTONIC, &end);
+        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+        printf("key initialized time %lld\n", timeuse);
       } else if (name == Slice("readmissing")) {
         method = &Benchmark::ReadMissing;
       } else if (name == Slice("seekrandom")) {
@@ -546,8 +547,8 @@ class Benchmark {
         num_threads++;  // Add extra thread for writing
         method = &Benchmark::ReadWhileWriting;
 
-        struct timeval start, end;
-        gettimeofday(&start, NULL);
+        struct timespec start, end;
+	clock_gettime(CLOCK_MONOTONIC, &start);
         std::ifstream ifs(FLAGS_resource_data);
         std::string str;
         std::string key1;
@@ -569,17 +570,16 @@ class Benchmark {
         }
 		allkeys_.shrink_to_fit();
 		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	// std::cout << "read keys finished, size is " << allkeys_.size() << " FLAGS_num " << FLAGS_num << std::endl;
 	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
-        gettimeofday(&end, NULL);
-        int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec -start.tv_usec;
-        printf("key initialized time %d\n", timeuse/1000000);
+	clock_gettime(CLOCK_MONOTONIC, &end);
+        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+        printf("key initialized time %lld\n", timeuse);
       } else if (name == Slice("readwritedel")) {
         method = &Benchmark::ReadWriteDel;
 
-        struct timeval start, end;
-        gettimeofday(&start, NULL);
+        struct timespec start, end;
+	clock_gettime(CLOCK_MONOTONIC, &start);
         std::ifstream ifs(FLAGS_resource_data);
         std::string str;
         std::string key1;
@@ -603,9 +603,9 @@ class Benchmark {
 		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
-        gettimeofday(&end, NULL);
-        int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec -start.tv_usec;
-        printf("key initialized time %d\n", timeuse/1000000);
+	clock_gettime(CLOCK_MONOTONIC, &end);
+        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+        printf("key initialized time %lld\n", timeuse);
       } else if (name == Slice("compact")) {
         method = &Benchmark::Compact;
       } else if (name == Slice("crc32c")) {
@@ -892,25 +892,38 @@ class Benchmark {
 		colgroups.push_back(i);
 	  }
 
+	  struct timespec one, two, three, four;
+	  long long keytime = 0;
+	  long long indextime = 0;
+	  long long valuetime = 0;
+
 	  int found = 0;
 	  size_t indexId = 0;
 	  IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
 	  const Schema& indexSchema = tab->getIndexSchema(indexId);
 	  for (size_t i = 0; i < reads_; ++i) {
+		  clock_gettime(CLOCK_MONOTONIC, &one);
 		  const int k = thread->rand.Next() % FLAGS_num;
 		  fstring key(allkeys_.at(k));
+		  clock_gettime(CLOCK_MONOTONIC, &two);
 		  tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
+		  clock_gettime(CLOCK_MONOTONIC, &three);
 		  for (auto recId : idvec) {
 			  tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
 			  //tab->selectOneColumn(recId, 1, &val, ctxr.get());
 		  }
+		  clock_gettime(CLOCK_MONOTONIC, &four);
 		  if(idvec.size() > 0)
 			  found++;
 		  thread->stats.FinishedSingleOp();
+		  keytime += 1000000000 * ( two.tv_sec - one.tv_sec ) + two.tv_nsec - one.tv_nsec;
+		  indextime += 1000000000 * ( three.tv_sec - two.tv_sec ) + three.tv_nsec - two.tv_nsec;
+		  valuetime += 1000000000 * ( four.tv_sec - three.tv_sec ) + four.tv_nsec - three.tv_nsec;
 	  }
 	  char msg[100];
 	  snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
 	  thread->stats.AddMessage(msg);
+	  printf("keytime %lld, indextime %lld, valuetime %lld\n",keytime, indextime, valuetime);
   }
 
   void ReadMissing(ThreadState* thread) {

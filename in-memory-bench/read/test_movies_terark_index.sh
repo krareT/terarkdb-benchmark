@@ -1,4 +1,4 @@
-nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readrandom_multi_terark_index_256 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readrandom_multi_terark_index_256_3 2 > nohup.out &
 
 file=/data/publicdata/movies/movies.txt
 record_num=7911684

@@ -4,6 +4,7 @@
 
 #include <sys/types.h>
 #include <sys/time.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sstream>
@@ -529,8 +530,8 @@ class Benchmark {
       } else if (name == rocksdb::Slice("readrandom")) {
         method = &Benchmark::ReadRandom;
 
-        struct timeval start, end;
-    	gettimeofday(&start, NULL); 
+        struct timespec start, end;
+	clock_gettime(CLOCK_MONOTONIC, &start);
         std::ifstream ifs(FLAGS_resource_data);
         std::string str;
         std::string key1;
@@ -554,9 +555,9 @@ class Benchmark {
 		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 	ifs.close();	
 	assert(allkeys_.size() == FLAGS_num);
-	gettimeofday(&end, NULL);
-	int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec -start.tv_usec;
-	printf("key initialized time %d\n", timeuse/1000000);
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+	printf("key initialized time %lld\n", timeuse);
 
       } else if (name == rocksdb::Slice("readmissing")) {
         method = &Benchmark::ReadMissing;
@@ -575,9 +576,8 @@ class Benchmark {
         num_threads++;  // Add extra thread for writing
         method = &Benchmark::ReadWhileWriting;
 	
-	struct timeval start, end;
-        gettimeofday(&start, NULL);
-
+	struct timespec start, end;
+	clock_gettime(CLOCK_MONOTONIC, &start);
         std::ifstream ifs(FLAGS_resource_data);
         std::string str;
         std::string key1;
@@ -601,15 +601,15 @@ class Benchmark {
 		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
-        gettimeofday(&end, NULL);
-        int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec -start.tv_usec;
-        printf("key initialized time %d\n", timeuse/1000000);
+	clock_gettime(CLOCK_MONOTONIC, &end);
+        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+        printf("key initialized time %lld\n", timeuse);
 
       } else if (name == rocksdb::Slice("readwritedel")) {
         method = &Benchmark::ReadWriteDel;
 
-	struct timeval start, end;
-        gettimeofday(&start, NULL);
+	struct timespec start, end;
+	clock_gettime(CLOCK_MONOTONIC, &start);
         std::ifstream ifs(FLAGS_resource_data);
         std::string str;
         std::string key1;
@@ -633,9 +633,9 @@ class Benchmark {
 		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
-        gettimeofday(&end, NULL);
-        int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec -start.tv_usec;
-        printf("key initialized time %d\n", timeuse/1000000);
+	clock_gettime(CLOCK_MONOTONIC, &end);
+        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+        printf("key initialized time %lld\n", timeuse);
 
       } else if (name == rocksdb::Slice("compact")) {
         method = &Benchmark::Compact;
@@ -986,16 +986,26 @@ class Benchmark {
     rocksdb::ReadOptions options;
     std::string value;
     int found = 0;
+    struct timespec one, two, three;
+    long long keytime = 0;
+    long long valuetime = 0;
+
     for (int i = 0; i < reads_; i++) {
+      clock_gettime(CLOCK_MONOTONIC, &one);
       const int k = thread->rand.Next() % FLAGS_num;
+      clock_gettime(CLOCK_MONOTONIC, &two);
       if (db_->Get(options, allkeys_.str(k), &value).ok()) {
         found++;
       }
+      clock_gettime(CLOCK_MONOTONIC, &three);
+      keytime += 1000000000 * ( two.tv_sec - one.tv_sec ) + two.tv_nsec - one.tv_nsec ;
+      valuetime += 1000000000 * ( three.tv_sec - two.tv_sec ) + three.tv_nsec - two.tv_nsec;
       thread->stats.FinishedSingleOp();
     }
     char msg[100];
     snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
     thread->stats.AddMessage(msg);
+    printf("keytime %lld, valuetime %lld\n",keytime, valuetime);
   }
 
   void ReadMissing(ThreadState* thread) {
