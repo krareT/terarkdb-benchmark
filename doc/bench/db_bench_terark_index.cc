@@ -127,6 +127,8 @@ static int FLAGS_bloom_bits = -1;
 // benchmark will fail.
 static bool FLAGS_use_existing_db = true;
 
+static bool FLAGS_is_readwhilewriting = false;
+
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
 static const char* FLAGS_db_table = NULL;
@@ -544,6 +546,7 @@ class Benchmark {
       } else if (name == Slice("readwhilewriting")) {
         num_threads++;  // Add extra thread for writing
         method = &Benchmark::ReadWhileWriting;
+		FLAGS_is_readwhilewriting = true;
       } else if (name == Slice("compact")) {
         method = &Benchmark::Compact;
       } else if (name == Slice("crc32c")) {
@@ -870,8 +873,8 @@ class Benchmark {
 		  thread->stats.FinishedSingleOp();
 		  if (idvec.size() > 0)
 			  found++;
-		  else
-			  std::this_thread::sleep_for(std::chrono::milliseconds(20));
+		  else if (FLAGS_is_readwhilewriting)
+			  std::this_thread::sleep_for(std::chrono::microseconds(100));
 	  }
 	  char msg[100];
 	  snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
@@ -1019,14 +1022,14 @@ class Benchmark {
 	    terark::db::DbContextPtr ctxw;
 	    ctxw = tab->createDbContext();
 	    ctxw->syncIndex = FLAGS_sync_index;
-	   int64_t num = 0;
+	   long long num = 0;
 
 	    while (true) {
 		    {
 			    MutexLock l(&thread->shared->mu);
 			    if (thread->shared->num_done + 1 >= thread->shared->num_initialized) {
 				    // Other threads have finished
-				    printf("extra write operation number %d\n", num);
+				    printf("extra write operation number %lld\n", num);
 				    break;
 			    }
 		    }
@@ -1113,13 +1116,13 @@ int main(int argc, char** argv) {
       FLAGS_compression_ratio = d;
     } else if (sscanf(argv[i], "--histogram=%d%c", &n, &junk) == 1 &&
                (n == 0 || n == 1)) {
-      FLAGS_histogram = n;
+      FLAGS_histogram = 0 != n;
     } else if (sscanf(argv[i], "--use_existing_db=%d%c", &n, &junk) == 1 &&
                (n == 0 || n == 1)) {
-      FLAGS_use_existing_db = n;
+      FLAGS_use_existing_db = 0 != n;
     } else if (sscanf(argv[i], "--sync_index=%d%c", &n, &junk) == 1 &&
                (n == 0 || n == 1)) {
-      FLAGS_sync_index = n;
+      FLAGS_sync_index = 0 != n;
     } else if (sscanf(argv[i], "--num=%d%c", &n, &junk) == 1) {
       FLAGS_num = n;
     } else if (sscanf(argv[i], "--reads=%d%c", &n, &junk) == 1) {
