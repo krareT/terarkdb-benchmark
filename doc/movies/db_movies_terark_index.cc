@@ -30,6 +30,7 @@
 #include <terark/io/DataIO.hpp>
 #include <terark/io/RangeStream.hpp>
 #include <terark/lcast.hpp>
+#include <terark/util/fstrvec.hpp>
 
 using namespace terark;
 using namespace db;
@@ -330,7 +331,7 @@ class Benchmark {
  private:
   CompositeTablePtr tab;
 
-  std::vector<std::string> allkeys_;
+  fstrvec allkeys_;
 
   int num_;
   int value_size_;
