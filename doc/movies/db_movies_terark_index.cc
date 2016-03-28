@@ -519,6 +519,8 @@ class Benchmark {
                 continue;
             }
         }
+		allkeys_.shrink_to_fit();
+		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 
 	assert(allkeys_.size() == FLAGS_num);
 
@@ -558,6 +560,8 @@ class Benchmark {
                 continue;
             }
         }
+		allkeys_.shrink_to_fit();
+		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 	// std::cout << "read keys finished, size is " << allkeys_.size() << " FLAGS_num " << FLAGS_num << std::endl;
 	assert(allkeys_.size() == FLAGS_num);
 
@@ -583,6 +587,8 @@ class Benchmark {
                 continue;
             }
         }
+		allkeys_.shrink_to_fit();
+		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 
 	assert(allkeys_.size() == FLAGS_num);
 
@@ -762,8 +768,8 @@ class Benchmark {
       thread->stats.AddMessage(msg);
     }
 
-    if (!seq)
-	  thread->rand.Shuffle(shuff, num_);
+//    if (!seq)
+//	  thread->rand.Shuffle(shuff, num_);
 
     terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
     std::cout << "data_resource " << FLAGS_resource_data << std::endl;
