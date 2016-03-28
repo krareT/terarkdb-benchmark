@@ -25,6 +25,7 @@
 #include "rocksdb/options.h"
 #include "rocksdb/table.h"
 #include "rocksdb/filter_policy.h"
+#include <terark/util/fstrvec.hpp>
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -341,7 +342,7 @@ class Benchmark {
   std::shared_ptr<const rocksdb::FilterPolicy> filter_policy_;
   rocksdb::DB* db_;
 
-  std::vector<std::string> allkeys_;
+  terark::fstrvec allkeys_;
 
   int num_;
   int value_size_;
@@ -964,7 +965,7 @@ class Benchmark {
     int found = 0;
     for (int i = 0; i < reads_; i++) {
       const int k = thread->rand.Next() % FLAGS_num;
-      if (db_->Get(options, allkeys_.at(k), &value).ok()) {
+      if (db_->Get(options, allkeys_.str(k), &value).ok()) {
         found++;
       }
       thread->stats.FinishedSingleOp();
@@ -1112,7 +1113,7 @@ class Benchmark {
     		rocksdb::Status s;
 		while(true) {
 			const int k = thread->rand.Next() % FLAGS_num;
-			s = db_->Delete(write_options_, allkeys_.at(k));
+			s = db_->Delete(write_options_, allkeys_.str(k));
 			MutexLock l(&thread->shared->mu);
 			num ++;
 			if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
