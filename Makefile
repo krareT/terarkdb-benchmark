@@ -163,19 +163,19 @@ db_movies_terark: doc/movies/db_movies_terark.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/movies/db_movies_terark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
 
 db_movies_terark_index: doc/movies/db_movies_terark_index.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/movies/db_movies_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb
+	$(CXX) doc/movies/db_movies_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb -lrt
 
 db_movies_wiredtiger: doc/movies/db_movies_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/movies/db_movies_wiredtiger.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.7.0 -lwiredtiger_snappy
 
 db_movies_wiredtiger_overwrite: doc/movies/db_movies_wiredtiger_overwrite.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/movies/db_movies_wiredtiger_overwrite.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.7.0 -lwiredtiger_snappy
+	$(CXX) doc/movies/db_movies_wiredtiger_overwrite.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.7.0 -lwiredtiger_snappy -lrt
 
 db_movies_redis: doc/movies/db_movies_redis.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/movies/db_movies_redis.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lhiredis
 
 db_movies_rocksdb: doc/movies/db_movies_rocksdb.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/movies/db_movies_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb-4.1
+	$(CXX) doc/movies/db_movies_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb-4.1 -lrt
 
 db_humangenome_terark: doc/humangenome/db_humangenome_terark.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/humangenome/db_humangenome_terark.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lTerarkDB-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.7.0 -ltbb

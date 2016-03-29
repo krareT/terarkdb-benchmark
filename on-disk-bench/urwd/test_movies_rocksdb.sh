@@ -1,9 +1,9 @@
-nohup dstat -tcm --output /home/panfengfeng/trace_log/on-disk/movies/readwritedel_rocksdb_256_3 2 > nohup.out &
+nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readwritedel_rocksdb_256 2 > nohup.out &
 
 file=/data/publicdata/movies/movies.txt
 record_num=7911684
 read_num=7911684
-dirname=/mnt/datamemory
+dirname=/experiment
 writebuffer=268435456
 cachesize=2637228
 

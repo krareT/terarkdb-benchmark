@@ -22,13 +22,14 @@
 			"useFastZip": true
 		}
 	},
-	"ReadonlyDataMemSize" : 1288490188,
-	"MaxWrSegSize" : 4147483648,
+	"ReadonlyDataMemSize" 	: 1288490188,
+	"MaxWrSegSize" 		: 3221225472,
+	"MinMergeSegNum"	: 3,
 	"TableIndex" : [
 		{
 		   	"fields": "product_userId",
 		   	"ordered" : true,
-			"nltNestLevel": 4
+			"nltNestLevel": 2
 	   	}
 	]
 }

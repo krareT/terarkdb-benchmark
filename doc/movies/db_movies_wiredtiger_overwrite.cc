@@ -4,6 +4,7 @@
 
 #include <sys/types.h>
 #include <sys/time.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sstream>
@@ -360,8 +361,7 @@ struct ThreadState {
 };
 
 struct TestRow {
-    std::string product_userId;
-    std::string productuserId;
+    	std::string product_userId;
 	std::string profileName;
 	uint32_t helpfulness1;
 	uint32_t helpfulness2;
@@ -573,8 +573,8 @@ class Benchmark {
       } else if (name == Slice("readrandom")) {
         method = &Benchmark::ReadRandom;
 
-        struct timeval start, end;
-        gettimeofday(&start, NULL);
+        struct timespec start, end;
+	clock_gettime(CLOCK_MONOTONIC, &start);
         std::ifstream ifs(FLAGS_resource_data);
         std::string str;
         std::string key1;
@@ -596,9 +596,9 @@ class Benchmark {
         }
 	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
-        gettimeofday(&end, NULL);
-        int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec -start.tv_usec;
-        printf("key initialized time %d\n", timeuse/1000000);
+	clock_gettime(CLOCK_MONOTONIC, &end);
+        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+        printf("key initialized time %lld\n", timeuse);
 
       } else if (name == Slice("readmissing")) {
         method = &Benchmark::ReadMissing;
@@ -617,8 +617,8 @@ class Benchmark {
         num_threads++;  // Add extra thread for writing
         method = &Benchmark::ReadWhileWriting;
 
-        struct timeval start, end;
-        gettimeofday(&start, NULL);
+        struct timespec start, end;
+	clock_gettime(CLOCK_MONOTONIC, &start);
         std::ifstream ifs(FLAGS_resource_data);
         std::string str;
         std::string key1;
@@ -640,14 +640,14 @@ class Benchmark {
         }
 	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
-        gettimeofday(&end, NULL);
-        int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec -start.tv_usec;
-        printf("key initialized time %d\n", timeuse/1000000);
+	clock_gettime(CLOCK_MONOTONIC, &end);
+        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+        printf("key initialized time %lld\n", timeuse);
       } else if (name == Slice("readwritedel")) {
         method = &Benchmark::ReadWriteDel;
 
-        struct timeval start, end;
-        gettimeofday(&start, NULL);
+        struct timespec start, end;
+	clock_gettime(CLOCK_MONOTONIC, &start);
         std::ifstream ifs(FLAGS_resource_data);
         std::string str;
         std::string key1;
@@ -669,9 +669,9 @@ class Benchmark {
         }
 	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
-        gettimeofday(&end, NULL);
-        int timeuse = 1000000 * ( end.tv_sec - start.tv_sec ) + end.tv_usec -start.tv_usec;
-        printf("key initialized time %d\n", timeuse/1000000);
+	clock_gettime(CLOCK_MONOTONIC, &end);
+        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+        printf("key initialized time %lld\n", timeuse);
       } else if (name == Slice("compact")) {
         method = &Benchmark::Compact;
       } else if (name == Slice("crc32c")) {
@@ -1065,6 +1065,7 @@ class Benchmark {
 	    if (str.find("review/text:") == 0) {
 		    recRow.text = str.substr(13);
 		    recRow.product_userId = key1 + " " + key2;
+
 		    cursor->set_key(cursor, recRow.product_userId.c_str());
 		    cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
 		    int ret = cursor->insert(cursor);

@@ -986,26 +986,27 @@ class Benchmark {
     rocksdb::ReadOptions options;
     std::string value;
     int found = 0;
-    struct timespec one, two, three;
+    struct timespec one, two, three, four;
     long long keytime = 0;
     long long valuetime = 0;
 
     for (int i = 0; i < reads_; i++) {
-      clock_gettime(CLOCK_MONOTONIC, &one);
+      //clock_gettime(CLOCK_MONOTONIC, &one);
       const int k = thread->rand.Next() % FLAGS_num;
-      clock_gettime(CLOCK_MONOTONIC, &two);
-      if (db_->Get(options, allkeys_.str(k), &value).ok()) {
+      std::string key = allkeys_.str(k);
+      //clock_gettime(CLOCK_MONOTONIC, &two);
+      if (db_->Get(options, key, &value).ok()) {
         found++;
       }
-      clock_gettime(CLOCK_MONOTONIC, &three);
-      keytime += 1000000000 * ( two.tv_sec - one.tv_sec ) + two.tv_nsec - one.tv_nsec ;
-      valuetime += 1000000000 * ( three.tv_sec - two.tv_sec ) + three.tv_nsec - two.tv_nsec;
+      //clock_gettime(CLOCK_MONOTONIC, &three);
+      //keytime += 1000000000 * ( two.tv_sec - one.tv_sec ) + two.tv_nsec - one.tv_nsec ;
+      //valuetime += 1000000000 * ( three.tv_sec - two.tv_sec ) + three.tv_nsec - two.tv_nsec;
       thread->stats.FinishedSingleOp();
     }
     char msg[100];
     snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
     thread->stats.AddMessage(msg);
-    printf("keytime %lld, valuetime %lld\n",keytime, valuetime);
+    //printf("keytime %lld, valuetime %lld\n",keytime, valuetime);
   }
 
   void ReadMissing(ThreadState* thread) {

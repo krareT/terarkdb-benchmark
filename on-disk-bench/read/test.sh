@@ -1,6 +1,6 @@
 #movies
 
-./test_movies_rocksdb.sh > /home/panfengfeng/result/on-disk/movies/readrandom_multi_rocksdb_256_3
+./test_movies_rocksdb.sh > /home/panfengfeng/result/on-disk/movies/readrandom_multi_rocksdb_256
 
 ./test_movies_terark_index.sh > /home/panfengfeng/result/on-disk/movies/readrandom_multi_terark_index_256
 

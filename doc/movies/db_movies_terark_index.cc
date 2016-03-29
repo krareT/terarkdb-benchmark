@@ -636,6 +636,12 @@ class Benchmark {
       if (method != NULL) {
         RunBenchmark(num_threads, name, method);
       }
+      time_t now;   
+      struct tm *timenow;   
+      time(&now);   
+      timenow = localtime(&now);   
+      printf("recent time is : %s \n", asctime(timenow));  
+
       tab->syncFinishWriting();
     }
   }
@@ -842,7 +848,7 @@ class Benchmark {
 		    continue;
 	    }
     }
-	ifs.close();
+    ifs.close();
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -902,28 +908,28 @@ class Benchmark {
 	  IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
 	  const Schema& indexSchema = tab->getIndexSchema(indexId);
 	  for (size_t i = 0; i < reads_; ++i) {
-		  clock_gettime(CLOCK_MONOTONIC, &one);
+		  //clock_gettime(CLOCK_MONOTONIC, &one);
 		  const int k = thread->rand.Next() % FLAGS_num;
 		  fstring key(allkeys_.at(k));
-		  clock_gettime(CLOCK_MONOTONIC, &two);
+		  //clock_gettime(CLOCK_MONOTONIC, &two);
 		  tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
-		  clock_gettime(CLOCK_MONOTONIC, &three);
+		  //clock_gettime(CLOCK_MONOTONIC, &three);
 		  for (auto recId : idvec) {
 			  tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
 			  //tab->selectOneColumn(recId, 1, &val, ctxr.get());
 		  }
-		  clock_gettime(CLOCK_MONOTONIC, &four);
+		  //clock_gettime(CLOCK_MONOTONIC, &four);
 		  if(idvec.size() > 0)
 			  found++;
 		  thread->stats.FinishedSingleOp();
-		  keytime += 1000000000 * ( two.tv_sec - one.tv_sec ) + two.tv_nsec - one.tv_nsec;
-		  indextime += 1000000000 * ( three.tv_sec - two.tv_sec ) + three.tv_nsec - two.tv_nsec;
-		  valuetime += 1000000000 * ( four.tv_sec - three.tv_sec ) + four.tv_nsec - three.tv_nsec;
+		  //keytime += 1000000000 * ( two.tv_sec - one.tv_sec ) + two.tv_nsec - one.tv_nsec;
+		  //indextime += 1000000000 * ( three.tv_sec - two.tv_sec ) + three.tv_nsec - two.tv_nsec;
+		  //valuetime += 1000000000 * ( four.tv_sec - three.tv_sec ) + four.tv_nsec - three.tv_nsec;
 	  }
 	  char msg[100];
 	  snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
 	  thread->stats.AddMessage(msg);
-	  printf("keytime %lld, indextime %lld, valuetime %lld\n",keytime, indextime, valuetime);
+	  //printf("keytime %lld, indextime %lld, valuetime %lld\n",keytime, indextime, valuetime);
   }
 
   void ReadMissing(ThreadState* thread) {
@@ -1014,7 +1020,7 @@ class Benchmark {
   }
 
   void ReadWriteDel(ThreadState* thread) {
-      if (thread->tid > 0) { // read
+      if (thread->tid % 3 == 0) { // read
           ReadRandom(thread);
       } else if (thread->tid % 3 == 1) { // write
           int64_t num = 0;
