@@ -912,9 +912,8 @@ class Benchmark {
 		  const int k = thread->rand.Next() % FLAGS_num;
 		  fstring key(allkeys_.at(k));
 		  //clock_gettime(CLOCK_MONOTONIC, &two);
-		  tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
-		  //clock_gettime(CLOCK_MONOTONIC, &three);
 		  tab->indexSearchExactNoLock(indexId, key, &idvec, ctxr.get());
+		  //clock_gettime(CLOCK_MONOTONIC, &three);
 		  for (auto recId : idvec) {
 			  tab->selectColgroupsNoLock(recId, colgroups, &cgDataVec, ctxr.get());
 			  //tab->selectOneColumn(recId, 1, &val, ctxr.get());
