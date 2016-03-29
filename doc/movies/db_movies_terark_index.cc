@@ -914,8 +914,9 @@ class Benchmark {
 		  //clock_gettime(CLOCK_MONOTONIC, &two);
 		  tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
 		  //clock_gettime(CLOCK_MONOTONIC, &three);
+		  tab->indexSearchExactNoLock(indexId, key, &idvec, ctxr.get());
 		  for (auto recId : idvec) {
-			  tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
+			  tab->selectColgroupsNoLock(recId, colgroups, &cgDataVec, ctxr.get());
 			  //tab->selectOneColumn(recId, 1, &val, ctxr.get());
 		  }
 		  //clock_gettime(CLOCK_MONOTONIC, &four);
