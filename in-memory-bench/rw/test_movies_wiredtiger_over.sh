@@ -5,7 +5,7 @@ record_num=7911684
 read_num=7911684
 cachesize=3110962490
 dirname=/mnt/datamemory
-ratio=95
+ratio=99
 
 rm -rf $dirname/*
 echo "####Now, running wiredtiger benchmark"

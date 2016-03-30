@@ -6,7 +6,7 @@ read_num=7911684
 dirname=/mnt/datamemory
 writebuffer=268435456
 cachesize=2637228
-ratio=85
+ratio=99
 
 rm -rf $dirname/*
 echo "####Now, running rocksdb benchmark"

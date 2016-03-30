@@ -4,7 +4,7 @@ file=/data/publicdata/movies/movies.txt
 record_num=7911684
 read_num=1000000
 dirname=/mnt/datamemory
-ratio=95
+ratio=99
 
 rm -rf $dirname/*
 export TMPDIR=$dirname
