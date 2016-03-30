@@ -753,9 +753,16 @@ class Benchmark {
       snprintf(msg, sizeof(msg), "(%d ops)", num_);
       thread->stats.AddMessage(msg);
     }
-
-	if (!seq)
+    int tid = thread->tid;
+    for(int i=0; i<num_; i++) {
+	printf("before tid %d, shuff %d\n", tid, shuff[i]);
+    }
+    if (!seq)
 	  thread->rand.Shuffle(shuff, num_);
+    for(int i=0; i<num_; i++) {
+	printf("after tid %d, shuff %d\n", tid, shuff[i]);
+    }
+/*
     RandomGenerator gen;
     WriteBatch batch;
     Status s;
@@ -778,6 +785,7 @@ class Benchmark {
       }
     }
     thread->stats.AddBytes(bytes);
+*/
   }
 
   void ReadSequential(ThreadState* thread) {

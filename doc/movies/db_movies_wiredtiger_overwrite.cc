@@ -23,6 +23,7 @@
 #include "util/testutil.h"
 #include "port/port.h"
 #include "wiredtiger.h"
+#include <terark/util/fstrvec.hpp>
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -145,15 +146,12 @@ static bool FLAGS_stagger = false;
 // Stagger starting point of reads for sequential (or reverse).
 static int FLAGS_max_compact_wait = 1200;
 
+// read write percent
+static int FLAGS_read_write_percent = 100;
+
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
 static const char* FLAGS_resource_data = NULL;
-
-#define RAND_SHUFFLE
-
-#ifdef RAND_SHUFFLE
-static int *shuff = NULL;
-#endif
 
 namespace leveldb {
 
@@ -348,10 +346,6 @@ struct ThreadState {
   ThreadState(int index, WT_CONNECTION *conn)
       : tid(index),
         rand(1000 + index) {
-#ifdef  RAND_SHUFFLE
-    if (index == 0)
-  rand.Shuffle(shuff, FLAGS_num);
-#endif
     conn->open_session(conn, NULL, NULL, &session);
     assert(session != NULL);
   }
@@ -386,7 +380,7 @@ class Benchmark {
   int reads_;
   int heap_counter_;
 
-  std::vector<std::string> allkeys_;
+  terark::fstrvec allkeys_;
 
   void PrintHeader() {
     const int kKeySize = 16;
@@ -492,7 +486,6 @@ class Benchmark {
   }
 
   ~Benchmark() {
-    allkeys_.clear();
   }
 
   void Run() {
@@ -614,8 +607,9 @@ class Benchmark {
       } else if (name == Slice("deleterandom")) {
         method = &Benchmark::DeleteRandom;
       } else if (name == Slice("readwhilewriting")) {
-        num_threads++;  // Add extra thread for writing
-        method = &Benchmark::ReadWhileWriting;
+        //num_threads++;  // Add extra thread for writing
+        //method = &Benchmark::ReadWhileWriting;
+        method = &Benchmark::ReadWhileWritingNew;
 
         struct timespec start, end;
 	clock_gettime(CLOCK_MONOTONIC, &start);
@@ -1002,8 +996,6 @@ class Benchmark {
       thread->stats.AddMessage(msg);
     }
    
-    if (!seq)
-          thread->rand.Shuffle(shuff, num_);
     std::stringstream txn_config;
     txn_config.str("");
     txn_config << "isolation=snapshot";
@@ -1180,8 +1172,6 @@ repeat:
     const char *ckey;
     WT_CURSOR *cursor;
     
-    const char* wproductId;
-    const char* wuserId;
     const char*  wprofileName;
     uint32_t whelpfulness1;
     uint32_t whelpfulness2;
@@ -1195,12 +1185,20 @@ repeat:
       exit(1);
     }
     int found = 0;
+
+    int *shuffr = NULL;
+    shuffr = (int *)malloc(FLAGS_num * sizeof(int));
+    for (int i=0; i<FLAGS_num; i++)
+        shuffr[i] = i;
+    thread->rand.Shuffle(shuffr, FLAGS_num);
+
     for (int i = 0; i < reads_; i++) {
-      const int k = thread->rand.Next() % FLAGS_num;
-      cursor->set_key(cursor, allkeys_.at(k).c_str());
+      int k = shuffr[i];
+      std::string key = allkeys_.str(k);
+      cursor->set_key(cursor, key.c_str());
       if (cursor->search(cursor) == 0) {
 	    found++;
-        ret = cursor->get_value(cursor, &wprofileName, &whelpfulness1, &whelpfulness2, &wscore, &wtime, &wsummary, &wtext);
+            ret = cursor->get_value(cursor, &wprofileName, &whelpfulness1, &whelpfulness2, &wscore, &wtime, &wsummary, &wtext);
       }
       thread->stats.FinishedSingleOp();
     }
@@ -1416,7 +1414,7 @@ repeat:
 
           while(true) {
               const int k = thread->rand.Next() % FLAGS_num;
-              cursor->set_key(cursor, allkeys_.at(k).c_str());
+              cursor->set_key(cursor, allkeys_.at(k));
               ret = cursor->remove(cursor);
               num ++;
               MutexLock l(&thread->shared->mu);
@@ -1429,6 +1427,116 @@ repeat:
       }
   }
 
+  void ReadWhileWritingNew(ThreadState* thread) {
+          int *shuffrw = NULL;
+          int *shuffr = NULL;
+          shuffrw = (int *)malloc(FLAGS_num * sizeof(int));
+          shuffr = (int *)malloc(FLAGS_num * sizeof(int));
+          int read_num = FLAGS_num * FLAGS_read_write_percent / 100;
+          for (int i=0; i<FLAGS_num; i++) {
+                  shuffr[i] = i;
+
+                  if (i < read_num)
+                          shuffrw[i] = 1;
+                  else
+                          shuffrw[i] = 0;
+          }
+	  
+	  int64_t readn = 0;
+	  int64_t writen = 0;
+          thread->rand.Shuffle(shuffrw, FLAGS_num);
+          thread->rand.Shuffle(shuffr, FLAGS_num);
+
+	  const char*  wprofileName;
+	  uint32_t whelpfulness1;
+	  uint32_t whelpfulness2;
+	  uint32_t wscore;
+	  uint32_t wtime;
+	  const char* wsummary;
+	  const char* wtext;
+
+          WT_CURSOR *cursor;
+	  std::stringstream cur_config;
+	  cur_config.str("");
+	  cur_config << "overwrite";
+	  int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
+	  if (ret != 0) {
+		  fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+		  exit(1);
+	  }
+	  int found = 0;
+	  std::ifstream ifs(FLAGS_resource_data);
+	  std::string str;
+	  std::string key1;
+	  std::string key2;
+	  TestRow recRow;
+
+	  for (int i=0; i<FLAGS_num; i++) {
+		  if (shuffrw[i] == 1) {
+			  // read
+			  int k = shuffr[i];
+			  std::string key = allkeys_.str(k);
+			  cursor->set_key(cursor, key.c_str());
+			  if (cursor->search(cursor) == 0) {
+				  found++;
+				  ret = cursor->get_value(cursor, &wprofileName, &whelpfulness1, &whelpfulness2, &wscore, &wtime, &wsummary, &wtext);
+			  }
+		          readn ++;
+			  thread->stats.FinishedSingleOp();
+		  } else {
+			  // write
+			  while(getline(ifs, str)) {
+				  if (str.find("product/productId:") == 0) {
+					  key1 = str.substr(19);
+					  continue;
+				  }
+				  if (str.find("review/userId:") == 0) {
+					  key2 = str.substr(15);
+					  continue;
+				  }
+				  if (str.find("review/profileName:") == 0) {
+					  recRow.profileName = str.substr(20);
+					  continue;
+				  }
+				  if (str.find("review/helpfulness:") == 0) {
+					  char* pos2 = NULL;
+					  recRow.helpfulness1 = strtol(str.data()+20, &pos2, 10);
+					  recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+					  continue;
+				  }
+				  if (str.find("review/score:") == 0) {
+					  recRow.score = atol(str.substr(14).c_str());
+					  continue;
+				  }
+				  if (str.find("review/time:") == 0) {
+					  recRow.time = atol(str.substr(13).c_str());
+					  continue;
+				  }
+				  if (str.find("review/summary:") == 0) {
+					  recRow.summary = str.substr(16);
+					  continue;
+				  }
+				  if (str.find("review/text:") == 0) {
+					  recRow.text = str.substr(13);
+					  recRow.product_userId = key1 + " " + key2;
+
+					  cursor->set_key(cursor, recRow.product_userId.c_str());
+					  cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
+					  ret = cursor->insert(cursor);
+					  if (ret != 0) {
+						  fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+						  exit(1);
+					  }
+					  writen ++;
+					  thread->stats.FinishedSingleOp();
+					  break;
+				  }
+			  }
+		  }
+	  }
+	  cursor->close(cursor);
+	  printf("readnum %lld, writenum %lld\n", readn, writen);
+  }
 
   void ReadWhileWriting(ThreadState* thread) {
       if (thread->tid > 0) {
@@ -1644,6 +1752,8 @@ int main(int argc, char** argv) {
       FLAGS_open_files = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
+    } else if (sscanf(argv[i], "--read_ratio=%d%c", &n, &junk) == 1) {
+      FLAGS_read_write_percent = n;
     } else if (strncmp(argv[i], "--resource_data=", 16) == 0) {
       FLAGS_resource_data = argv[i] + 16;
     } else {
@@ -1658,11 +1768,7 @@ int main(int argc, char** argv) {
       default_db_path += "/dbbench";
       FLAGS_db = default_db_path.c_str();
   }
-#ifdef RAND_SHUFFLE
-  shuff = (int *)malloc(FLAGS_num * sizeof(int));
-  for (int i=0; i<FLAGS_num; i++)
-      shuff[i] = i;
-#endif
+  
   leveldb::Benchmark benchmark;
   benchmark.Run();
   return 0;

@@ -129,6 +129,9 @@ static int FLAGS_open_files = 0;
 // Negative means use default settings.
 static int FLAGS_bloom_bits = -1;
 
+// read write percent
+static int FLAGS_read_write_percent = 100;
+
 // If true, do not destroy the existing database.  If you set this
 // flag and also specify a benchmark that wants a fresh database, that
 // benchmark will fail.
@@ -139,7 +142,6 @@ static const char* FLAGS_db = NULL;
 static const char* FLAGS_db_table = NULL;
 static const char* FLAGS_resource_data = NULL;
 
-static int *shuff = NULL;
 
 namespace leveldb {
 
@@ -544,8 +546,9 @@ class Benchmark {
       } else if (name == Slice("deleterandom")) {
         method = &Benchmark::DeleteRandom;
       } else if (name == Slice("readwhilewriting")) {
-        num_threads++;  // Add extra thread for writing
-        method = &Benchmark::ReadWhileWriting;
+        // num_threads++;  // Add extra thread for writing
+        // method = &Benchmark::ReadWhileWriting;
+        method = &Benchmark::ReadWhileWritingNew;
 
         struct timespec start, end;
 	clock_gettime(CLOCK_MONOTONIC, &start);
@@ -898,6 +901,12 @@ class Benchmark {
 		colgroups.push_back(i);
 	  }
 
+	  int *shuffr = NULL;
+	  shuffr = (int *)malloc(FLAGS_num * sizeof(int));
+	  for (int i=0; i<FLAGS_num; i++)
+		  shuffr[i] = i;
+	  thread->rand.Shuffle(shuffr, FLAGS_num);
+
 	  struct timespec one, two, three, four;
 	  long long keytime = 0;
 	  long long indextime = 0;
@@ -909,14 +918,15 @@ class Benchmark {
 	  const Schema& indexSchema = tab->getIndexSchema(indexId);
 	  for (size_t i = 0; i < reads_; ++i) {
 		  //clock_gettime(CLOCK_MONOTONIC, &one);
-		  const int k = thread->rand.Next() % FLAGS_num;
+		  int k = shuffr[i];
 		  fstring key(allkeys_.at(k));
 		  //clock_gettime(CLOCK_MONOTONIC, &two);
 		  tab->indexSearchExactNoLock(indexId, key, &idvec, ctxr.get());
+		  //tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
 		  //clock_gettime(CLOCK_MONOTONIC, &three);
 		  for (auto recId : idvec) {
 			  tab->selectColgroupsNoLock(recId, colgroups, &cgDataVec, ctxr.get());
-			  //tab->selectOneColumn(recId, 1, &val, ctxr.get());
+			  //tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
 		  }
 		  //clock_gettime(CLOCK_MONOTONIC, &four);
 		  if(idvec.size() > 0)
@@ -1113,6 +1123,122 @@ class Benchmark {
       }
   }
 
+  void ReadWhileWritingNew(ThreadState* thread) {
+          int *shuffrw = NULL;
+          int *shuffr = NULL;
+          shuffrw = (int *)malloc(FLAGS_num * sizeof(int));
+          shuffr = (int *)malloc(FLAGS_num * sizeof(int));
+          int read_num = FLAGS_num * FLAGS_read_write_percent / 100;
+          for (int i=0; i<FLAGS_num; i++) {
+                  shuffr[i] = i;
+
+                  if (i < read_num)
+                          shuffrw[i] = 1;
+                  else
+                          shuffrw[i] = 0;
+          }
+
+	  int64_t readn = 0;
+	  int64_t writen = 0;
+          thread->rand.Shuffle(shuffrw, FLAGS_num);
+          thread->rand.Shuffle(shuffr, FLAGS_num);
+
+	  valvec<byte> keyHit, val;
+          valvec<valvec<byte> > cgDataVec;
+          valvec<llong> idvec;
+          valvec<size_t> colgroups;
+          DbContextPtr ctxrw;
+          ctxrw = tab->createDbContext();
+          ctxrw->syncIndex = FLAGS_sync_index;
+
+	  for (size_t i = tab->getIndexNum(); i < tab->getColgroupNum(); i++) {
+                colgroups.push_back(i);
+          }
+
+          int found = 0;
+          size_t indexId = 0;
+          IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
+          const Schema& indexSchema = tab->getIndexSchema(indexId);
+
+	  terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+	  std::ifstream ifs(FLAGS_resource_data);
+	  std::string str;
+	  std::string key1;
+	  std::string key2;
+
+	  TestRow recRow;
+
+	  for (int i=0; i<FLAGS_num; i++) {
+		  if (shuffrw[i] == 1) {
+			  // read
+			  int k = shuffr[i];
+			  fstring key(allkeys_.at(k));
+			  // tab->indexSearchExactNoLock(indexId, key, &idvec, ctxrw.get());
+			  tab->indexSearchExact(indexId, key, &idvec, ctxrw.get());
+			  for (auto recId : idvec) {
+				  // tab->selectColgroupsNoLock(recId, colgroups, &cgDataVec, ctxrw.get());
+				  tab->selectColgroups(recId, colgroups, &cgDataVec, ctxrw.get());
+			  }
+			  if(idvec.size() > 0)
+				  found++;
+			  readn ++;
+			  thread->stats.FinishedSingleOp();
+		  } else {
+			  // write
+			  while(getline(ifs, str)) {
+				  fstring fstr(str);
+				  if (fstr.startsWith("product/productId:")) {
+					  key1 = str.substr(19);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/userId:")) {
+					  key2 = str.substr(15);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/profileName:")) {
+					  recRow.profileName = str.substr(20);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/helpfulness:")) {
+					  char* pos2 = NULL;
+					  recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
+					  recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/score:")) {
+					  recRow.score = lcast(fstr.substr(14));
+					  continue;
+				  }
+				  if (fstr.startsWith("review/time:")) {
+					  recRow.time = lcast(fstr.substr(13));
+					  continue;
+				  }
+				  if (fstr.startsWith("review/summary:")) {
+					  recRow.summary = str.substr(16);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/text:")) {
+					  recRow.text = str.substr(13);
+					  recRow.product_userId = key1 + " " + key2;
+
+					  rowBuilder.rewind();
+					  rowBuilder << recRow;
+					  fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+					  if (ctxrw->insertRow(binRow) < 0) {
+						  printf("Insert failed: %s\n", ctxrw->errMsg.c_str());
+						  exit(-1);
+					  }
+					  writen ++;
+					  thread->stats.FinishedSingleOp();
+					  break;
+				  }
+			  }
+		  }
+	  }
+	  printf("readnum %lld, writenum %lld\n", readn, writen);
+  }
+
    void ReadWhileWriting(ThreadState* thread) {
        if (thread->tid > 0) {
            ReadRandom(thread);
@@ -1257,6 +1383,8 @@ int main(int argc, char** argv) {
       FLAGS_threads = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
+    } else if (sscanf(argv[i], "--read_ratio=%d%c", &n, &junk) == 1) {
+      FLAGS_read_write_percent = n;
     } else if (strncmp(argv[i], "--resource_data=", 16) == 0) {
       FLAGS_resource_data = argv[i] + 16;
     } else {
@@ -1281,10 +1409,6 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Please input the resource data file\n");
     exit(-1);
   }
-
-  shuff = (int *)malloc(FLAGS_num * sizeof(int));
-  for (int i=0; i<FLAGS_num; i++)
-    shuff[i] = i;
 
   leveldb::Benchmark benchmark;
   benchmark.Run();

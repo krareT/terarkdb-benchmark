@@ -6,6 +6,7 @@ read_num=7911684
 dirname=/experiment
 writebuffer=268435456
 cachesize=2637228
+ratio=95
 
 rm -rf $dirname/*
 echo "####Now, running rocksdb benchmark"
@@ -22,7 +23,7 @@ echo "####Now, running rocksdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-../../db_movies_rocksdb --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --use_existing_db=1 --threads=8 --resource_data=$file
+../../db_movies_rocksdb --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --use_existing_db=1 --threads=8 --resource_data=$file --read_ratio=$ratio
 free -m
 date
 echo "####rocksdb benchmark finish"

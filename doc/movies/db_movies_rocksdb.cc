@@ -128,6 +128,9 @@ static int FLAGS_open_files = 0;
 // Negative means use default settings.
 static int FLAGS_bloom_bits = -1;
 
+// read write percent
+static int FLAGS_read_write_percent = 100;
+
 // If true, do not destroy the existing database.  If you set this
 // flag and also specify a benchmark that wants a fresh database, that
 // benchmark will fail.
@@ -136,8 +139,6 @@ static bool FLAGS_use_existing_db = false;
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
 static const char* FLAGS_resource_data = NULL;
-
-static int *shuff = NULL;
 
 namespace leveldb {
 
@@ -573,8 +574,9 @@ class Benchmark {
       } else if (name == rocksdb::Slice("deleterandom")) {
         method = &Benchmark::DeleteRandom;
       } else if (name == rocksdb::Slice("readwhilewriting")) {
-        num_threads++;  // Add extra thread for writing
-        method = &Benchmark::ReadWhileWriting;
+        // num_threads++;  // Add extra thread for writing
+        // method = &Benchmark::ReadWhileWriting;
+        method = &Benchmark::ReadWhileWritingNew;
 	
 	struct timespec start, end;
 	clock_gettime(CLOCK_MONOTONIC, &start);
@@ -597,8 +599,8 @@ class Benchmark {
                 continue;
             }
         }
-		allkeys_.shrink_to_fit();
-		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
+	allkeys_.shrink_to_fit();
+	printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
 	clock_gettime(CLOCK_MONOTONIC, &end);
@@ -893,9 +895,6 @@ class Benchmark {
       thread->stats.AddMessage(msg);
     }
 
-//    if (!seq)
-//	  thread->rand.Shuffle(shuff, num_);
-
     std::ifstream ifs(FLAGS_resource_data);  
     std::string str;
 
@@ -990,9 +989,15 @@ class Benchmark {
     long long keytime = 0;
     long long valuetime = 0;
 
+    int *shuffr = NULL;
+    shuffr = (int *)malloc(FLAGS_num * sizeof(int));
+    for (int i=0; i<FLAGS_num; i++)
+    	shuffr[i] = i;
+    thread->rand.Shuffle(shuffr, FLAGS_num);
+
     for (int i = 0; i < reads_; i++) {
       //clock_gettime(CLOCK_MONOTONIC, &one);
-      const int k = thread->rand.Next() % FLAGS_num;
+      int k = shuffr[i];
       std::string key = allkeys_.str(k);
       //clock_gettime(CLOCK_MONOTONIC, &two);
       if (db_->Get(options, key, &value).ok()) {
@@ -1159,6 +1164,103 @@ class Benchmark {
 	} 
   }
 
+  void ReadWhileWritingNew(ThreadState* thread) {
+	  int *shuffrw = NULL; // read/write ratio
+	  int *shuffr = NULL;  // read sequence
+	  shuffrw = (int *)malloc(FLAGS_num * sizeof(int));
+	  shuffr = (int *)malloc(FLAGS_num * sizeof(int));
+	  int read_num = FLAGS_num * FLAGS_read_write_percent / 100;
+	  for (int i=0; i<FLAGS_num; i++) {
+		  shuffr[i] = i;
+		  if (i < read_num)
+			  shuffrw[i] = 1;
+		  else
+			  shuffrw[i] = 0;
+	  }
+
+	  int64_t readn = 0;
+	  int64_t writen = 0;
+
+	  thread->rand.Shuffle(shuffrw, FLAGS_num);
+	  thread->rand.Shuffle(shuffr, FLAGS_num);
+	
+	  rocksdb::ReadOptions options;
+
+	  std::ifstream ifs(FLAGS_resource_data);
+	  std::string str;
+	  std::string key; 
+	  std::string key1;
+	  std::string key2;
+	  std::string value;
+	  int found = 0;
+	  rocksdb::Status s;
+
+	  for (int i=0; i<FLAGS_num; i++) {
+		  value.clear();
+		  if (shuffrw[i] == 1) {
+			  // read
+			  int k = shuffr[i];
+			  std::string key = allkeys_.str(k);
+			  if (db_->Get(options, key, &value).ok()) {
+				  found++;
+			  }
+			  readn ++;
+			  thread->stats.FinishedSingleOp();
+		  } else {
+			  // write
+			  while(getline(ifs, str)) {
+				  if (str.find("product/productId:") == 0) {
+					  key1 = str.substr(19);
+					  continue;
+				  }
+				  if (str.find("review/userId:") == 0) {
+					  key2 = str.substr(15);
+					  continue;
+				  }
+				  if (str.find("review/profileName:") == 0) {
+					  value += str.substr(20);
+					  value += " ";
+					  continue;
+				  }
+				  if (str.find("review/helpfulness:") == 0) {
+					  value += str.substr(20);
+					  value += " ";
+					  continue;
+				  }
+				  if (str.find("review/score:") == 0) {
+					  value += str.substr(14);
+					  value += " ";
+					  continue;
+				  }
+				  if (str.find("review/time:") == 0) {
+					  value += str.substr(13);
+					  value += " ";
+					  continue;
+				  }
+				  if (str.find("review/summary:") == 0) {
+					  value += str.substr(16);
+					  value += " ";
+					  continue;
+				  }
+				  if (str.find("review/text:") == 0) {
+					  value += str.substr(13);
+
+					  key = key1 + " " + key2;
+					  s = db_->Put(write_options_, key, value);
+					  if (!s.ok()) {
+						  fprintf(stderr, "put error: %s\n", s.ToString().c_str());
+						  exit(1);
+					  }
+					  writen ++;
+					  thread->stats.FinishedSingleOp();
+					  break;
+				  }
+			  }
+		  }
+	  }
+	   printf("readnum %lld, writenum %lld\n", readn, writen);
+  }
+
   void ReadWhileWriting(ThreadState* thread) {
       if (thread->tid > 0) {
           ReadRandom(thread);
@@ -1299,16 +1401,16 @@ int main(int argc, char** argv) {
       FLAGS_value_size = n;
     } else if (sscanf(argv[i], "--write_buffer_size=%ld%c", &n, &junk) == 1) {
       FLAGS_write_buffer_size = n;
-      std::cout << "FLAGS_write_buffer_size " << FLAGS_write_buffer_size << std::endl;
     } else if (sscanf(argv[i], "--cache_size=%ld%c", &n, &junk) == 1) {
       FLAGS_cache_size = n;
-      std::cout << " cache size " << FLAGS_cache_size << std::endl;
     } else if (sscanf(argv[i], "--bloom_bits=%d%c", &n, &junk) == 1) {
       FLAGS_bloom_bits = n;
     } else if (sscanf(argv[i], "--open_files=%d%c", &n, &junk) == 1) {
       FLAGS_open_files = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
+    } else if (sscanf(argv[i], "--read_ratio=%d%c", &n, &junk) == 1) {
+      FLAGS_read_write_percent = n;
     } else if (strncmp(argv[i], "--resource_data=", 16) == 0) {
       FLAGS_resource_data = argv[i] + 16;
     } else {
@@ -1324,9 +1426,6 @@ int main(int argc, char** argv) {
       FLAGS_db = default_db_path.c_str();
   }
 
-  shuff = (int *)malloc(FLAGS_num * sizeof(int));
-  for (int i=0; i<FLAGS_num; i++)
-    shuff[i] = i;
   leveldb::Benchmark benchmark;
   benchmark.Run();
   return 0;
