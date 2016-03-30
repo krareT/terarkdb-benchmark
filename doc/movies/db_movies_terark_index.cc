@@ -31,6 +31,7 @@
 #include <terark/io/DataIO.hpp>
 #include <terark/io/RangeStream.hpp>
 #include <terark/lcast.hpp>
+#include <terark/util/autofree.hpp>
 #include <terark/util/fstrvec.hpp>
 
 using namespace terark;
@@ -130,7 +131,7 @@ static int FLAGS_open_files = 0;
 static int FLAGS_bloom_bits = -1;
 
 // read write percent
-static int FLAGS_read_write_percent = 100;
+static double FLAGS_read_write_percent = 100;
 
 // If true, do not destroy the existing database.  If you set this
 // flag and also specify a benchmark that wants a fresh database, that
@@ -1124,18 +1125,13 @@ class Benchmark {
   }
 
   void ReadWhileWritingNew(ThreadState* thread) {
-          int *shuffrw = NULL;
-          int *shuffr = NULL;
-          shuffrw = (int *)malloc(FLAGS_num * sizeof(int));
-          shuffr = (int *)malloc(FLAGS_num * sizeof(int));
-          int read_num = FLAGS_num * FLAGS_read_write_percent / 100;
+          AutoFree<int> shuffrw(FLAGS_num);
+          AutoFree<int> shuffr(FLAGS_num);
+          int read_num = int(FLAGS_num * FLAGS_read_write_percent / 100.0);
+	  std::fill_n(shuffrw , read_num, 1);
+	  std::fill_n(shuffrw + read_num, FLAGS_num-read_num, 0);
           for (int i=0; i<FLAGS_num; i++) {
                   shuffr[i] = i;
-
-                  if (i < read_num)
-                          shuffrw[i] = 1;
-                  else
-                          shuffrw[i] = 0;
           }
 
 	  int64_t readn = 0;
@@ -1181,7 +1177,7 @@ class Benchmark {
 			  }
 			  if(idvec.size() > 0)
 				  found++;
-			  readn ++;
+			  readn++;
 			  thread->stats.FinishedSingleOp();
 		  } else {
 			  // write
@@ -1383,8 +1379,8 @@ int main(int argc, char** argv) {
       FLAGS_threads = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
-    } else if (sscanf(argv[i], "--read_ratio=%d%c", &n, &junk) == 1) {
-      FLAGS_read_write_percent = n;
+    } else if (sscanf(argv[i], "--read_ratio=%f%c", &d, &junk) == 1) {
+      FLAGS_read_write_percent = d;
     } else if (strncmp(argv[i], "--resource_data=", 16) == 0) {
       FLAGS_resource_data = argv[i] + 16;
     } else {
