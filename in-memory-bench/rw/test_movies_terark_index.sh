@@ -1,8 +1,8 @@
-nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readwhilewriting_terark_index_256_2 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readwhilewriting_terark_index_256_99_nosyncindex 2 > nohup.out &
 
 file=/data/publicdata/movies/movies.txt
 record_num=7911684
-read_num=1000000
+read_num=7911684
 dirname=/mnt/datamemory
 ratio=99
 
@@ -15,7 +15,7 @@ echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export TerarkDB_WrSegCacheSizeMB=256
-../../db_movies_terark_index --benchmarks=fillrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --resource_data=$file
+../../db_movies_terark_index --benchmarks=fillrandom --num=$record_num --sync_index=0 --db=$dirname --resource_data=$file
 free -m
 date
 du -s -b $dirname
@@ -26,7 +26,7 @@ echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export TerarkDB_WrSegCacheSizeMB=256
-../../db_movies_terark_index --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --sync_index=1 --db=$dirname --threads=8 --resource_data=$file --read_ratio=$ratio
+../../db_movies_terark_index --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --threads=8 --resource_data=$file --read_ratio=$ratio
 free -m
 date
 echo "####terarkdb benchmark finish"

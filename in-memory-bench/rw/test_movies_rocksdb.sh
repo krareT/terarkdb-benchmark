@@ -1,4 +1,4 @@
-nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readwhilewriting_rocksdb_256_2 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readwhilewriting_rocksdb_256_99 2 > nohup.out &
 
 file=/data/publicdata/movies/movies.txt
 record_num=7911684
@@ -13,7 +13,7 @@ echo "####Now, running rocksdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-../../db_movies_rocksdb --benchmarks=fillrandom --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --bloom_bits=5 --db=$dirname --resource_data=$file
+../../db_movies_rocksdb --benchmarks=fillrandom --num=$record_num --write_buffer_size=$writebuffer --bloom_bits=5 --db=$dirname --resource_data=$file
 free -m
 date
 echo "####rocksdb benchmark finish"

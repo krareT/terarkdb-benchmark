@@ -131,7 +131,8 @@ static int FLAGS_open_files = 0;
 static int FLAGS_bloom_bits = -1;
 
 // read write percent
-static double FLAGS_read_write_percent = 100;
+//static double FLAGS_read_write_percent = 100;
+static int FLAGS_read_write_percent = 100;
 
 // If true, do not destroy the existing database.  If you set this
 // flag and also specify a benchmark that wants a fresh database, that
@@ -143,6 +144,7 @@ static const char* FLAGS_db = NULL;
 static const char* FLAGS_db_table = NULL;
 static const char* FLAGS_resource_data = NULL;
 
+static int *shuff = NULL;
 
 namespace leveldb {
 
@@ -528,7 +530,6 @@ class Benchmark {
         }
 		allkeys_.shrink_to_fit();
 		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
 	clock_gettime(CLOCK_MONOTONIC, &end);
         long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
@@ -550,6 +551,9 @@ class Benchmark {
         // num_threads++;  // Add extra thread for writing
         // method = &Benchmark::ReadWhileWriting;
         method = &Benchmark::ReadWhileWritingNew;
+	printf("readwhilewriting\n");
+        Random rand(1000);
+        rand.Shuffle(shuff, FLAGS_threads);
 
         struct timespec start, end;
 	clock_gettime(CLOCK_MONOTONIC, &start);
@@ -571,10 +575,9 @@ class Benchmark {
                 allkeys_.push_back(key1 + " " + key2);
                 continue;
             }
-        }
-		allkeys_.shrink_to_fit();
-		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	ifs.close();
+	}
+	allkeys_.shrink_to_fit();
+	printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 	assert(allkeys_.size() == FLAGS_num);
 	clock_gettime(CLOCK_MONOTONIC, &end);
         long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
@@ -605,7 +608,6 @@ class Benchmark {
         }
 		allkeys_.shrink_to_fit();
 		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
 	clock_gettime(CLOCK_MONOTONIC, &end);
         long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
@@ -852,7 +854,6 @@ class Benchmark {
 		    continue;
 	    }
     }
-    ifs.close();
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -1094,7 +1095,6 @@ class Benchmark {
                       return;
                   }
               }
-	      ifs.close();
           }
       } else {  // del
           valvec<byte> keyHit, val;
@@ -1127,9 +1127,11 @@ class Benchmark {
   void ReadWhileWritingNew(ThreadState* thread) {
           AutoFree<int> shuffrw(FLAGS_num);
           AutoFree<int> shuffr(FLAGS_num);
-          int read_num = int(FLAGS_num * FLAGS_read_write_percent / 100.0);
-	  std::fill_n(shuffrw , read_num, 1);
-	  std::fill_n(shuffrw + read_num, FLAGS_num-read_num, 0);
+          // int read_num = int(FLAGS_num * FLAGS_read_write_percent / 100.0);
+          int read_num = FLAGS_num * FLAGS_read_write_percent / 100;
+	  std::fill_n(shuffrw.p , read_num, 1);
+	  std::fill_n(shuffrw.p + read_num, FLAGS_num-read_num, 0);
+ 
           for (int i=0; i<FLAGS_num; i++) {
                   shuffr[i] = i;
           }
@@ -1159,6 +1161,24 @@ class Benchmark {
 	  terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
 	  std::ifstream ifs(FLAGS_resource_data);
 	  std::string str;
+
+	  int64_t avg = FLAGS_num/FLAGS_threads;
+          int64_t copyavg = avg;
+          int offset = shuff[thread->tid];
+          if (avg != FLAGS_num) {
+                if (offset != 0) {
+                        int64_t skip = offset * avg;
+                        while(getline(ifs, str)) {
+                                if (str.find("review/text:") == 0) {
+                                        skip --;
+                                        if (skip == 0)
+                                                break;
+                                }
+                                continue;
+                        }
+                }
+          }
+
 	  std::string key1;
 	  std::string key2;
 
@@ -1177,11 +1197,11 @@ class Benchmark {
 			  }
 			  if(idvec.size() > 0)
 				  found++;
-			  readn++;
+			  readn ++;
 			  thread->stats.FinishedSingleOp();
 		  } else {
 			  // write
-			  while(getline(ifs, str)) {
+			  while(getline(ifs, str) && avg != 0) {
 				  fstring fstr(str);
 				  if (fstr.startsWith("product/productId:")) {
 					  key1 = str.substr(19);
@@ -1226,13 +1246,18 @@ class Benchmark {
 						  exit(-1);
 					  }
 					  writen ++;
+					  avg --;
 					  thread->stats.FinishedSingleOp();
 					  break;
 				  }
 			  }
 		  }
 	  }
-	  printf("readnum %lld, writenum %lld\n", readn, writen);
+	  time_t now;
+	  struct tm *timenow;
+	  time(&now);
+	  timenow = localtime(&now);
+	  printf("readnum %lld, writenum %lld, avg %lld, offset %d, time %s\n", readn, writen, copyavg, offset, asctime(timenow));
   }
 
    void ReadWhileWriting(ThreadState* thread) {
@@ -1299,7 +1324,6 @@ class Benchmark {
                        return;
                    }
                }
-	   ifs.close();
            }
        }
    }
@@ -1379,8 +1403,8 @@ int main(int argc, char** argv) {
       FLAGS_threads = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
-    } else if (sscanf(argv[i], "--read_ratio=%f%c", &d, &junk) == 1) {
-      FLAGS_read_write_percent = d;
+    } else if (sscanf(argv[i], "--read_ratio=%d%c", &n, &junk) == 1) {
+      FLAGS_read_write_percent = n;
     } else if (strncmp(argv[i], "--resource_data=", 16) == 0) {
       FLAGS_resource_data = argv[i] + 16;
     } else {
@@ -1405,6 +1429,10 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Please input the resource data file\n");
     exit(-1);
   }
+
+  shuff = (int *)malloc(FLAGS_threads * sizeof(int));
+  for (int i=0; i<FLAGS_threads; i++)
+    shuff[i] = i;
 
   leveldb::Benchmark benchmark;
   benchmark.Run();

@@ -27,8 +27,9 @@
 #include "rocksdb/options.h"
 #include "rocksdb/table.h"
 #include "rocksdb/filter_policy.h"
-#include <terark/util/fstrvec.hpp>
 
+#include <terark/util/autofree.hpp>
+#include <terark/util/fstrvec.hpp>
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
 //      fillseq       -- write N values in sequential key order in async mode
@@ -106,6 +107,7 @@ static int FLAGS_min_level_to_compress = 0;
 static int FLAGS_num_levels = 7;
 
 
+
 // Arrange to generate values that shrink to this fraction of
 // their original size after compression
 static double FLAGS_compression_ratio = 0.5;
@@ -139,6 +141,8 @@ static bool FLAGS_use_existing_db = false;
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
 static const char* FLAGS_resource_data = NULL;
+
+static int *shuff = NULL;
 
 namespace leveldb {
 
@@ -554,7 +558,6 @@ class Benchmark {
         }
 		allkeys_.shrink_to_fit();
 		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	ifs.close();	
 	assert(allkeys_.size() == FLAGS_num);
 	clock_gettime(CLOCK_MONOTONIC, &end);
 	long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
@@ -577,6 +580,9 @@ class Benchmark {
         // num_threads++;  // Add extra thread for writing
         // method = &Benchmark::ReadWhileWriting;
         method = &Benchmark::ReadWhileWritingNew;
+    
+        Random rand(1000);
+        rand.Shuffle(shuff, FLAGS_threads);
 	
 	struct timespec start, end;
 	clock_gettime(CLOCK_MONOTONIC, &start);
@@ -601,7 +607,6 @@ class Benchmark {
         }
 	allkeys_.shrink_to_fit();
 	printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
 	clock_gettime(CLOCK_MONOTONIC, &end);
         long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
@@ -633,7 +638,6 @@ class Benchmark {
         }
 		allkeys_.shrink_to_fit();
 		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	ifs.close();
 	assert(allkeys_.size() == FLAGS_num);
 	clock_gettime(CLOCK_MONOTONIC, &end);
         long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
@@ -952,7 +956,6 @@ class Benchmark {
 		    continue;
 	    }
     }
-    ifs.close();
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -1146,7 +1149,6 @@ class Benchmark {
 					return;
 				}
 			}
-			ifs.close();
 		}
 	} else {  // del
 		int64_t num = 0;
@@ -1165,22 +1167,19 @@ class Benchmark {
   }
 
   void ReadWhileWritingNew(ThreadState* thread) {
-	  int *shuffrw = NULL; // read/write ratio
-	  int *shuffr = NULL;  // read sequence
-	  shuffrw = (int *)malloc(FLAGS_num * sizeof(int));
-	  shuffr = (int *)malloc(FLAGS_num * sizeof(int));
-	  int read_num = FLAGS_num * FLAGS_read_write_percent / 100;
+	  terark::AutoFree<int> shuffrw(FLAGS_num);
+          terark::AutoFree<int> shuffr(FLAGS_num);
+          //int read_num = int(FLAGS_num * FLAGS_read_write_percent / 100.0);
+          int read_num = FLAGS_num * FLAGS_read_write_percent / 100;
+          std::fill_n(shuffrw.p , read_num, 1);
+          std::fill_n(shuffrw.p + read_num, FLAGS_num-read_num, 0);
+
 	  for (int i=0; i<FLAGS_num; i++) {
 		  shuffr[i] = i;
-		  if (i < read_num)
-			  shuffrw[i] = 1;
-		  else
-			  shuffrw[i] = 0;
 	  }
 
 	  int64_t readn = 0;
 	  int64_t writen = 0;
-
 	  thread->rand.Shuffle(shuffrw, FLAGS_num);
 	  thread->rand.Shuffle(shuffr, FLAGS_num);
 	
@@ -1188,6 +1187,24 @@ class Benchmark {
 
 	  std::ifstream ifs(FLAGS_resource_data);
 	  std::string str;
+
+	  int64_t avg = FLAGS_num/FLAGS_threads;
+	  int64_t copyavg = avg;
+	  int offset = shuff[thread->tid];
+	  if (avg != FLAGS_num) {
+		if (offset != 0) {
+			int64_t skip = offset * avg;
+			while(getline(ifs, str)) {
+				if (str.find("review/text:") == 0) {
+					skip --;
+					if (skip == 0)
+						break;
+				}
+				continue;	
+			}		
+		}
+	  }
+ 
 	  std::string key; 
 	  std::string key1;
 	  std::string key2;
@@ -1208,7 +1225,7 @@ class Benchmark {
 			  thread->stats.FinishedSingleOp();
 		  } else {
 			  // write
-			  while(getline(ifs, str)) {
+			  while(getline(ifs, str) && avg != 0) {
 				  if (str.find("product/productId:") == 0) {
 					  key1 = str.substr(19);
 					  continue;
@@ -1252,13 +1269,14 @@ class Benchmark {
 						  exit(1);
 					  }
 					  writen ++;
+					  avg --;
 					  thread->stats.FinishedSingleOp();
 					  break;
 				  }
 			  }
 		  }
 	  }
-	   printf("readnum %lld, writenum %lld\n", readn, writen);
+	   printf("readnum %lld, writenum %lld, avg %lld, offset %d\n", readn, writen, copyavg, offset);
   }
 
   void ReadWhileWriting(ThreadState* thread) {
@@ -1321,7 +1339,6 @@ class Benchmark {
                       return;
                   }
 	      }
-	      ifs.close();
 	  }
       }
   }
@@ -1425,6 +1442,10 @@ int main(int argc, char** argv) {
       default_db_path += "/dbbench";
       FLAGS_db = default_db_path.c_str();
   }
+
+  shuff = (int *)malloc(FLAGS_threads * sizeof(int));
+  for (int i=0; i<FLAGS_threads; i++)
+    shuff[i] = i;
 
   leveldb::Benchmark benchmark;
   benchmark.Run();
