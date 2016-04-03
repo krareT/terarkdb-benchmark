@@ -845,8 +845,8 @@ class Benchmark {
 		    rowBuilder << recRow;
 		    fstring binRow(rowBuilder.begin(), rowBuilder.tell());
 
-		    if (ctxw->insertRow(binRow) < 0) { // non unique index
-		    // if (ctxw->upsertRow(binRow) < 0) { // unique index
+		    // if (ctxw->insertRow(binRow) < 0) { // non unique index
+		    if (ctxw->upsertRow(binRow) < 0) { // unique index
 			    printf("Insert failed: %s\n", ctxw->errMsg.c_str());
 			    exit(-1);	
 		    }
@@ -910,7 +910,7 @@ class Benchmark {
 	  thread->rand.Shuffle(shuffr, FLAGS_num);
 
 	  //struct timespec one, two, three, four;
-	  struct timeval one, two, three, four;
+	  // struct timeval one, two, three, four;
 	  long long keytime = 0;
 	  long long indextime = 0;
 	  long long valuetime = 0;
@@ -1187,10 +1187,14 @@ class Benchmark {
 	  std::string key2;
 
 	  TestRow recRow;
-
+	  struct timeval one, two, three, four;
+	  long long readtime = 0;
+	  long long writetime = 0;
+	
 	  for (int i=0; i<FLAGS_num; i++) {
 		  if (shuffrw[i] == 1) {
 			  // read
+			  gettimeofday(&one, NULL);
 			  int k = shuffr[i];
 			  fstring key(allkeys_.at(k));
 			  tab->indexSearchExact(indexId, key, &idvec, ctxrw.get());
@@ -1201,8 +1205,11 @@ class Benchmark {
 				  found++;
 			  readn ++;
 			  thread->stats.FinishedSingleOp();
+			  gettimeofday(&two, NULL);
+			  readtime += 1000000 * ( two.tv_sec - one.tv_sec ) + two.tv_usec - one.tv_usec;
 		  } else {
 			  // write
+			  gettimeofday(&three, NULL);
 			  while(getline(ifs, str) && avg != 0) {
 				  fstring fstr(str);
 				  if (fstr.startsWith("product/productId:")) {
@@ -1254,13 +1261,15 @@ class Benchmark {
 					  break;
 				  }
 			  }
+			 gettimeofday(&four, NULL);
+			 writetime += 1000000 * ( four.tv_sec - three.tv_sec ) + four.tv_usec - three.tv_usec;
 		  }
 	  }
 	  time_t now;
 	  struct tm *timenow;
 	  time(&now);
 	  timenow = localtime(&now);
-	  printf("readnum %lld, writenum %lld, avg %lld, offset %d, time %s\n", readn, writen, copyavg, offset, asctime(timenow));
+	  printf("readnum %lld, writenum %lld, avg %lld, offset %d, time %s, readtime %lld, writetime %lld\n", readn, writen, copyavg, offset, asctime(timenow), readtime/1000, writetime/1000);
   }
 
    void ReadWhileWriting(ThreadState* thread) {
