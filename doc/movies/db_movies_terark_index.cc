@@ -131,8 +131,7 @@ static int FLAGS_open_files = 0;
 static int FLAGS_bloom_bits = -1;
 
 // read write percent
-//static double FLAGS_read_write_percent = 100;
-static int FLAGS_read_write_percent = 100;
+static double FLAGS_read_write_percent = 100.0;
 
 // If true, do not destroy the existing database.  If you set this
 // flag and also specify a benchmark that wants a fresh database, that
@@ -1133,8 +1132,8 @@ class Benchmark {
   void ReadWhileWritingNew(ThreadState* thread) {
           AutoFree<int> shuffrw(FLAGS_num);
           AutoFree<int> shuffr(FLAGS_num);
-          // int read_num = int(FLAGS_num * FLAGS_read_write_percent / 100.0);
-          int read_num = FLAGS_num * FLAGS_read_write_percent / 100;
+          int read_num = int(FLAGS_num * FLAGS_read_write_percent / 100.0);
+
 	  std::fill_n(shuffrw.p , read_num, 1);
 	  std::fill_n(shuffrw.p + read_num, FLAGS_num-read_num, 0);
  
@@ -1180,7 +1179,6 @@ class Benchmark {
                                         if (skip == 0)
                                                 break;
                                 }
-                                continue;
                         }
                 }
           }
@@ -1195,10 +1193,8 @@ class Benchmark {
 			  // read
 			  int k = shuffr[i];
 			  fstring key(allkeys_.at(k));
-			  // tab->indexSearchExactNoLock(indexId, key, &idvec, ctxrw.get());
 			  tab->indexSearchExact(indexId, key, &idvec, ctxrw.get());
 			  for (auto recId : idvec) {
-				  // tab->selectColgroupsNoLock(recId, colgroups, &cgDataVec, ctxrw.get());
 				  tab->selectColgroups(recId, colgroups, &cgDataVec, ctxrw.get());
 			  }
 			  if(idvec.size() > 0)
@@ -1410,8 +1406,8 @@ int main(int argc, char** argv) {
       FLAGS_threads = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
-    } else if (sscanf(argv[i], "--read_ratio=%d%c", &n, &junk) == 1) {
-      FLAGS_read_write_percent = n;
+    } else if (sscanf(argv[i], "--read_ratio=%lf%c", &d, &junk) == 1) {
+      FLAGS_read_write_percent = d;
     } else if (strncmp(argv[i], "--resource_data=", 16) == 0) {
       FLAGS_resource_data = argv[i] + 16;
     } else {

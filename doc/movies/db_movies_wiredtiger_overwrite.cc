@@ -148,7 +148,7 @@ static bool FLAGS_stagger = false;
 static int FLAGS_max_compact_wait = 1200;
 
 // read write percent
-static int FLAGS_read_write_percent = 100;
+static double FLAGS_read_write_percent = 100.0;
 
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
@@ -1430,8 +1430,7 @@ repeat:
   void ReadWhileWritingNew(ThreadState* thread) {
 	  terark::AutoFree<int> shuffrw(FLAGS_num);
           terark::AutoFree<int> shuffr(FLAGS_num);
-          // int read_num = int(FLAGS_num * FLAGS_read_write_percent / 100.0);
-          int read_num = FLAGS_num * FLAGS_read_write_percent / 100;
+          int read_num = int(FLAGS_num * FLAGS_read_write_percent / 100.0);
           std::fill_n(shuffrw.p , read_num, 1);
           std::fill_n(shuffrw.p + read_num, FLAGS_num-read_num, 0);	
           for (int i=0; i<FLAGS_num; i++) {
@@ -1477,7 +1476,6 @@ repeat:
                                         if (skip == 0)
                                                 break;
                                 }
-                                continue;
                         }
                 }
           }
@@ -1767,8 +1765,8 @@ int main(int argc, char** argv) {
       FLAGS_open_files = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
-    } else if (sscanf(argv[i], "--read_ratio=%d%c", &n, &junk) == 1) {
-      FLAGS_read_write_percent = n;
+    } else if (sscanf(argv[i], "--read_ratio=%lf%c", &d, &junk) == 1) {
+      FLAGS_read_write_percent = d;
     } else if (strncmp(argv[i], "--resource_data=", 16) == 0) {
       FLAGS_resource_data = argv[i] + 16;
     } else {
