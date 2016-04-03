@@ -29,6 +29,7 @@
 		{
 		   	"fields": "product_userId",
 		   	"ordered" : true,
+			"unique" : true,
 			"nltNestLevel": 2
 	   	}
 	]

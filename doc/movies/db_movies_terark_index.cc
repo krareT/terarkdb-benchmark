@@ -528,8 +528,8 @@ class Benchmark {
                 continue;
             }
         }
-		allkeys_.shrink_to_fit();
-		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
+	allkeys_.shrink_to_fit();
+	printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 	assert(allkeys_.size() == FLAGS_num);
 	clock_gettime(CLOCK_MONOTONIC, &end);
         long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
@@ -846,7 +846,8 @@ class Benchmark {
 		    rowBuilder << recRow;
 		    fstring binRow(rowBuilder.begin(), rowBuilder.tell());
 
-		    if (ctxw->insertRow(binRow) < 0) {
+		    if (ctxw->insertRow(binRow) < 0) { // non unique index
+		    // if (ctxw->upsertRow(binRow) < 0) { // unique index
 			    printf("Insert failed: %s\n", ctxw->errMsg.c_str());
 			    exit(-1);	
 		    }
@@ -909,7 +910,8 @@ class Benchmark {
 		  shuffr[i] = i;
 	  thread->rand.Shuffle(shuffr, FLAGS_num);
 
-	  struct timespec one, two, three, four;
+	  //struct timespec one, two, three, four;
+	  struct timeval one, two, three, four;
 	  long long keytime = 0;
 	  long long indextime = 0;
 	  long long valuetime = 0;
@@ -919,29 +921,33 @@ class Benchmark {
 	  IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
 	  const Schema& indexSchema = tab->getIndexSchema(indexId);
 	  for (size_t i = 0; i < reads_; ++i) {
-		  //clock_gettime(CLOCK_MONOTONIC, &one);
+//		  clock_gettime(CLOCK_MONOTONIC, &one);
+//		  gettimeofday(&one, NULL);
 		  int k = shuffr[i];
 		  fstring key(allkeys_.at(k));
-		  //clock_gettime(CLOCK_MONOTONIC, &two);
-		  // tab->indexSearchExactNoLock(indexId, key, &idvec, ctxr.get());
+//		  clock_gettime(CLOCK_MONOTONIC, &two);
+//		  gettimeofday(&two, NULL);
+//		  tab->indexSearchExactNoLock(indexId, key, &idvec, ctxr.get());
 		  tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
-		  //clock_gettime(CLOCK_MONOTONIC, &three);
+//		  clock_gettime(CLOCK_MONOTONIC, &three);
+//		  gettimeofday(&three, NULL);
 		  for (auto recId : idvec) {
-			  //tab->selectColgroupsNoLock(recId, colgroups, &cgDataVec, ctxr.get());
-			  tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
+//			 tab->selectColgroupsNoLock(recId, colgroups, &cgDataVec, ctxr.get());
+			 tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
 		  }
-		  //clock_gettime(CLOCK_MONOTONIC, &four);
+//		  clock_gettime(CLOCK_MONOTONIC, &four);
+//		  gettimeofday(&four, NULL);
 		  if(idvec.size() > 0)
 			  found++;
 		  thread->stats.FinishedSingleOp();
-		  //keytime += 1000000000 * ( two.tv_sec - one.tv_sec ) + two.tv_nsec - one.tv_nsec;
-		  //indextime += 1000000000 * ( three.tv_sec - two.tv_sec ) + three.tv_nsec - two.tv_nsec;
-		  //valuetime += 1000000000 * ( four.tv_sec - three.tv_sec ) + four.tv_nsec - three.tv_nsec;
+//		  keytime += 1000000 * ( two.tv_sec - one.tv_sec ) + two.tv_usec - one.tv_usec;
+//		  indextime += 1000000 * ( three.tv_sec - two.tv_sec ) + three.tv_usec - two.tv_usec;
+//		  valuetime += 1000000 * ( four.tv_sec - three.tv_sec ) + four.tv_usec - three.tv_usec;
 	  }
 	  char msg[100];
 	  snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
 	  thread->stats.AddMessage(msg);
-	  //printf("keytime %lld, indextime %lld, valuetime %lld\n",keytime, indextime, valuetime);
+	  printf("keytime %lld, indextime %lld, valuetime %lld\n", keytime, indextime, valuetime);
   }
 
   void ReadMissing(ThreadState* thread) {
@@ -1241,7 +1247,8 @@ class Benchmark {
 					  rowBuilder << recRow;
 					  fstring binRow(rowBuilder.begin(), rowBuilder.tell());
 
-					  if (ctxrw->insertRow(binRow) < 0) {
+					  // if (ctxrw->insertRow(binRow) < 0) { // non unique index
+					  if (ctxrw->upsertRow(binRow) < 0) { // unique index
 						  printf("Insert failed: %s\n", ctxrw->errMsg.c_str());
 						  exit(-1);
 					  }

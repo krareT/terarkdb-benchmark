@@ -174,6 +174,9 @@ db_movies_wiredtiger_overwrite: doc/movies/db_movies_wiredtiger_overwrite.o $(LI
 db_movies_redis: doc/movies/db_movies_redis.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/movies/db_movies_redis.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lhiredis
 
+db_movies_leveldb: doc/movies/db_movies_leveldb.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/movies/db_movies_leveldb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrt
+
 db_movies_rocksdb: doc/movies/db_movies_rocksdb.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/movies/db_movies_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb-4.1 -lrt
 
