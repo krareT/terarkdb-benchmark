@@ -1,19 +1,19 @@
-nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readrandom_multi_rocksdb_256 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readrandom_multi_rocksdb_256_3G 2 > nohup.out &
 
-file=/data/publicdata/movies/movies.txt
+file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684
 read_num=7911684
 dirname=/mnt/datamemory
 writebuffer=268435456
 #cachesize=268435456
-cachesize=2637228
+cachesize=3110962490
 
 rm -rf $dirname/*
 echo "####Now, running rocksdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-../../db_movies_rocksdb --benchmarks=fillrandom --num=$record_num --write_buffer_size=$writebuffer --bloom_bits=5 --db=$dirname --resource_data=$file --threads=2
+../../db_movies_rocksdb --benchmarks=fillrandom --num=$record_num --write_buffer_size=$writebuffer --bloom_bits=5 --db=$dirname --resource_data=$file
 date
 echo "####rocksdb benchmark finish"
 du -s -b $dirname

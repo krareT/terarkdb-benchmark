@@ -475,6 +475,10 @@ class Benchmark {
       } else if (name == Slice("fillrandom")) {
         fresh_db = true;
         method = &Benchmark::WriteRandom;
+
+        Random rand(1000);
+        rand.Shuffle(shuff, FLAGS_threads);
+
       } else if (name == Slice("overwrite")) {
         fresh_db = false;
         method = &Benchmark::WriteRandom;
@@ -605,8 +609,8 @@ class Benchmark {
                 continue;
             }
         }
-		allkeys_.shrink_to_fit();
-		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
+	allkeys_.shrink_to_fit();
+	printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 	assert(allkeys_.size() == FLAGS_num);
 	clock_gettime(CLOCK_MONOTONIC, &end);
         long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
@@ -646,7 +650,6 @@ class Benchmark {
       time(&now);   
       timenow = localtime(&now);   
       printf("recent time is : %s \n", asctime(timenow));  
-
       tab->syncFinishWriting();
     }
   }
@@ -793,19 +796,35 @@ class Benchmark {
       thread->stats.AddMessage(msg);
     }
 
-//    if (!seq)
-//	  thread->rand.Shuffle(shuff, num_);
 
     terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
-    std::cout << "data_resource " << FLAGS_resource_data << std::endl;
     std::ifstream ifs(FLAGS_resource_data);  
-    std::string str; 
+    std::string str;
+
+    int64_t avg = FLAGS_num/FLAGS_threads;
+    int64_t copyavg = avg;
+    int offset = shuff[thread->tid];
+    if (avg != FLAGS_num) {
+            if (offset != 0) {
+                    int64_t skip = offset * avg;
+		    if (skip != 0) {
+			    while(getline(ifs, str)) {
+				    if (str.find("review/text:") == 0) {
+					    skip --;
+					    if (skip == 0)
+						    break;
+				    }
+			    }
+		    }
+            }
+    }
+ 
     std::string key1; 
     std::string key2; 
-    
     TestRow recRow;
+    int64_t writen = 0;
      
-    while(getline(ifs, str)) {
+    while(getline(ifs, str) && avg != 0) {
 	    fstring fstr(str);
 	    if (fstr.startsWith("product/productId:")) {
 		    key1 = str.substr(19);
@@ -851,9 +870,16 @@ class Benchmark {
 			    exit(-1);	
 		    }
 		    thread->stats.FinishedSingleOp();
+		    writen ++;
+		    avg --;
 		    continue;
 	    }
     }
+    time_t now;
+    struct tm *timenow;
+    time(&now);
+    timenow = localtime(&now);
+    printf("writenum %lld, avg %lld, offset %d, time %s\n",writen, copyavg, offset, asctime(timenow));
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -1173,13 +1199,15 @@ class Benchmark {
           if (avg != FLAGS_num) {
                 if (offset != 0) {
                         int64_t skip = offset * avg;
-                        while(getline(ifs, str)) {
-                                if (str.find("review/text:") == 0) {
-                                        skip --;
-                                        if (skip == 0)
-                                                break;
-                                }
-                        }
+			if (skip != 0) {
+				while(getline(ifs, str)) {
+					if (str.find("review/text:") == 0) {
+						skip --;
+						if (skip == 0)
+							break;
+					}
+				}
+			}
                 }
           }
 
@@ -1194,7 +1222,7 @@ class Benchmark {
 	  for (int i=0; i<FLAGS_num; i++) {
 		  if (shuffrw[i] == 1) {
 			  // read
-			  gettimeofday(&one, NULL);
+			  // gettimeofday(&one, NULL);
 			  int k = shuffr[i];
 			  fstring key(allkeys_.at(k));
 			  tab->indexSearchExact(indexId, key, &idvec, ctxrw.get());
@@ -1205,11 +1233,11 @@ class Benchmark {
 				  found++;
 			  readn ++;
 			  thread->stats.FinishedSingleOp();
-			  gettimeofday(&two, NULL);
-			  readtime += 1000000 * ( two.tv_sec - one.tv_sec ) + two.tv_usec - one.tv_usec;
+			  // gettimeofday(&two, NULL);
+			  // readtime += 1000000 * ( two.tv_sec - one.tv_sec ) + two.tv_usec - one.tv_usec;
 		  } else {
 			  // write
-			  gettimeofday(&three, NULL);
+			  // gettimeofday(&three, NULL);
 			  while(getline(ifs, str) && avg != 0) {
 				  fstring fstr(str);
 				  if (fstr.startsWith("product/productId:")) {
@@ -1261,8 +1289,8 @@ class Benchmark {
 					  break;
 				  }
 			  }
-			 gettimeofday(&four, NULL);
-			 writetime += 1000000 * ( four.tv_sec - three.tv_sec ) + four.tv_usec - three.tv_usec;
+			 // gettimeofday(&four, NULL);
+			 // writetime += 1000000 * ( four.tv_sec - three.tv_sec ) + four.tv_usec - three.tv_usec;
 		  }
 	  }
 	  time_t now;

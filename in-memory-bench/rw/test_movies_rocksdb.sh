@@ -1,11 +1,11 @@
-nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readwhilewriting_rocksdb_256_99 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readwhilewriting_rocksdb_256_99_3G 2 > nohup.out &
 
-file=/data/publicdata/movies/movies.txt
+file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684
 read_num=7911684
 dirname=/mnt/datamemory
 writebuffer=268435456
-cachesize=2637228
+cachesize=3110962490
 ratio=99
 
 rm -rf $dirname/*

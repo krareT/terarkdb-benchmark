@@ -1,15 +1,10 @@
 This the test framework based on leveldb db_bench.
 The framework will support storage engines as follows:
 LevelDB		(Done)		version 1.5  	test
-RocksDB		(Done) 		version 2.5  	test
 RocksDB		(Done) 		version 4.1  	test
 Redis		(Done)  	version 3.0.6 	test
 Wiredtiger	(Done) 		version 2.7.0 	test
 TerarkDB	(Done)  	version 1.0   	test
-Bdb		(Done)			     	untest
-Mdb		(Done)			     	untest
-Tree_db		(Done)			     	untest
-Sqlite3		(Done)			     	untest
 
 These test codes are in doc/bench/
 
@@ -17,7 +12,7 @@ Now, the test framework supports fillrandom and readrandom benchmarks for the ea
 
 ## How to build db_bench_* (e.g. db_bench_nark)
 
-1. modify Makefile to add "NARK_INCLUDE_PATH", and NARK_INCLUDE_PATH includes nark-db/src
+1. modify Makefile to add "TERARKDB_INCLUDE_PATH", and TERARKDB_INCLUDE_PATH includes nark-db/src
 									      nark-bone/src
 									      nark-serialization/src
 									      nark-hashmap/src
@@ -28,6 +23,3 @@ Now, the test framework supports fillrandom and readrandom benchmarks for the ea
 
 ## How to run db_bench_nark
 for example: ./db_bench_nark --benchmarks=fillrandom,readrandom --value_size=64 --num=10000 --db=data
-
-
-

@@ -1,6 +1,6 @@
 nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/fillrandom_mulit_wiredtiger_no_lsm_over 2 > nohup.out &
 
-file=/data/publicdata/movies/movies.txt
+file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684
 dirname=/mnt/datamemory
 

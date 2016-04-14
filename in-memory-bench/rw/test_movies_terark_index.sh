@@ -1,10 +1,10 @@
-#nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readwhilewriting_terark_index_256_99 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readwhilewriting_terark_index_100_99_3G_new 2 > nohup.out &
 
-file=/data/publicdata/movies/movies.txt
+file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684
 read_num=7911684
 dirname=/mnt/datamemory
-ratio=95
+ratio=99
 
 rm -rf $dirname/*
 export TMPDIR=$dirname
@@ -14,7 +14,7 @@ echo "####Now, running terarkdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export TerarkDB_WrSegCacheSizeMB=256
+export TerarkDB_WrSegCacheSizeMB=100
 ../../db_movies_terark_index --benchmarks=fillrandom --num=$record_num --sync_index=1 --db=$dirname --resource_data=$file
 free -m
 date
@@ -25,16 +25,17 @@ echo "####Now, running terarkdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export TerarkDB_WrSegCacheSizeMB=256
+export TerarkDB_WrSegCacheSizeMB=100
+#export TerarkDB_WiredtigerTransactionConfig="isolation=read-uncommitted,sync=false"
 ../../db_movies_terark_index --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --sync_index=1 --db=$dirname --threads=8 --resource_data=$file --read_ratio=$ratio
 free -m
 date
 echo "####terarkdb benchmark finish"
 du -s -b $dirname
 
-#dstatpid=`ps aux | grep dstat | awk '{if($0 !~ "grep"){print $2}}'`
-#for i in $dstatpid
-#do
-#        kill -9 $i
-#done
-#
+dstatpid=`ps aux | grep dstat | awk '{if($0 !~ "grep"){print $2}}'`
+for i in $dstatpid
+do
+        kill -9 $i
+done
+

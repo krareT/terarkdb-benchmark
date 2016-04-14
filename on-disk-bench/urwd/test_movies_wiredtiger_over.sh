@@ -1,10 +1,10 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readwritedel_wiredtiger_no_lsm_3_over 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readwritedel_wiredtiger_no_lsm_3_over 2 > nohup.out &
 
 file=/data/publicdata/movies/movies.txt
 record_num=7911684
 read_num=7911684
 cachesize=3110962490
-dirname=/experiment
+dirname=/mnt/datamemory
 
 rm -rf $dirname/*
 echo "####Now, running wiredtiger benchmark"
