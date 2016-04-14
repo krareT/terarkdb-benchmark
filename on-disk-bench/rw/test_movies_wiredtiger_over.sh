@@ -1,18 +1,18 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readwhilewriting_wiredtiger_no_lsm_3_over 2 > nohup.out &
+nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readwhilewriting_wiredtiger_no_lsm_1_over_99_2 2 > nohup.out &
 
-file=/data/publicdata/movies/movies.txt
+file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684
 read_num=7911684
-cachesize=3110962490
+cachesize=1073741824
 dirname=/experiment
-ratio=95
+ratio=99
 
 rm -rf $dirname/*
 echo "####Now, running wiredtiger benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-../../db_movies_wiredtiger_overwrite --benchmarks=fillrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --resource_data=$file
+../../db_movies_wiredtiger_overwrite --benchmarks=fillrandom --num=$record_num --db=$dirname --use_lsm=0 --resource_data=$file
 free -m
 date
 du -s -b $dirname

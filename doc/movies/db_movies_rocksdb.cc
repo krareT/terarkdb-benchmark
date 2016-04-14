@@ -4,6 +4,7 @@
 
 #include <sys/types.h>
 #include <sys/time.h>
+#include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -504,6 +505,10 @@ class Benchmark {
       } else if (name == rocksdb::Slice("fillrandom")) {
         fresh_db = true;
         method = &Benchmark::WriteRandom;
+        
+	Random rand(1000);
+        rand.Shuffle(shuff, FLAGS_threads);
+
       } else if (name == rocksdb::Slice("overwrite")) {
         fresh_db = false;
         method = &Benchmark::WriteRandom;
@@ -676,14 +681,24 @@ class Benchmark {
           delete db_;
           db_ = NULL;
           rocksdb::DestroyDB(FLAGS_db, rocksdb::Options());
-	  std::cout << " frehs_db==> DestroyDB" << std::endl;
           Open();
         }
       }
+      time_t now;
+      struct tm *timenow;
+      time(&now);
+      timenow = localtime(&now);
+      printf("RunBenchmark start time is : %s \n", asctime(timenow));
 
       if (method != NULL) {
         RunBenchmark(num_threads, name, method);
       }
+
+      time(&now);
+      timenow = localtime(&now);
+      printf("RunBenchmark end time is : %s \n", asctime(timenow));
+      allkeys_.erase_all();
+      // system("echo 3 > /proc/sys/vm/drop_caches");
     }
   }
 
@@ -852,8 +867,14 @@ class Benchmark {
 
     options.create_if_missing = !FLAGS_use_existing_db;
     options.write_buffer_size = FLAGS_write_buffer_size;
-    std::cout << options.write_buffer_size << std::endl;
-
+// new features to add
+    options.allow_concurrent_memtable_write = true;
+    options.enable_write_thread_adaptive_yield = true;
+    options.allow_mmap_reads = true;
+    options.allow_mmap_writes = true;
+    options.max_background_compactions = 2;
+// end
+//
     rocksdb::BlockBasedTableOptions block_based_options;
     block_based_options.index_type = rocksdb::BlockBasedTableOptions::kBinarySearch;
     block_based_options.block_cache = cache_;
@@ -902,13 +923,32 @@ class Benchmark {
     std::ifstream ifs(FLAGS_resource_data);  
     std::string str;
 
+    int64_t avg = FLAGS_num/FLAGS_threads;
+    int64_t copyavg = avg;
+    int offset = shuff[thread->tid];
+    if (avg != FLAGS_num) {
+	    if (offset != 0) {
+		    int64_t skip = offset * avg;
+		    if (skip != 0) {
+			    while(getline(ifs, str)) {
+				    if (str.find("review/text:") == 0) {
+					    skip --;
+					    if (skip == 0)
+						    break;
+				    }
+			    }
+		    }
+	    }
+    }
+
     std::string key1; 
     std::string key2; 
     std::string key; 
     std::string value; 
     rocksdb::Status s;
+    int64_t writen = 0;
 
-    while(getline(ifs, str)) {
+    while(getline(ifs, str) && avg != 0) {
 	    if (str.find("product/productId:") == 0) {
 		    key1 = str.substr(19);
 		    continue;
@@ -953,9 +993,16 @@ class Benchmark {
 		    }
 		    value.clear();
 		    thread->stats.FinishedSingleOp();
+		    writen ++;
+		    avg --;
 		    continue;
 	    }
     }
+    time_t now;
+    struct tm *timenow;
+    time(&now);
+    timenow = localtime(&now);
+    printf("writenum %lld, avg %lld, offset %d, time %s\n",writen, copyavg, offset, asctime(timenow));
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -1193,13 +1240,15 @@ class Benchmark {
 	  if (avg != FLAGS_num) {
 		if (offset != 0) {
 			int64_t skip = offset * avg;
-			while(getline(ifs, str)) {
-				if (str.find("review/text:") == 0) {
-					skip --;
-					if (skip == 0)
-						break;
-				}
-			}		
+			if (skip != 0) {
+				while(getline(ifs, str)) {
+					if (str.find("review/text:") == 0) {
+						skip --;
+						if (skip == 0)
+							break;
+					}
+				}		
+			}
 		}
 	  }
  

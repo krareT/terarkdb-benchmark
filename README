@@ -1,33 +1,27 @@
 This the test framework based on leveldb db_bench.
 The framework will support storage engines as follows:
-LevelDB		(Done)		version 1.5  	test
-RocksDB		(Done) 		version 2.5  	test
+LevelDB		(Done)		version 1.18  	test
 RocksDB		(Done) 		version 4.1  	test
 Redis		(Done)  	version 3.0.6 	test
 Wiredtiger	(Done) 		version 2.7.0 	test
-TerarkDB	(Done)  	version 1.0   	test
-Bdb		(Done)			     	untest
-Mdb		(Done)			     	untest
-Tree_db		(Done)			     	untest
-Sqlite3		(Done)			     	untest
+TerarkDB	(Done)  	version 0.1.1   test
 
-These test codes are in doc/bench/
+These test codes are in doc, there are five workloads:
+1. bench (default)
+2. movies (from amazon)
+3. pagecounts (from wiki)
+4. humangenome 
+5. wikiarticles (from wiki)
 
-Now, the test framework supports fillrandom and readrandom benchmarks for the each dbs, and next step, we will implement other benchmarks.
+Now, the test framework supports fillrandom,readrandom,readwhilewriting benchmarks for each dbs, and we will implement other benchmarks.
 
-## How to build db_bench_* (e.g. db_bench_nark)
+## How to build db_bench_* (e.g. db_bench_terark)
 
-1. modify Makefile to add "NARK_INCLUDE_PATH", and NARK_INCLUDE_PATH includes nark-db/src
-									      nark-bone/src
-									      nark-serialization/src
-									      nark-hashmap/src
+1. modify Makefile to add "TERARKDB_INCLUDE_PATH", and TERARKDB_INCLUDE_PATH includes nark-db/src
 
-2. create symlink: libnark-g++-4.9-r.so libnark-NarkDB-g++-4.9-r.so in /usr/lib64
+2. create symlink: libTerarkDB-g++-5.3-r.so, libterark-fsa_all-g++-5.3-r.so in /usr/lib64
 
-3. run "make db_bench_nark"
+3. run "make db_bench_terark"
 
-## How to run db_bench_nark
-for example: ./db_bench_nark --benchmarks=fillrandom,readrandom --value_size=64 --num=10000 --db=data
-
-
-
+## How to run db_bench_terark
+for example: ./db_bench_terark --benchmarks=fillrandom,readrandom --value_size=64 --num=10000 --db=data

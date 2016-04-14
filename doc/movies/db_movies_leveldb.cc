@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <time.h>
+
 #include <iostream>
 #include <fstream>
 #include <string.h>
@@ -494,6 +495,10 @@ class Benchmark {
       } else if (name == Slice("fillrandom")) {
         fresh_db = true;
         method = &Benchmark::WriteRandom;
+	
+	Random rand(1000);
+        rand.Shuffle(shuff, FLAGS_threads);
+
       } else if (name == Slice("overwrite")) {
         fresh_db = false;
         method = &Benchmark::WriteRandom;
@@ -668,10 +673,17 @@ class Benchmark {
           Open();
         }
       }
-
+        time_t now;
+      struct tm *timenow;
+      time(&now);
+      timenow = localtime(&now);
+      printf("RunBenchmark start time is : %s \n", asctime(timenow));
       if (method != NULL) {
         RunBenchmark(num_threads, name, method);
       }
+      time(&now);
+      timenow = localtime(&now);
+      printf("RunBenchmark end time is : %s \n", asctime(timenow));
     }
   }
 
@@ -867,13 +879,32 @@ class Benchmark {
     std::ifstream ifs(FLAGS_resource_data);  
     std::string str;
 
+    int64_t avg = FLAGS_num/FLAGS_threads;
+    int64_t copyavg = avg;
+    int offset = shuff[thread->tid];
+    if (avg != FLAGS_num) {
+            if (offset != 0) {
+                    int64_t skip = offset * avg;
+		    if (skip != 0) {
+			    while(getline(ifs, str)) {
+				    if (str.find("review/text:") == 0) {
+					    skip --;
+					    if (skip == 0)
+						    break;
+				    }
+			    }
+		    }
+            }
+    }
+
     std::string key1; 
     std::string key2; 
     std::string key; 
     std::string value; 
     Status s;
+    int64_t writen = 0;
 
-    while(getline(ifs, str)) {
+    while(getline(ifs, str) && avg != 0) {
 	    if (str.find("product/productId:") == 0) {
 		    key1 = str.substr(19);
 		    continue;
@@ -918,9 +949,16 @@ class Benchmark {
 		    }
 		    value.clear();
 		    thread->stats.FinishedSingleOp();
+		    writen ++;
+		    avg --;
 		    continue;
 	    }
     }
+    time_t now;
+    struct tm *timenow;
+    time(&now);
+    timenow = localtime(&now);
+    printf("writenum %lld, avg %lld, offset %d, time %s\n", writen, copyavg, offset, asctime(timenow));
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -1189,14 +1227,15 @@ class Benchmark {
 	  if (avg != FLAGS_num) {
 		if (offset != 0) {
 			int64_t skip = offset * avg;
-			while(getline(ifs, str)) {
-				if (str.find("review/text:") == 0) {
-					skip --;
-					if (skip == 0)
-						break;
-				}
-				continue;	
-			}		
+			if (skip != 0) {
+				while(getline(ifs, str)) {
+					if (str.find("review/text:") == 0) {
+						skip --;
+						if (skip == 0)
+							break;
+					}
+				}		
+		        }
 		}
 	  }
  

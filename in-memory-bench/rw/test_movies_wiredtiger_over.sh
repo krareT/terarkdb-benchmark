@@ -1,6 +1,6 @@
 nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readwhilewriting_wiredtiger_no_lsm_3_over_99 2 > nohup.out &
 
-file=/data/publicdata/movies/movies.txt
+file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684
 read_num=7911684
 cachesize=3110962490

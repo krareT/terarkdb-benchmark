@@ -4,6 +4,7 @@
 
 #include <sys/types.h>
 #include <sys/time.h>
+#include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -536,6 +537,10 @@ class Benchmark {
       } else if (name == Slice("fillrandom")) {
         fresh_db = true;
         method = &Benchmark::WriteRandom;
+
+	Random rand(1000);
+        rand.Shuffle(shuff, FLAGS_threads);
+
       } else if (name == Slice("overwrite")) {
         fresh_db = false;
         method = &Benchmark::WriteRandom;
@@ -590,6 +595,8 @@ class Benchmark {
                 continue;
             }
         }
+         allkeys_.shrink_to_fit();
+        printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 	assert(allkeys_.size() == FLAGS_num);
 	clock_gettime(CLOCK_MONOTONIC, &end);
         long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
@@ -637,6 +644,8 @@ class Benchmark {
                 continue;
             }
         }
+         allkeys_.shrink_to_fit();
+        printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 	assert(allkeys_.size() == FLAGS_num);
 	clock_gettime(CLOCK_MONOTONIC, &end);
         long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
@@ -665,6 +674,8 @@ class Benchmark {
                 continue;
             }
         }
+        allkeys_.shrink_to_fit();
+        printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
 	assert(allkeys_.size() == FLAGS_num);
 	clock_gettime(CLOCK_MONOTONIC, &end);
         long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
@@ -729,6 +740,12 @@ class Benchmark {
     	fprintf(stderr, "Reusing existing DB %s\n",uri_.c_str());
       }
 
+      time_t now;
+      struct tm *timenow;
+      time(&now);
+      timenow = localtime(&now);
+      printf("RunBenchmark start time is : %s \n", asctime(timenow));
+
       if (method != NULL) {
         RunBenchmark(num_threads, name, method);
 #ifdef SYMAS_CONFIG
@@ -742,6 +759,12 @@ class Benchmark {
   }
 #endif
       }
+    
+      time(&now);
+      timenow = localtime(&now);
+      printf("RunBenchmark end time is : %s \n", asctime(timenow));
+      allkeys_.erase_all();
+      // system("echo 3 > /proc/sys/vm/drop_caches");
     }
     if (conn_ != NULL) {
       conn_->close(conn_, NULL);
@@ -913,8 +936,9 @@ class Benchmark {
 #define SMALL_CACHE 10*1024*1024
     std::stringstream config;
     config.str("");
-    if (!FLAGS_use_existing_db)
+    if (!FLAGS_use_existing_db) {
       config << "create";
+    }
     if (FLAGS_cache_size > 0)
       config << ",cache_size=" << FLAGS_cache_size;
     config << ",log=(enabled,recover=on)";
@@ -936,7 +960,7 @@ class Benchmark {
 
     char uri[100];
     snprintf(uri, sizeof(uri), "%s:dbbench_wt-%d", 
-        FLAGS_use_lsm ? "lsm" : "table", ++db_num_);
+        FLAGS_use_lsm ? "lsm" : "table", db_num_);
     uri_ = uri;
 
     if (!FLAGS_use_existing_db) {
@@ -1021,12 +1045,32 @@ class Benchmark {
     }
 
     std::ifstream ifs(FLAGS_resource_data);  
-    std::string str;  
+    std::string str; 
+
+    int64_t avg = FLAGS_num/FLAGS_threads;
+    int64_t copyavg = avg;
+    int offset = shuff[thread->tid];
+    if (avg != FLAGS_num) {
+            if (offset != 0) {
+                    int64_t skip = offset * avg;
+		    if (skip != 0) {
+			    while(getline(ifs, str)) {
+				    if (str.find("review/text:") == 0) {
+					    skip --;
+					    if (skip == 0)
+						    break;
+				    }
+			    }
+		    }
+            }
+    }
+ 
     std::string key1;  
     std::string key2;  
     TestRow recRow;
+    int64_t writen = 0;
  
-    while(getline(ifs, str)) {
+    while(getline(ifs, str) && avg != 0) {
 	    if (str.find("product/productId:") == 0) {
 		    key1 = str.substr(19);
 		    continue;
@@ -1069,10 +1113,17 @@ class Benchmark {
 			    exit(1);
 		    }
 		    thread->stats.FinishedSingleOp();
+		    writen ++;
+		    avg --;
 		    continue;
 	    }
     }
     cursor->close(cursor);
+    time_t now;
+    struct tm *timenow;
+    time(&now);
+    timenow = localtime(&now);
+    printf("writenum %lld, avg %lld, offset %d, time %s\n",writen, copyavg, offset, asctime(timenow));
   }
 
   void ReadSequential(ThreadState* thread) {
@@ -1470,13 +1521,15 @@ repeat:
           if (avg != FLAGS_num) {
                 if (offset != 0) {
                         int64_t skip = offset * avg;
-                        while(getline(ifs, str)) {
-                                if (str.find("review/text:") == 0) {
-                                        skip --;
-                                        if (skip == 0)
-                                                break;
-                                }
-                        }
+		 	if (skip != 0) {
+				while(getline(ifs, str)) {
+					if (str.find("review/text:") == 0) {
+						skip --;
+						if (skip == 0)
+							break;
+					}
+				}
+			}
                 }
           }
 

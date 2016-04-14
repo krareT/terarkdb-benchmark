@@ -1,20 +1,19 @@
-nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readrandom_multi_terark_index_100_3G_new 2 > nohup.out &
+nohup dstat -tcm --output /home/panfengfeng/trace_log/in-memory/movies/readrandom_multi_terark_index_256_old 2 > nohup.out &
 
-file=/datainssd/publicdata/movies/movies.txt
+file=/data/publicdata/movies/movies.txt
 record_num=7911684
 read_num=7911684
 dirname=/mnt/datamemory
 
 rm -rf $dirname/*
 export TMPDIR=$dirname
-export TerarkDB_CompressionThreadsNum=1
-cp ../../terarkschema/dbmeta_movies_index.json $dirname/dbmeta.json
+cp ../../terarkschema/dbmeta_movies_index_old.json $dirname/dbmeta.json
 echo "####Now, running terarkdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export TerarkDB_WrSegCacheSizeMB=100
-../../db_movies_terark_index --benchmarks=fillrandom --num=$record_num --reads=$read_num --sync_index=1 --db=$dirname --resource_data=$file
+export TerarkDb_WrSegCacheSizeMB=256
+../../db_movies_terark_index --benchmarks=fillrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --resource_data=$file
 free -m
 date
 du -s -b $dirname
@@ -25,7 +24,7 @@ export TMPDIR=$dirname
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export TerarkDB_WrSegCacheSizeMB=100
+export TerarkDb_WrSegCacheSizeMB=256
 ../../db_movies_terark_index --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --resource_data=$file
 free -m
 date
@@ -37,7 +36,7 @@ export TMPDIR=$dirname
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export TerarkDB_WrSegCacheSizeMB=100
+export TerarkDb_WrSegCacheSizeMB=256
 ../../db_movies_terark_index --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --threads=8 --resource_data=$file
 free -m
 date
@@ -49,7 +48,7 @@ export TMPDIR=$dirname
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-export TerarkDB_WrSegCacheSizeMB=100
+export TerarkDb_WrSegCacheSizeMB=256
 ../../db_movies_terark_index --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=0 --db=$dirname --threads=16 --resource_data=$file
 free -m
 date

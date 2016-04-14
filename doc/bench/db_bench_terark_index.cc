@@ -122,6 +122,9 @@ static int FLAGS_open_files = 0;
 // Negative means use default settings.
 static int FLAGS_bloom_bits = -1;
 
+// read write percent
+static double FLAGS_read_write_percent = 100.0;
+
 // If true, do not destroy the existing database.  If you set this
 // flag and also specify a benchmark that wants a fresh database, that
 // benchmark will fail.
@@ -544,9 +547,10 @@ class Benchmark {
       } else if (name == Slice("deleterandom")) {
         method = &Benchmark::DeleteRandom;
       } else if (name == Slice("readwhilewriting")) {
-        num_threads++;  // Add extra thread for writing
-        method = &Benchmark::ReadWhileWriting;
-		FLAGS_is_readwhilewriting = true;
+        //num_threads++;  // Add extra thread for writing
+        //method = &Benchmark::ReadWhileWriting;
+	//FLAGS_is_readwhilewriting = true;
+	method = &Benchmark::ReadWhileWritingNew;
       } else if (name == Slice("compact")) {
         method = &Benchmark::Compact;
       } else if (name == Slice("crc32c")) {
@@ -1012,6 +1016,77 @@ class Benchmark {
     DoDelete(thread, false);
   }
 
+  void ReadWhileWritingNew(ThreadState* thread) {
+          AutoFree<int> shuffrw(FLAGS_num);
+          AutoFree<int> shuffr(FLAGS_num);
+          int read_num = int(FLAGS_num * FLAGS_read_write_percent / 100.0);
+
+          std::fill_n(shuffrw.p , read_num, 1);
+          std::fill_n(shuffrw.p + read_num, FLAGS_num-read_num, 0);
+
+          for (int i=0; i<FLAGS_num; i++) {
+		shuffr[i] = i;
+	  }
+
+	  int64_t readn = 0;
+          int64_t writen = 0;
+          thread->rand.Shuffle(shuffrw, FLAGS_num);
+          thread->rand.Shuffle(shuffr, FLAGS_num);
+  
+          valvec<byte> keyHit, val;
+	  valvec<valvec<byte> > cgDataVec;
+	  valvec<llong> idvec;
+	  valvec<size_t> colgroups;
+	  terark::db::DbContextPtr ctxrw;
+          ctxrw = tab->createDbContext();
+          ctxrw->syncIndex = FLAGS_sync_index;
+	  RandomGenerator gen;
+
+          for (size_t i = tab->getIndexNum(); i < tab->getColgroupNum(); i++) {
+                colgroups.push_back(i);
+          }
+
+	  size_t indexId = 0;
+	  TestRow recRow;
+	  terark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
+	  const terark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
+
+          terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+
+	  for (int i=0; i<FLAGS_num; i++) {
+		  const int k = thread->rand.Next() % FLAGS_num;
+		  char keybuf[24];
+		  int  keylen = snprintf(keybuf, sizeof(keybuf), "%016d", k);
+
+		  if (shuffrw[i] == 1) {
+			  terark::fstring key(keybuf, keylen);
+			  tab->indexSearchExact(indexId, key, &idvec, ctxrw.get());
+			  for (auto recId : idvec) {
+				tab->selectColgroups(recId, colgroups, &cgDataVec, ctxrw.get());
+			  }
+			  readn ++;
+			  thread->stats.FinishedSingleOp();
+		  } else {
+			  recRow.key = std::string(keybuf);
+			  recRow.value = gen.Generate(value_size_).ToString();
+			  rowBuilder.rewind();
+			  rowBuilder << recRow;
+			  terark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+			  if (ctxrw->insertRow(binRow) < 0) {
+				  printf("Insert failed: %s\n", ctxrw->errMsg.c_str());
+				  exit(-1);
+			  }
+			  writen ++;
+			  thread->stats.FinishedSingleOp();
+		  }
+	  }
+	  time_t now;
+          struct tm *timenow;
+          time(&now);
+          timenow = localtime(&now);
+          printf("readnum %lld, writenum %lld, time %s\n", readn, writen, asctime(timenow));
+   }
+
   void ReadWhileWriting(ThreadState* thread) {
     if (thread->tid > 0) {
       ReadRandom(thread);
@@ -1141,6 +1216,8 @@ int main(int argc, char** argv) {
       FLAGS_open_files = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
+    } else if (sscanf(argv[i], "--read_ratio=%lf%c", &d, &junk) == 1) {
+      FLAGS_read_write_percent = d;
     } else if (strncmp(argv[i], "--dbtable=", 10) == 0) {
       FLAGS_db_table = argv[i] + 10;
     } else {
