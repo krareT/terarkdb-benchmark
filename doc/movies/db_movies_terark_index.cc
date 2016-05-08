@@ -883,11 +883,9 @@ class Benchmark {
 	  size_t indexId = 0;
 	  for (size_t i = 0; i < reads_; ++i) {
 //		  clock_gettime(CLOCK_MONOTONIC, &one);
-//		  gettimeofday(&one, NULL);
 		  int k = shuffr[i];
 		  fstring key(allkeys_.at(k));
 //		  clock_gettime(CLOCK_MONOTONIC, &two);
-//		  gettimeofday(&two, NULL);
 //		  tab->indexSearchExactNoLock(indexId, key, &idvec, ctxr.get());
 		  tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
 //		  clock_gettime(CLOCK_MONOTONIC, &three);
@@ -897,7 +895,6 @@ class Benchmark {
 			 tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
 		  }
 //		  clock_gettime(CLOCK_MONOTONIC, &four);
-//		  gettimeofday(&four, NULL);
 		  if(idvec.size() > 0)
 			  found++;
 		  thread->stats.FinishedSingleOp();
