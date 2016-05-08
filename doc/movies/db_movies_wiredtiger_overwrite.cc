@@ -494,6 +494,28 @@ class Benchmark {
 
   void Run() {
     PrintHeader();
+    std::cout << " Run() " << std::endl;
+
+    std::ifstream ifs("/datainssd/publicdata/movies/keys");
+    std::string str;
+    std::string key1;
+    std::string key2;
+
+    while(getline(ifs, str)) {
+            if (str.find("product/productId:") == 0) {
+                    key1 = str.substr(19);
+                    continue;
+            }
+            if (str.find("review/userId:") == 0) {
+                    key2 = str.substr(15);
+                    allkeys_.push_back(key1 + " " + key2);
+                    continue;
+            }
+    }
+    allkeys_.shrink_to_fit();
+    printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
+    assert(allkeys_.size() == FLAGS_num);
+
     Open();
 
     const char* benchmarks = FLAGS_benchmarks;
@@ -573,35 +595,6 @@ class Benchmark {
         method = &Benchmark::ReadReverse;
       } else if (name == Slice("readrandom")) {
         method = &Benchmark::ReadRandom;
-
-        struct timespec start, end;
-	clock_gettime(CLOCK_MONOTONIC, &start);
-        std::ifstream ifs(FLAGS_resource_data);
-        std::string str;
-        std::string key1;
-        std::string key2;
-
-        while(getline(ifs, str)) {
-            if (str.find("product/productId:") == 0) {
-                key1 = str.substr(19);
-                continue;
-            }
-            if (str.find("review/userId:") == 0) {
-                key2 = str.substr(15);
-                continue;
-            }
-            if (str.find("review/text:") == 0) {
-                allkeys_.push_back(key1 + " " + key2);
-                continue;
-            }
-        }
-         allkeys_.shrink_to_fit();
-        printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	assert(allkeys_.size() == FLAGS_num);
-	clock_gettime(CLOCK_MONOTONIC, &end);
-        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
-        printf("key initialized time %lld\n", timeuse);
-
       } else if (name == Slice("readmissing")) {
         method = &Benchmark::ReadMissing;
       } else if (name == Slice("seekrandom")) {
@@ -622,64 +615,8 @@ class Benchmark {
 
         Random rand(1000);
         rand.Shuffle(shuff, FLAGS_threads);
-
-        struct timespec start, end;
-	clock_gettime(CLOCK_MONOTONIC, &start);
-        std::ifstream ifs(FLAGS_resource_data);
-        std::string str;
-        std::string key1;
-        std::string key2;
-
-        while(getline(ifs, str)) {
-            if (str.find("product/productId:") == 0) {
-                key1 = str.substr(19);
-                continue;
-            }
-            if (str.find("review/userId:") == 0) {
-                key2 = str.substr(15);
-                continue;
-            }
-            if (str.find("review/text:") == 0) {
-                allkeys_.push_back(key1 + " " + key2);
-                continue;
-            }
-        }
-         allkeys_.shrink_to_fit();
-        printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	assert(allkeys_.size() == FLAGS_num);
-	clock_gettime(CLOCK_MONOTONIC, &end);
-        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
-        printf("key initialized time %lld\n", timeuse);
       } else if (name == Slice("readwritedel")) {
         method = &Benchmark::ReadWriteDel;
-
-        struct timespec start, end;
-	clock_gettime(CLOCK_MONOTONIC, &start);
-        std::ifstream ifs(FLAGS_resource_data);
-        std::string str;
-        std::string key1;
-        std::string key2;
-
-        while(getline(ifs, str)) {
-            if (str.find("product/productId:") == 0) {
-                key1 = str.substr(19);
-                continue;
-            }
-            if (str.find("review/userId:") == 0) {
-                key2 = str.substr(15);
-                continue;
-            }
-            if (str.find("review/text:") == 0) {
-                allkeys_.push_back(key1 + " " + key2);
-                continue;
-            }
-        }
-        allkeys_.shrink_to_fit();
-        printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	assert(allkeys_.size() == FLAGS_num);
-	clock_gettime(CLOCK_MONOTONIC, &end);
-        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
-        printf("key initialized time %lld\n", timeuse);
       } else if (name == Slice("compact")) {
         method = &Benchmark::Compact;
       } else if (name == Slice("crc32c")) {
@@ -740,11 +677,8 @@ class Benchmark {
     	fprintf(stderr, "Reusing existing DB %s\n",uri_.c_str());
       }
 
-      time_t now;
-      struct tm *timenow;
-      time(&now);
-      timenow = localtime(&now);
-      printf("RunBenchmark start time is : %s \n", asctime(timenow));
+      struct timespec start, end;
+      clock_gettime(CLOCK_MONOTONIC, &start);
 
       if (method != NULL) {
         RunBenchmark(num_threads, name, method);
@@ -759,13 +693,12 @@ class Benchmark {
   }
 #endif
       }
-    
-      time(&now);
-      timenow = localtime(&now);
-      printf("RunBenchmark end time is : %s \n", asctime(timenow));
-      allkeys_.erase_all();
-      // system("echo 3 > /proc/sys/vm/drop_caches");
+
+      clock_gettime(CLOCK_MONOTONIC, &end);
+      long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+      printf("RunBenchmark total time is : %lld \n", timeuse/1000000000);
     }
+    allkeys_.erase_all();
     if (conn_ != NULL) {
       conn_->close(conn_, NULL);
       conn_ = NULL;
@@ -1537,7 +1470,7 @@ repeat:
 	  std::string key2;
 	  TestRow recRow;
 
-	  for (int i=0; i<FLAGS_num; i++) {
+	  for (int i=0; i<FLAGS_reads; i++) {
 		  if (shuffrw[i] == 1) {
 			  // read
 			  int k = shuffr[i];

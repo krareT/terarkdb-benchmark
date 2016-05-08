@@ -1,10 +1,9 @@
-This the test framework based on leveldb db_bench.
+The test framework based on leveldb db_bench.
 The framework will support storage engines as follows:
 LevelDB		(Done)		version 1.18  	test
 RocksDB		(Done) 		version 4.1  	test
 Redis		(Done)  	version 3.0.6 	test
-Wiredtiger	(Done) 		version 2.7.0 	test
-TerarkDB	(Done)  	version 0.1.1   test
+Wiredtiger	(Done) 		version 2.8.0 	test
 
 These test codes are in doc, there are five workloads:
 1. bench (default)
@@ -15,13 +14,17 @@ These test codes are in doc, there are five workloads:
 
 Now, the test framework supports fillrandom,readrandom,readwhilewriting benchmarks for each dbs, and we will implement other benchmarks.
 
-## How to build db_bench_* (e.g. db_bench_terark)
+## How to build db_movies_* (e.g. db_movies_terark_index)
 
-1. modify Makefile to add "TERARKDB_INCLUDE_PATH", and TERARKDB_INCLUDE_PATH includes nark-db/src
+1. modify Makefile to add "TERARKDB_INCLUDE_PATH", and TERARKDB_INCLUDE_PATH includes terark-db/src and terark-db/terark-base/src
 
-2. create symlink: libTerarkDB-g++-5.3-r.so, libterark-fsa_all-g++-5.3-r.so in /usr/lib64
+2. create symlink: libterark-fsa_all-g++-5.3-r, libterark-db-g++-5.3-r, and put them into /usr/lib64
 
-3. run "make db_bench_terark"
+3. In order to run db_movies_terark_index, when you execute "make db_movies_terark_index", you should firstly install its dependent libs, i.e. libboost_system.so, libboost_filesystem.so, libwiredtiger-2.8.0.so and libtbb.so
 
-## How to run db_bench_terark
-for example: ./db_bench_terark --benchmarks=fillrandom,readrandom --value_size=64 --num=10000 --db=data
+4. terarkdb is a schema-based data store, different workloads have their own data schema, and they are located in "./terarkschema" 
+
+5. run "db_movies_terark_index"
+
+## How to run db_movies_terark_index
+for example: ./db_movies_terark_index --benchmarks=fillrandom,readrandom --value_size=64 --num=10000 --db=data

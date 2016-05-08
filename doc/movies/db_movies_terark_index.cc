@@ -436,6 +436,27 @@ class Benchmark {
   void Run() {
     PrintHeader();
     std::cout << " Run() " << std::endl;
+
+    std::ifstream ifs("/datainssd/publicdata/movies/keys");
+    std::string str;
+    std::string key1;
+    std::string key2;
+
+    while(getline(ifs, str)) {
+	    if (str.find("product/productId:") == 0) {
+		    key1 = str.substr(19);
+		    continue;
+	    }
+	    if (str.find("review/userId:") == 0) {
+		    key2 = str.substr(15);
+		    allkeys_.push_back(key1 + " " + key2);
+		    continue;
+	    }
+    }
+    allkeys_.shrink_to_fit();
+    printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
+    assert(allkeys_.size() == FLAGS_num);
+
     Open();
 
     const char* benchmarks = FLAGS_benchmarks;
@@ -508,37 +529,9 @@ class Benchmark {
       } else if (name == Slice("readreverse")) {
         method = &Benchmark::ReadReverse;
       } else if (name == Slice("readrandom")) {
-        method = &Benchmark::ReadRandom;
-
-        struct timespec start, end;
-	clock_gettime(CLOCK_MONOTONIC, &start);
-        std::ifstream ifs(FLAGS_resource_data);
-        std::string str;
-        std::string key1;
-        std::string key2;
-
-        while(getline(ifs, str)) {
-            if (str.find("product/productId:") == 0) {
-                key1 = str.substr(19);
-                continue;
-            }
-            if (str.find("review/userId:") == 0) {
-                key2 = str.substr(15);
-                continue;
-            }
-            if (str.find("review/text:") == 0) {
-                allkeys_.push_back(key1 + " " + key2);
-                continue;
-            }
-        }
-	allkeys_.shrink_to_fit();
-	printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	assert(allkeys_.size() == FLAGS_num);
-	clock_gettime(CLOCK_MONOTONIC, &end);
-        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
-        printf("key initialized time %lld\n", timeuse);
+	      method = &Benchmark::ReadRandom;
       } else if (name == Slice("readmissing")) {
-        method = &Benchmark::ReadMissing;
+	      method = &Benchmark::ReadMissing;
       } else if (name == Slice("seekrandom")) {
         method = &Benchmark::SeekRandom;
       } else if (name == Slice("readhot")) {
@@ -557,64 +550,8 @@ class Benchmark {
 	printf("readwhilewriting\n");
         Random rand(1000);
         rand.Shuffle(shuff, FLAGS_threads);
-
-        struct timespec start, end;
-	clock_gettime(CLOCK_MONOTONIC, &start);
-        std::ifstream ifs(FLAGS_resource_data);
-        std::string str;
-        std::string key1;
-        std::string key2;
-
-        while(getline(ifs, str)) {
-            if (str.find("product/productId:") == 0) {
-                key1 = str.substr(19);
-                continue;
-            }
-            if (str.find("review/userId:") == 0) {
-                key2 = str.substr(15);
-                continue;
-            }
-            if (str.find("review/text:") == 0) {
-                allkeys_.push_back(key1 + " " + key2);
-                continue;
-            }
-	}
-	allkeys_.shrink_to_fit();
-	printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	assert(allkeys_.size() == FLAGS_num);
-	clock_gettime(CLOCK_MONOTONIC, &end);
-        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
-        printf("key initialized time %lld\n", timeuse);
       } else if (name == Slice("readwritedel")) {
         method = &Benchmark::ReadWriteDel;
-
-        struct timespec start, end;
-	clock_gettime(CLOCK_MONOTONIC, &start);
-        std::ifstream ifs(FLAGS_resource_data);
-        std::string str;
-        std::string key1;
-        std::string key2;
-
-        while(getline(ifs, str)) {
-            if (str.find("product/productId:") == 0) {
-                key1 = str.substr(19);
-                continue;
-            }
-            if (str.find("review/userId:") == 0) {
-                key2 = str.substr(15);
-                continue;
-            }
-            if (str.find("review/text:") == 0) {
-                allkeys_.push_back(key1 + " " + key2);
-                continue;
-            }
-        }
-	allkeys_.shrink_to_fit();
-	printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	assert(allkeys_.size() == FLAGS_num);
-	clock_gettime(CLOCK_MONOTONIC, &end);
-        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
-        printf("key initialized time %lld\n", timeuse);
       } else if (name == Slice("compact")) {
         method = &Benchmark::Compact;
       } else if (name == Slice("crc32c")) {
@@ -642,16 +579,17 @@ class Benchmark {
         }
       }
 
+      struct timespec start, end;
+      clock_gettime(CLOCK_MONOTONIC, &start);
       if (method != NULL) {
-        RunBenchmark(num_threads, name, method);
+	      RunBenchmark(num_threads, name, method);
       }
-      time_t now;   
-      struct tm *timenow;   
-      time(&now);   
-      timenow = localtime(&now);   
-      printf("recent time is : %s \n", asctime(timenow));  
+      clock_gettime(CLOCK_MONOTONIC, &end);
+      long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+      printf("RunBenchmark total time is : %lld \n", timeuse/1000000000);
       tab->syncFinishWriting();
     }
+    allkeys_.erase_all(); 
   }
 
  private:
@@ -943,8 +881,6 @@ class Benchmark {
 
 	  int found = 0;
 	  size_t indexId = 0;
-	  IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
-	  const Schema& indexSchema = tab->getIndexSchema(indexId);
 	  for (size_t i = 0; i < reads_; ++i) {
 //		  clock_gettime(CLOCK_MONOTONIC, &one);
 //		  gettimeofday(&one, NULL);
@@ -1136,8 +1072,6 @@ class Benchmark {
           int64_t num = 0;
 
           size_t indexId = 0;
-          IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
-          const Schema& indexSchema = tab->getIndexSchema(indexId);
           while(true) {
               const int k = thread->rand.Next() % FLAGS_num;
               fstring key(allkeys_.at(k));
@@ -1186,8 +1120,6 @@ class Benchmark {
 
           int found = 0;
           size_t indexId = 0;
-          IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
-          const Schema& indexSchema = tab->getIndexSchema(indexId);
 
 	  terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
 	  std::ifstream ifs(FLAGS_resource_data);
@@ -1219,7 +1151,7 @@ class Benchmark {
 	  long long readtime = 0;
 	  long long writetime = 0;
 	
-	  for (int i=0; i<FLAGS_num; i++) {
+	  for (int i=0; i<FLAGS_reads; i++) {
 		  if (shuffrw[i] == 1) {
 			  // read
 			  // gettimeofday(&one, NULL);

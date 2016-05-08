@@ -1,4 +1,4 @@
 leveldb_nark
 =========
-Terarkdb implementation of LeveDB benchmark
-more details to see README
+TerarkDB Experiment Based On LeveDB benchmark
+More Details To See README

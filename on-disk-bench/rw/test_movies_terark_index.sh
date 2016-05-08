@@ -1,10 +1,10 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readwhilewriting_terark_index_100_95_2 2 > nohup.out &
+nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readwhilewriting_terark_index_100_99_mem2g_16g 2 > nohup.out &
 
 file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684
-read_num=7911684
+read_num=4000000
 dirname=/experiment
-ratio=95
+ratio=99
 
 rm -rf $dirname/*
 export TMPDIR=$dirname

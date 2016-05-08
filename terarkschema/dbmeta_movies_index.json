@@ -19,11 +19,12 @@
 			"minFragLen": 8, "maxFragLen": 100,
 			"dictZipSampleRatio": 0.07,
 			"dictZipLocalMatch": true,
+			"mmapPopulate" : false,
 			"useFastZip": true
 		}
 	},
-	"ReadonlyDataMemSize" 	: 1288490188,
-	"MaxWrSegSize" 		: 3221225472,
+	"ReadonlyDataMemSize" 	: "1G",
+	"MaxWrSegSize" 		: "16G",
 	"MinMergeSegNum"	: 3,
 	"TableIndex" : [
 		{

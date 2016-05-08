@@ -466,6 +466,27 @@ class Benchmark {
   void Run() {
     PrintHeader();
     std::cout << " Run() " << std::endl;
+
+    std::ifstream ifs("/datainssd/publicdata/movies/keys");
+    std::string str;
+    std::string key1;
+    std::string key2;
+
+    while(getline(ifs, str)) {
+            if (str.find("product/productId:") == 0) {
+                    key1 = str.substr(19);
+                    continue;
+            }
+            if (str.find("review/userId:") == 0) {
+                    key2 = str.substr(15);
+                    allkeys_.push_back(key1 + " " + key2);
+                    continue;
+            }
+    }
+    allkeys_.shrink_to_fit();
+    printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
+    assert(allkeys_.size() == FLAGS_num);
+
     Open();
 
     const char* benchmarks = FLAGS_benchmarks;
@@ -539,35 +560,6 @@ class Benchmark {
         method = &Benchmark::ReadReverse;
       } else if (name == rocksdb::Slice("readrandom")) {
         method = &Benchmark::ReadRandom;
-
-        struct timespec start, end;
-	clock_gettime(CLOCK_MONOTONIC, &start);
-        std::ifstream ifs(FLAGS_resource_data);
-        std::string str;
-        std::string key1;
-        std::string key2;
-
-        while(getline(ifs, str)) {
-            if (str.find("product/productId:") == 0) {
-                key1 = str.substr(19);
-                continue;
-            }
-            if (str.find("review/userId:") == 0) {
-                key2 = str.substr(15);
-                continue;
-            }
-            if (str.find("review/text:") == 0) {
-                allkeys_.push_back(key1 + " " + key2);
-                continue;
-            }
-        }
-		allkeys_.shrink_to_fit();
-		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	assert(allkeys_.size() == FLAGS_num);
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
-	printf("key initialized time %lld\n", timeuse);
-
       } else if (name == rocksdb::Slice("readmissing")) {
         method = &Benchmark::ReadMissing;
       } else if (name == rocksdb::Slice("seekrandom")) {
@@ -588,66 +580,8 @@ class Benchmark {
     
         Random rand(1000);
         rand.Shuffle(shuff, FLAGS_threads);
-	
-	struct timespec start, end;
-	clock_gettime(CLOCK_MONOTONIC, &start);
-        std::ifstream ifs(FLAGS_resource_data);
-        std::string str;
-        std::string key1;
-        std::string key2;
-
-        while(getline(ifs, str)) {
-            if (str.find("product/productId:") == 0) {
-                key1 = str.substr(19);
-                continue;
-            }
-            if (str.find("review/userId:") == 0) {
-                key2 = str.substr(15);
-                continue;
-            }
-            if (str.find("review/text:") == 0) {
-                allkeys_.push_back(key1 + " " + key2);
-                continue;
-            }
-        }
-	allkeys_.shrink_to_fit();
-	printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	assert(allkeys_.size() == FLAGS_num);
-	clock_gettime(CLOCK_MONOTONIC, &end);
-        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
-        printf("key initialized time %lld\n", timeuse);
-
       } else if (name == rocksdb::Slice("readwritedel")) {
         method = &Benchmark::ReadWriteDel;
-
-	struct timespec start, end;
-	clock_gettime(CLOCK_MONOTONIC, &start);
-        std::ifstream ifs(FLAGS_resource_data);
-        std::string str;
-        std::string key1;
-        std::string key2;
-
-        while(getline(ifs, str)) {
-            if (str.find("product/productId:") == 0) {
-                key1 = str.substr(19);
-                continue;
-            }
-            if (str.find("review/userId:") == 0) {
-                key2 = str.substr(15);
-                continue;
-            }
-            if (str.find("review/text:") == 0) {
-                allkeys_.push_back(key1 + " " + key2);
-                continue;
-            }
-        }
-		allkeys_.shrink_to_fit();
-		printf("allkeys_.mem_size=%zd\n", allkeys_.full_mem_size());
-	assert(allkeys_.size() == FLAGS_num);
-	clock_gettime(CLOCK_MONOTONIC, &end);
-        long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
-        printf("key initialized time %lld\n", timeuse);
-
       } else if (name == rocksdb::Slice("compact")) {
         method = &Benchmark::Compact;
       } else if (name == rocksdb::Slice("crc32c")) {
@@ -684,22 +618,20 @@ class Benchmark {
           Open();
         }
       }
-      time_t now;
-      struct tm *timenow;
-      time(&now);
-      timenow = localtime(&now);
-      printf("RunBenchmark start time is : %s \n", asctime(timenow));
+
+      struct timespec start, end;
+      clock_gettime(CLOCK_MONOTONIC, &start);
 
       if (method != NULL) {
         RunBenchmark(num_threads, name, method);
       }
 
-      time(&now);
-      timenow = localtime(&now);
-      printf("RunBenchmark end time is : %s \n", asctime(timenow));
-      allkeys_.erase_all();
-      // system("echo 3 > /proc/sys/vm/drop_caches");
+      clock_gettime(CLOCK_MONOTONIC, &end);
+      long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+      printf("RunBenchmark total time is : %lld \n", timeuse/1000000000);
+
     }
+    allkeys_.erase_all();
   }
 
  private:
@@ -868,6 +800,7 @@ class Benchmark {
     options.create_if_missing = !FLAGS_use_existing_db;
     options.write_buffer_size = FLAGS_write_buffer_size;
 // new features to add
+
     options.allow_concurrent_memtable_write = true;
     options.enable_write_thread_adaptive_yield = true;
     options.allow_mmap_reads = true;
@@ -1259,7 +1192,7 @@ class Benchmark {
 	  int found = 0;
 	  rocksdb::Status s;
 
-	  for (int i=0; i<FLAGS_num; i++) {
+	  for (int i=0; i<FLAGS_reads; i++) {
 		  value.clear();
 		  if (shuffrw[i] == 1) {
 			  // read
@@ -1452,7 +1385,7 @@ int main(int argc, char** argv) {
     } else if (sscanf(argv[i], "--histogram=%d%c", &n, &junk) == 1 &&
                (n == 0 || n == 1)) {
       FLAGS_histogram = n;
-    } else if (sscanf(argv[i], "--use_existing_db=%d%c", &n, &junk) == 1 &&
+    } else if (sscanf(argv[i], "--use_existing_db=%ld%c", &n, &junk) == 1 &&
                (n == 0 || n == 1)) {
       FLAGS_use_existing_db = n;
     } else if (sscanf(argv[i], "--num=%d%c", &n, &junk) == 1) {

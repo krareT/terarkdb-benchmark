@@ -1,11 +1,14 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readwhilewriting_rocksdb_128_99_1G_2 2 > nohup.out &
+nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readwhilewriting_rocksdb_256_99_128m_mem2g 2 > nohup.out &
 
 file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684
-read_num=7911684
+read_num=4000000
 dirname=/experiment
-writebuffer=134217728
-cachesize=1073741824
+writebuffer=268435456
+#cachesize=1073741824
+#cachesize=536870912
+#cachesize=268435456
+cachesize=134217728
 ratio=99
 
 rm -rf $dirname/*

@@ -92,7 +92,7 @@ static int FLAGS_value_size = 100;
 static enum rocksdb::CompressionType FLAGS_compression_type =
     rocksdb::kSnappyCompression;
 
-static int FLAGS_min_level_to_compress = 0;
+static int FLAGS_min_level_to_compress = -1;
 
 static int FLAGS_num_levels = 7;
 
@@ -744,14 +744,19 @@ class Benchmark {
 
     options.create_if_missing = !FLAGS_use_existing_db;
     options.write_buffer_size = FLAGS_write_buffer_size;
-    std::cout << options.write_buffer_size << std::endl;
+    std::cout << " open " << options.write_buffer_size << std::endl;
+
+   // options.allow_concurrent_memtable_write = true;
+   // options.enable_write_thread_adaptive_yield = true;
+    options.allow_mmap_reads = true;
+    options.allow_mmap_writes = true;
 
     rocksdb::BlockBasedTableOptions block_based_options;
     block_based_options.index_type = rocksdb::BlockBasedTableOptions::kBinarySearch;
     block_based_options.block_cache = cache_;
     block_based_options.filter_policy = filter_policy_;
     options.table_factory.reset(
-		    NewBlockBasedTableFactory(block_based_options));
+		    rocksdb::NewBlockBasedTableFactory(block_based_options));
   
     options.compression = FLAGS_compression_type;
     if (FLAGS_min_level_to_compress >= 0) {
@@ -765,7 +770,6 @@ class Benchmark {
         options.compression_per_level[i] = FLAGS_compression_type;
       }
     }
-
     std::cout << "Create database " << FLAGS_db << std::endl;
     rocksdb::Status s = rocksdb::DB::Open(options, FLAGS_db, &db_);
     if (!s.ok()) {
@@ -841,7 +845,7 @@ class Benchmark {
   }
 
   void ReadRandom(ThreadState* thread) {
-    rocksdb::ReadOptions options;
+    rocksdb::ReadOptions options(false, true);
     std::string value;
     int found = 0;
     for (int i = 0; i < reads_; i++) {

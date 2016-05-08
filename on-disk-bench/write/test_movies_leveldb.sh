@@ -1,9 +1,9 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/fillrandom_mulit_leveldb_128 2 > nohup.out &
+nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/fillrandom_mulit_leveldb_256_mem2g 2 > nohup.out &
 
 file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684
 dirname=/experiment
-writebuffer=134217728
+writebuffer=268435456
 
 rm -rf $dirname/*
 echo "####Now, running leveldb benchmark"

@@ -1,9 +1,13 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readrandom_multi_wiredtiger_no_lsm_1_over 2 > nohup.out &
+nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readrandom_multi_wiredtiger_no_lsm_256m_over_mem2g 2 > nohup.out &
 
 file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684
-read_num=7911684
-cachesize=1073741824
+read_num=4000000
+#cachesize=3221225472
+#cachesize=1073741824
+#cachesize=536870912
+#cachesize=268435456
+cachesize=134217728
 dirname=/experiment
 
 rm -rf $dirname/*
@@ -21,7 +25,7 @@ echo "####Now, running wiredtiger benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-../../db_movies_wiredtiger_overwrite --benchmarks=readrandom,readrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --use_existing_db=1 --resource_data=$file
+../../db_movies_wiredtiger_overwrite --benchmarks=readrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --use_existing_db=1 --resource_data=$file
 free -m
 date
 echo "####wiredtiger benchmark finish"
@@ -31,7 +35,7 @@ echo "####Now, running wiredtiger benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-../../db_movies_wiredtiger_overwrite --benchmarks=readrandom,readrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --use_existing_db=1 --threads=8 --resource_data=$file
+../../db_movies_wiredtiger_overwrite --benchmarks=readrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --use_existing_db=1 --threads=8 --resource_data=$file
 free -m
 date
 echo "####wiredtiger benchmark finish"
@@ -41,7 +45,7 @@ echo "####Now, running wiredtiger benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-../../db_movies_wiredtiger_overwrite --benchmarks=readrandom,readrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --use_existing_db=1 --threads=16 --resource_data=$file
+../../db_movies_wiredtiger_overwrite --benchmarks=readrandom --num=$record_num --reads=$read_num --db=$dirname --use_lsm=0 --cache_size=$cachesize --use_existing_db=1 --threads=16 --resource_data=$file
 free -m
 date
 echo "####wiredtiger benchmark finish"

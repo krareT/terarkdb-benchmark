@@ -1,9 +1,12 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readwhilewriting_wiredtiger_no_lsm_1_over_99_2 2 > nohup.out &
+nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readwhilewriting_wiredtiger_no_lsm_128m_over_99_mem2g 2 > nohup.out &
 
 file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684
-read_num=7911684
-cachesize=1073741824
+read_num=4000000
+#cachesize=1073741824
+#cachesize=536870912
+#cachesize=268435456
+cachesize=134217728
 dirname=/experiment
 ratio=99
 
