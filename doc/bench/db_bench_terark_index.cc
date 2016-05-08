@@ -134,7 +134,6 @@ static bool FLAGS_is_readwhilewriting = false;
 
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
-static const char* FLAGS_db_table = NULL;
 
 static int *shuff = NULL;
 
@@ -155,8 +154,8 @@ class RandomGenerator {
     // large enough to serve all typical value sizes we want to write.
     Random rnd(301);
     std::string piece;
-    while (data_.size() < 268435456) {
-    //while (data_.size() < 1048576) {
+	size_t maxSize = TERARK_IF_DEBUG(1, 256) * 1024*1024;
+    while (data_.size() < maxSize) {
       // Add a short fragment that is as compressible as specified
       // by FLAGS_compression_ratio.
       test::CompressibleString(&rnd, FLAGS_compression_ratio, 100, &piece);
@@ -755,9 +754,7 @@ class Benchmark {
   void Open() {
     assert(tab == NULL);
     std::cout << "Create database " << FLAGS_db << std::endl;
-    
-    tab = terark::db::CompositeTable::createTable(FLAGS_db_table);
-    tab->load(FLAGS_db);
+    tab = terark::db::CompositeTable::open(FLAGS_db);
   }
 
   void WriteSeq(ThreadState* thread) {
@@ -802,7 +799,7 @@ class Benchmark {
 
 			if (ctxw->insertRow(binRow) < 0) {
 				printf("Insert failed: %s\n", ctxw->errMsg.c_str());
-				exit(-1);
+			//	exit(-1);
 			}
 
 			bytes += value_size_ + strlen(key);
@@ -1074,11 +1071,16 @@ class Benchmark {
 			  terark::fstring binRow(rowBuilder.begin(), rowBuilder.tell());
 			  if (ctxrw->insertRow(binRow) < 0) {
 				  printf("Insert failed: %s\n", ctxrw->errMsg.c_str());
-				  exit(-1);
+			//	  exit(-1);
 			  }
 			  writen ++;
 			  thread->stats.FinishedSingleOp();
 		  }
+#if !defined(NDEBUG)
+		  if (rand() < RAND_MAX * 0.0003) {
+			  tab->compact();
+		  }
+#endif
 	  }
 	  time_t now;
           struct tm *timenow;
@@ -1122,7 +1124,7 @@ class Benchmark {
 
 		    if (ctxw->insertRow(binRow) < 0) {
 			    printf("Insert failed: %s\n", ctxw->errMsg.c_str());
-			    exit(-1);
+			//    exit(-1);
 		    }
 		    num ++;
 	    }
@@ -1179,7 +1181,6 @@ int main(int argc, char** argv) {
   FLAGS_write_buffer_size = leveldb::Options().write_buffer_size;
   FLAGS_open_files = leveldb::Options().max_open_files;
   std::string default_db_path;
-  std::string default_db_table;
 
   for (int i = 1; i < argc; i++) {
     double d;
@@ -1218,8 +1219,6 @@ int main(int argc, char** argv) {
       FLAGS_db = argv[i] + 5;
     } else if (sscanf(argv[i], "--read_ratio=%lf%c", &d, &junk) == 1) {
       FLAGS_read_write_percent = d;
-    } else if (strncmp(argv[i], "--dbtable=", 10) == 0) {
-      FLAGS_db_table = argv[i] + 10;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);
@@ -1231,11 +1230,6 @@ int main(int argc, char** argv) {
       leveldb::Env::Default()->GetTestDirectory(&default_db_path);
       default_db_path += "/dbbench";
       FLAGS_db = default_db_path.c_str();
-  }
-
-  if (FLAGS_db_table == NULL) {
-      default_db_table += "DfaDbTable";
-      FLAGS_db_table = default_db_table.c_str();
   }
 
   shuff = (int *)malloc(FLAGS_num * sizeof(int));

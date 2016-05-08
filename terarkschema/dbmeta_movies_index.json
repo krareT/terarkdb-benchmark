@@ -19,7 +19,7 @@
 			"minFragLen": 8, "maxFragLen": 100,
 			"dictZipSampleRatio": 0.07,
 			"dictZipLocalMatch": true,
-			"mmapPopulate" : false,
+			"mmapPopulate" : true,
 			"useFastZip": true
 		}
 	},
