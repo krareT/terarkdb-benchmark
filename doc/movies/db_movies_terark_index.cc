@@ -587,8 +587,8 @@ class Benchmark {
 	      RunBenchmark(num_threads, name, method);
       }
       clock_gettime(CLOCK_MONOTONIC, &end);
-      long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
-      printf("RunBenchmark total time is : %lld \n", timeuse/1000000000);
+      long long timeuse = 1000000000LL * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+      printf("RunBenchmark total time is : %lld \n", timeuse/1000000000LL);
       //tab->syncFinishWriting();
     }
     allkeys_.erase_all(); 
@@ -1229,8 +1229,8 @@ class Benchmark {
 		  }
 		  if((i+1)%80000 == 0) {
 			clock_gettime(CLOCK_MONOTONIC, &end);
-			timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
-			printf("i %d thread %d current qps %0.2f, timeuse %lld\n", i, thread->tid, 80000.0/(timeuse/1000000000.0), timeuse/1000000000);
+			timeuse = 1000000000LL * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+			printf("i %d thread %d current qps %0.2f, timeuse %lld\n", i, thread->tid, 80000.0/(timeuse/1000000000.0), timeuse/1000000000LL);
 			clock_gettime(CLOCK_MONOTONIC, &start);
 		  }
 	  }
