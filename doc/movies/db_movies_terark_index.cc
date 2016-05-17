@@ -471,6 +471,8 @@ class Benchmark {
         benchmarks = sep + 1;
       }
 
+      printf("benchmark name %s\n", name.data());
+
       // Reset parameters that may be overriddden bwlow
       num_ = FLAGS_num;
       reads_ = (FLAGS_reads < 0 ? FLAGS_num : FLAGS_reads);
@@ -547,7 +549,6 @@ class Benchmark {
         // num_threads++;  // Add extra thread for writing
         // method = &Benchmark::ReadWhileWriting;
         method = &Benchmark::ReadWhileWritingNew;
-	printf("readwhilewriting\n");
         Random rand(1000);
         rand.Shuffle(shuff, FLAGS_threads);
       } else if (name == Slice("readwritedel")) {
@@ -582,12 +583,13 @@ class Benchmark {
       struct timespec start, end;
       clock_gettime(CLOCK_MONOTONIC, &start);
       if (method != NULL) {
+	      printf("RunBenchmark %s\n", name.data());
 	      RunBenchmark(num_threads, name, method);
       }
       clock_gettime(CLOCK_MONOTONIC, &end);
       long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
       printf("RunBenchmark total time is : %lld \n", timeuse/1000000000);
-      tab->syncFinishWriting();
+      //tab->syncFinishWriting();
     }
     allkeys_.erase_all(); 
   }
@@ -1144,9 +1146,13 @@ class Benchmark {
 	  std::string key2;
 
 	  TestRow recRow;
-	  struct timeval one, two, three, four;
+	  // struct timeval one, two, three, four;
+	  struct timespec start, end;
 	  long long readtime = 0;
 	  long long writetime = 0;
+	  long long timeuse = 0;
+
+	  clock_gettime(CLOCK_MONOTONIC, &start);
 	
 	  for (int i=0; i<FLAGS_reads; i++) {
 		  if (shuffrw[i] == 1) {
@@ -1221,12 +1227,20 @@ class Benchmark {
 			 // gettimeofday(&four, NULL);
 			 // writetime += 1000000 * ( four.tv_sec - three.tv_sec ) + four.tv_usec - three.tv_usec;
 		  }
+		  if((i+1)%80000 == 0) {
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+			printf("i %d thread %d current qps %0.2f, timeuse %lld\n", i, thread->tid, 80000.0/(timeuse/1000000000.0), timeuse/1000000000);
+			clock_gettime(CLOCK_MONOTONIC, &start);
+		  }
 	  }
 	  time_t now;
 	  struct tm *timenow;
 	  time(&now);
 	  timenow = localtime(&now);
 	  printf("readnum %lld, writenum %lld, avg %lld, offset %d, time %s, readtime %lld, writetime %lld\n", readn, writen, copyavg, offset, asctime(timenow), readtime/1000, writetime/1000);
+	//  printf("readnum %lld, writenum %lld, avg %lld, offset %d\n", readn, writen, copyavg, offset, asctime(timenow));
+	//  printf(" %dth finshed time %s\n\n", ++finished, asctime(timenow));
   }
 
    void ReadWhileWriting(ThreadState* thread) {

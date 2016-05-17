@@ -1,4 +1,4 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readrandom_multi_terark_index_100_mem2g_16g_1g 2 > nohup.out &
+nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readrandom_multi_terark_index_100_mem3g_mappopulate_16g_1g 2 > nohup.out &
 
 file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684

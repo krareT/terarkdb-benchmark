@@ -1191,6 +1191,10 @@ class Benchmark {
 	  std::string value;
 	  int found = 0;
 	  rocksdb::Status s;
+	  long long timeuse = 0;
+
+  	  struct timespec start, end;
+	  clock_gettime(CLOCK_MONOTONIC, &start);
 
 	  for (int i=0; i<FLAGS_reads; i++) {
 		  value.clear();
@@ -1255,8 +1259,18 @@ class Benchmark {
 				  }
 			  }
 		  }
+		  if((i+1)%80000 == 0) {
+			  clock_gettime(CLOCK_MONOTONIC, &end);
+			  timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+			  printf("i %d thread %d current qps %0.2f, timeuse %lld\n", i, thread->tid, 80000.0/(timeuse/1000000000.0), timeuse/1000000000);
+			  clock_gettime(CLOCK_MONOTONIC, &start);
+		  }
 	  }
-	   printf("readnum %lld, writenum %lld, avg %lld, offset %d\n", readn, writen, copyavg, offset);
+	  time_t now;
+          struct tm *timenow;
+          time(&now);
+          timenow = localtime(&now);
+          printf("readnum %lld, writenum %lld, avg %lld, offset %d, time %s\n", readn, writen, copyavg, offset, asctime(timenow));
   }
 
   void ReadWhileWriting(ThreadState* thread) {
