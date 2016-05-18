@@ -1,4 +1,4 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readwhilewriting_terark_index_100_95_mem4g_mappopulate_256m_128m_details_fill_unsync_read_unsync_zipThreads_8_2 2 > nohup.out &
+nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readwhilewriting_terark_index_100_95_mem8g_mappopulate_256m_128m_details_fill_unsync_read_unsync_zipThreads_8_long_3 2 > nohup.out &
 
 file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684
@@ -28,8 +28,8 @@ free -m
 date
 export TerarkDB_WrSegCacheSizeMB=100
 export DictZipBlobStore_zipThreads=8
-#../../db_movies_terark_index --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --sync_index=1 --db=$dirname --threads=8 --resource_data=$file --read_ratio=$ratio
-../../db_movies_terark_index --benchmarks=readwhilewriting,readwhilewriting,readwhilewriting,readwhilewriting,readwhilewriting,readwhilewriting,readwhilewriting,readwhilewriting --num=$record_num --reads=$read_num --sync_index=1 --db=$dirname --threads=8 --resource_data=$file --read_ratio=$ratio
+../../db_movies_terark_index --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --sync_index=1 --db=$dirname --threads=8 --resource_data=$file --read_ratio=$ratio
+#../../db_movies_terark_index --benchmarks=readwhilewriting,readwhilewriting,readwhilewriting,readwhilewriting,readwhilewriting,readwhilewriting,readwhilewriting,readwhilewriting --num=$record_num --reads=$read_num --sync_index=1 --db=$dirname --threads=8 --resource_data=$file --read_ratio=$ratio
 free -m
 date
 echo "####terarkdb benchmark finish"

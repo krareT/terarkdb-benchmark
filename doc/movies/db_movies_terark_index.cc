@@ -1089,6 +1089,8 @@ class Benchmark {
   }
 
   void ReadWhileWritingNew(ThreadState* thread) {
+	int loop=1000;
+while(loop--) {
           AutoFree<int> shuffrw(FLAGS_num);
           AutoFree<int> shuffr(FLAGS_num);
           int read_num = int(FLAGS_num * FLAGS_read_write_percent / 100.0);
@@ -1242,6 +1244,7 @@ class Benchmark {
 	//  printf("readnum %lld, writenum %lld, avg %lld, offset %d\n", readn, writen, copyavg, offset, asctime(timenow));
 	//  printf(" %dth finshed time %s\n\n", ++finished, asctime(timenow));
   }
+}
 
    void ReadWhileWriting(ThreadState* thread) {
        if (thread->tid > 0) {
