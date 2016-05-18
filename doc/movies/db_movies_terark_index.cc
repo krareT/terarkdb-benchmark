@@ -1246,6 +1246,126 @@ while(loop--) {
   }
 }
 
+  void ReadWhileWritingNew2(ThreadState* thread) {
+	  int64_t readn = 0;
+	  int64_t writen = 0;
+	  valvec<byte> keyHit, val;
+          valvec<valvec<byte> > cgDataVec;
+          valvec<llong> idvec;
+          valvec<size_t> colgroups;
+          DbContextPtr ctxrw = tab->createDbContext();
+          ctxrw->syncIndex = FLAGS_sync_index;
+	  for (size_t i = tab->getIndexNum(); i < tab->getColgroupNum(); i++) {
+                colgroups.push_back(i);
+          }
+          int found = 0;
+          size_t indexId = 0;
+	  terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+	  terark::AutoFree<char> szPath;
+	  asprintf(&szPath.p, "%s.%d", FLAGS_resource_data, thread->tid);
+	  std::ifstream ifs(szPath.p);
+	  std::string str;
+	  std::string key1;
+	  std::string key2;
+
+	  TestRow recRow;
+	  // struct timeval one, two, three, four;
+	  struct timespec start, end;
+	  long long readtime = 0;
+	  long long writetime = 0;
+	  const double percent = FLAGS_read_write_percent / 100.0;
+
+	  clock_gettime(CLOCK_MONOTONIC, &start);
+	
+	  for (int i=0; i<FLAGS_reads; i++) {
+	      size_t rdi = thread->rand.Next();
+	      double rdd = rdi / double(INT32_MAX);
+		  if (rdd < percent) {
+			  // read
+			  // gettimeofday(&one, NULL);
+			  size_t k = thread->rand.Next() % allkeys_.size();
+			  fstring key(allkeys_.at(k));
+			  ctxrw->indexSearchExact(indexId, key, &idvec);
+			  for (auto recId : idvec) {
+				  ctxrw->selectColgroups(recId, colgroups, &cgDataVec);
+			  }
+			  if(idvec.size() > 0)
+				  found++;
+			  readn++;
+			  thread->stats.FinishedSingleOp();
+			  // gettimeofday(&two, NULL);
+			  // readtime += 1000000 * ( two.tv_sec - one.tv_sec ) + two.tv_usec - one.tv_usec;
+		  } else {
+			  // write
+			  // gettimeofday(&three, NULL);
+			  while(getline(ifs, str)) {
+				  fstring fstr(str);
+				  if (fstr.startsWith("product/productId:")) {
+					  key1 = str.substr(19);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/userId:")) {
+					  key2 = str.substr(15);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/profileName:")) {
+					  recRow.profileName = str.substr(20);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/helpfulness:")) {
+					  char* pos2 = NULL;
+					  recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
+					  recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/score:")) {
+					  recRow.score = lcast(fstr.substr(14));
+					  continue;
+				  }
+				  if (fstr.startsWith("review/time:")) {
+					  recRow.time = lcast(fstr.substr(13));
+					  continue;
+				  }
+				  if (fstr.startsWith("review/summary:")) {
+					  recRow.summary = str.substr(16);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/text:")) {
+					  recRow.text = str.substr(13);
+					  recRow.product_userId = key1 + " " + key2;
+
+					  rowBuilder.rewind();
+					  rowBuilder << recRow;
+					  fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+					  if (ctxrw->upsertRow(binRow) < 0) { // unique index
+						  printf("Insert failed: %s\n", ctxrw->errMsg.c_str());
+						  continue;
+					  }
+					  writen++;
+					  thread->stats.FinishedSingleOp();
+					  break;
+				  }
+			  }
+			 // gettimeofday(&four, NULL);
+			 // writetime += 1000000 * ( four.tv_sec - three.tv_sec ) + four.tv_usec - three.tv_usec;
+		  }
+		  if((i+1)%80000 == 0) {
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			long long timeuse = 1000000000LL * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+			printf("i %d thread %d current qps %0.2f, timeuse %f\n", i, thread->tid, 80000.0/(timeuse/1000000000.0), timeuse/1000000000.0);
+			clock_gettime(CLOCK_MONOTONIC, &start);
+		  }
+	  }
+	  time_t now;
+	  struct tm *timenow;
+	  time(&now);
+	  timenow = localtime(&now);
+	  printf("readnum %lld, writenum %lld, time %s, readtime %lld, writetime %lld\n", readn, writen, asctime(timenow), readtime/1000, writetime/1000);
+	//  printf("readnum %lld, writenum %lld\n", readn, writen, asctime(timenow));
+	//  printf(" %dth finshed time %s\n\n", ++finished, asctime(timenow));
+  }
+
    void ReadWhileWriting(ThreadState* thread) {
        if (thread->tid > 0) {
            ReadRandom(thread);
