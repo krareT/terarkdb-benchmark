@@ -7,7 +7,6 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <iostream>
 #include "db/db_impl.h"
 #include "db/version_set.h"
 #include "leveldb/cache.h"
@@ -24,6 +23,7 @@
 #include <iostream>  
 #include <fstream>  
 #include <string.h>  
+#include <string>  
 
 //#include "stdafx.h"
 #include <terark/db/db_table.hpp>
@@ -111,7 +111,8 @@ static int FLAGS_value_size = 100;
 static double FLAGS_compression_ratio = 0.5;
 
 // Print histogram of operation timings
-static bool FLAGS_histogram = false;
+//static bool FLAGS_histogram = false;
+static bool FLAGS_histogram = true;
 
 static bool FLAGS_sync_index = true;
 
@@ -548,7 +549,8 @@ class Benchmark {
       } else if (name == Slice("readwhilewriting")) {
         // num_threads++;  // Add extra thread for writing
         // method = &Benchmark::ReadWhileWriting;
-        method = &Benchmark::ReadWhileWritingNew;
+        // method = &Benchmark::ReadWhileWritingNew;
+        method = &Benchmark::ReadWhileWritingNew2;
         Random rand(1000);
         rand.Shuffle(shuff, FLAGS_threads);
       } else if (name == Slice("readwritedel")) {
@@ -589,7 +591,7 @@ class Benchmark {
       clock_gettime(CLOCK_MONOTONIC, &end);
       long long timeuse = 1000000000LL * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
       printf("RunBenchmark total time is : %lld \n", timeuse/1000000000LL);
-      //tab->syncFinishWriting();
+      tab->syncFinishWriting();
     }
     allkeys_.erase_all(); 
   }
@@ -1089,8 +1091,8 @@ class Benchmark {
   }
 
   void ReadWhileWritingNew(ThreadState* thread) {
-	int loop=1000;
-while(loop--) {
+	int loop=10;
+	while(loop--) {
           AutoFree<int> shuffrw(FLAGS_num);
           AutoFree<int> shuffr(FLAGS_num);
           int read_num = int(FLAGS_num * FLAGS_read_write_percent / 100.0);
@@ -1292,7 +1294,8 @@ while(loop--) {
 			  if(idvec.size() > 0)
 				  found++;
 			  readn++;
-			  thread->stats.FinishedSingleOp();
+			  //if(i >= 30000000 && i < 35000000)
+				  thread->stats.FinishedSingleOp();
 			  // gettimeofday(&two, NULL);
 			  // readtime += 1000000 * ( two.tv_sec - one.tv_sec ) + two.tv_usec - one.tv_usec;
 		  } else {
@@ -1343,9 +1346,14 @@ while(loop--) {
 						  continue;
 					  }
 					  writen++;
-					  thread->stats.FinishedSingleOp();
+			  		  //if(i >= 30000000 && i < 35000000)
+					  	thread->stats.FinishedSingleOp();
 					  break;
 				  }
+			  }
+			  if(ifs.eof()) {
+				ifs.clear();
+	  			ifs.seekg(0, std::ios::beg);
 			  }
 			 // gettimeofday(&four, NULL);
 			 // writetime += 1000000 * ( four.tv_sec - three.tv_sec ) + four.tv_usec - three.tv_usec;
@@ -1362,8 +1370,6 @@ while(loop--) {
 	  time(&now);
 	  timenow = localtime(&now);
 	  printf("readnum %lld, writenum %lld, time %s, readtime %lld, writetime %lld\n", readn, writen, asctime(timenow), readtime/1000, writetime/1000);
-	//  printf("readnum %lld, writenum %lld\n", readn, writen, asctime(timenow));
-	//  printf(" %dth finshed time %s\n\n", ++finished, asctime(timenow));
   }
 
    void ReadWhileWriting(ThreadState* thread) {

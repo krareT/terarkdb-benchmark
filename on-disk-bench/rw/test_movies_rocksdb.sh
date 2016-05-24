@@ -1,8 +1,8 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readwhilewriting_rocksdb_256_95_256m_mem4g 2 > nohup.out &
+nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readwhilewriting2_rocksdb_95_256m_512m_mem8g_details_readnum_40000000_loop1 2 > nohup.out &
 
 file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684
-read_num=4000000
+read_num=40000000
 dirname=/experiment
 writebuffer=268435456
 #cachesize=1073741824
@@ -26,8 +26,8 @@ echo "####Now, running rocksdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
-#../../db_movies_rocksdb --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --use_existing_db=1 --threads=8 --resource_data=$file --read_ratio=$ratio
-../../db_movies_rocksdb --benchmarks=readwhilewriting,readwhilewriting,readwhilewriting,readwhilewriting,readwhilewriting --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --use_existing_db=1 --threads=8 --resource_data=$file --read_ratio=$ratio
+../../db_movies_rocksdb --benchmarks=readwhilewriting --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --use_existing_db=1 --threads=8 --resource_data=$file --read_ratio=$ratio
+#../../db_movies_rocksdb --benchmarks=readwhilewriting,readwhilewriting,readwhilewriting,readwhilewriting,readwhilewriting --num=$record_num --reads=$read_num --write_buffer_size=$writebuffer --cache_size=$cachesize --bloom_bits=5 --db=$dirname --use_existing_db=1 --threads=8 --resource_data=$file --read_ratio=$ratio
 free -m
 date
 echo "####rocksdb benchmark finish"

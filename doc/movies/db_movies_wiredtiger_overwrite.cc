@@ -27,6 +27,8 @@
 
 #include <terark/util/autofree.hpp>
 #include <terark/util/fstrvec.hpp>
+#include <terark/fstring.hpp>
+
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
 //      fillseq       -- write N values in sequential key order in async mode
@@ -116,7 +118,7 @@ static int FLAGS_value_size = 100;
 static double FLAGS_compression_ratio = 0.5;
 
 // Print histogram of operation timings
-static bool FLAGS_histogram = false;
+static bool FLAGS_histogram = true;
 
 // Number of bytes to buffer in memtable before compacting
 // (initialized to default value by "main")
@@ -611,7 +613,8 @@ class Benchmark {
       } else if (name == Slice("readwhilewriting")) {
         //num_threads++;  // Add extra thread for writing
         //method = &Benchmark::ReadWhileWriting;
-        method = &Benchmark::ReadWhileWritingNew;
+        //method = &Benchmark::ReadWhileWritingNew;
+        method = &Benchmark::ReadWhileWritingNew2;
 
         Random rand(1000);
         rand.Shuffle(shuff, FLAGS_threads);
@@ -1537,6 +1540,140 @@ repeat:
 	  cursor->close(cursor);
           printf("readnum %lld, writenum %lld, avg %lld, offset %d\n", readn, writen, copyavg, offset);	  
   }
+
+    void ReadWhileWritingNew2(ThreadState* thread) {
+	  int64_t readn = 0;
+	  int64_t writen = 0;
+          int found = 0;
+	  terark::AutoFree<char> szPath;
+	  asprintf(&szPath.p, "%s.%d", FLAGS_resource_data, thread->tid);
+	  std::ifstream ifs(szPath.p);
+	  std::string str;
+	  std::string key1;
+	  std::string key2;
+
+	  TestRow recRow;
+	  // struct timeval one, two, three, four;
+	  struct timespec start, end;
+	  long long readtime = 0;
+	  long long writetime = 0;
+	  const double percent = FLAGS_read_write_percent / 100.0;
+	  
+	  const char*  wprofileName;
+	  uint32_t whelpfulness1;
+	  uint32_t whelpfulness2;
+	  uint32_t wscore;
+	  uint32_t wtime;
+	  const char* wsummary;
+	  const char* wtext;
+
+          WT_CURSOR *cursor;
+	  std::stringstream cur_config;
+	  cur_config.str("");
+	  cur_config << "overwrite";
+	  int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
+	  if (ret != 0) {
+		  fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+		  exit(1);
+	  }
+
+
+	  clock_gettime(CLOCK_MONOTONIC, &start);
+	
+	  for (int i=0; i<FLAGS_reads; i++) {
+	      size_t rdi = thread->rand.Next();
+	      double rdd = rdi / double(INT32_MAX);
+		  if (rdd < percent) {
+			  // read
+			  // gettimeofday(&one, NULL);
+			  size_t k = thread->rand.Next() % allkeys_.size();
+			  std::string key = allkeys_.str(k);
+			  cursor->set_key(cursor, key.c_str());
+			  if (cursor->search(cursor) == 0) {
+				  found++;
+				  ret = cursor->get_value(cursor, &wprofileName, &whelpfulness1, &whelpfulness2, &wscore, &wtime, &wsummary, &wtext);
+			  }
+
+			  readn++;
+			  thread->stats.FinishedSingleOp();
+			  // gettimeofday(&two, NULL);
+			  // readtime += 1000000 * ( two.tv_sec - one.tv_sec ) + two.tv_usec - one.tv_usec;
+		  } else {
+			  // write
+			  // gettimeofday(&three, NULL);
+			  while(getline(ifs, str)) {
+				  terark::fstring fstr(str);
+				  if (fstr.startsWith("product/productId:")) {
+					  key1 = str.substr(19);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/userId:")) {
+					  key2 = str.substr(15);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/profileName:")) {
+					  recRow.profileName = str.substr(20);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/helpfulness:")) {
+					  char* pos2 = NULL;
+					  recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
+					  recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/score:")) {
+					  recRow.score = atol(str.substr(14).c_str());
+					  continue;
+				  }
+				  if (fstr.startsWith("review/time:")) {
+					  recRow.time = atol(str.substr(13).c_str());
+					  continue;
+				  }
+				  if (fstr.startsWith("review/summary:")) {
+					  recRow.summary = str.substr(16);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/text:")) {
+					  recRow.text = str.substr(13);
+					  recRow.product_userId = key1 + " " + key2;
+					  
+					  cursor->set_key(cursor, recRow.product_userId.c_str());
+					  cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
+					  ret = cursor->insert(cursor);
+					  if (ret != 0) {
+						  fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+						  exit(1);
+					  }
+
+					  writen++;
+					  thread->stats.FinishedSingleOp();
+					  break;
+				  }
+			  }
+			  if(ifs.eof()) {
+                                ifs.clear();
+                                ifs.seekg(0, std::ios::beg);
+                          }
+			 // gettimeofday(&four, NULL);
+			 // writetime += 1000000 * ( four.tv_sec - three.tv_sec ) + four.tv_usec - three.tv_usec;
+		  }
+		  if((i+1)%80000 == 0) {
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			long long timeuse = 1000000000LL * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+			printf("i %d thread %d current qps %0.2f, timeuse %f\n", i, thread->tid, 80000.0/(timeuse/1000000000.0), timeuse/1000000000.0);
+			clock_gettime(CLOCK_MONOTONIC, &start);
+		  }
+	  }
+	  cursor->close(cursor);
+	  time_t now;
+	  struct tm *timenow;
+	  time(&now);
+	  timenow = localtime(&now);
+	  printf("readnum %lld, writenum %lld, time %s, readtime %lld, writetime %lld\n", readn, writen, asctime(timenow), readtime/1000, writetime/1000);
+  }
+
+
+
 
   void ReadWhileWriting(ThreadState* thread) {
       if (thread->tid > 0) {

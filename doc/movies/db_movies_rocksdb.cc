@@ -31,6 +31,8 @@
 
 #include <terark/util/autofree.hpp>
 #include <terark/util/fstrvec.hpp>
+#include <terark/fstring.hpp>
+
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
 //      fillseq       -- write N values in sequential key order in async mode
@@ -114,7 +116,8 @@ static int FLAGS_num_levels = 7;
 static double FLAGS_compression_ratio = 0.5;
 
 // Print histogram of operation timings
-static bool FLAGS_histogram = false;
+//static bool FLAGS_histogram = false;
+static bool FLAGS_histogram = true;
 
 // Number of bytes to buffer in memtable before compacting
 // (initialized to default value by "main")
@@ -576,7 +579,8 @@ class Benchmark {
       } else if (name == rocksdb::Slice("readwhilewriting")) {
         // num_threads++;  // Add extra thread for writing
         // method = &Benchmark::ReadWhileWriting;
-        method = &Benchmark::ReadWhileWritingNew;
+        //method = &Benchmark::ReadWhileWritingNew;
+        method = &Benchmark::ReadWhileWritingNew2;
     
         Random rand(1000);
         rand.Shuffle(shuff, FLAGS_threads);
@@ -1271,6 +1275,117 @@ class Benchmark {
           time(&now);
           timenow = localtime(&now);
           printf("readnum %lld, writenum %lld, avg %lld, offset %d, time %s\n", readn, writen, copyavg, offset, asctime(timenow));
+  }
+
+    void ReadWhileWritingNew2(ThreadState* thread) {
+	  int64_t readn = 0;
+	  int64_t writen = 0;
+          int found = 0;
+	  terark::AutoFree<char> szPath;
+	  asprintf(&szPath.p, "%s.%d", FLAGS_resource_data, thread->tid);
+	  std::ifstream ifs(szPath.p);
+	  std::string str;
+	  std::string key0;
+	  std::string key1;
+	  std::string key2;
+	  std::string value;
+
+	  rocksdb::ReadOptions options;
+	  rocksdb::Status s;
+	  
+	  // struct timeval one, two, three, four;
+	  struct timespec start, end;
+	  long long readtime = 0;
+	  long long writetime = 0;
+	  const double percent = FLAGS_read_write_percent / 100.0;
+
+	  clock_gettime(CLOCK_MONOTONIC, &start);
+	
+	  for (int i=0; i<FLAGS_reads; i++) {
+	      size_t rdi = thread->rand.Next();
+	      double rdd = rdi / double(INT32_MAX);
+		  if (rdd < percent) {
+			  // read
+			  // gettimeofday(&one, NULL);
+			  size_t k = thread->rand.Next() % allkeys_.size();
+			  std::string key = allkeys_.str(k);
+			  if (db_->Get(options, key, &value).ok()) {
+				  found++;
+			  }
+			  readn++;
+			  thread->stats.FinishedSingleOp();
+			  // gettimeofday(&two, NULL);
+			  // readtime += 1000000 * ( two.tv_sec - one.tv_sec ) + two.tv_usec - one.tv_usec;
+		  } else {
+			  // write
+			  // gettimeofday(&three, NULL);
+			  while(getline(ifs, str)) {
+				  terark::fstring fstr(str);
+				  if (fstr.startsWith("product/productId:")) {
+					  key1 = str.substr(19);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/userId:")) {
+					  key2 = str.substr(15);
+					  continue;
+				  }
+				  if (fstr.startsWith("review/profileName:")) {
+					  value += str.substr(20);
+					  value += " ";
+					  continue;
+				  }
+				  if (fstr.startsWith("review/helpfulness:")) {
+					  value += str.substr(20);
+					  value += " ";
+				   	  continue;
+				  }
+				  if (fstr.startsWith("review/score:")) {
+					   value += str.substr(14);
+					   value += " ";
+					   continue;
+				  }
+				  if (fstr.startsWith("review/time:")) {
+					   value += str.substr(13);
+				           value += " ";
+					   continue;
+				  }
+				  if (fstr.startsWith("review/summary:")) {
+					   value += str.substr(16);
+					   value += " ";
+					   continue;
+				  }
+				  if (fstr.startsWith("review/text:")) {
+					value += str.substr(13);
+					key0 = key1 + " " + key2;
+					s = db_->Put(write_options_, key0, value);
+					if (!s.ok()) {
+						fprintf(stderr, "put error: %s\n", s.ToString().c_str());
+						exit(1);
+					}
+					writen ++;
+					thread->stats.FinishedSingleOp();
+					break;
+				  }
+			  }
+			  if(ifs.eof()) {
+                                ifs.clear();
+                                ifs.seekg(0, std::ios::beg);
+                          }
+			 // gettimeofday(&four, NULL);
+			 // writetime += 1000000 * ( four.tv_sec - three.tv_sec ) + four.tv_usec - three.tv_usec;
+		  }
+		  if((i+1)%80000 == 0) {
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			long long timeuse = 1000000000LL * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+			printf("i %d thread %d current qps %0.2f, timeuse %f\n", i, thread->tid, 80000.0/(timeuse/1000000000.0), timeuse/1000000000.0);
+			clock_gettime(CLOCK_MONOTONIC, &start);
+		  }
+	  }
+	  time_t now;
+	  struct tm *timenow;
+	  time(&now);
+	  timenow = localtime(&now);
+	  printf("readnum %lld, writenum %lld, time %s, readtime %lld, writetime %lld\n", readn, writen, asctime(timenow), readtime/1000, writetime/1000);
   }
 
   void ReadWhileWriting(ThreadState* thread) {
