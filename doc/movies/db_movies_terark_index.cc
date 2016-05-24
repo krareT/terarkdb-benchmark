@@ -1251,7 +1251,6 @@ class Benchmark {
   void ReadWhileWritingNew2(ThreadState* thread) {
 	  int64_t readn = 0;
 	  int64_t writen = 0;
-	  valvec<byte> keyHit, val;
           valvec<valvec<byte> > cgDataVec;
           valvec<llong> idvec;
           valvec<size_t> colgroups;
