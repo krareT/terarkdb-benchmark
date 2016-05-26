@@ -21,7 +21,8 @@ include build_config.mk
 
 #ROCKDB_NEW_INCLUDE_PATH=-I/data/dbengine/rocksdb-4.1/include
 #librocksdb-4.1.so 
-ROCKDB_NEW_INCLUDE_PATH=-I/data/dbengine/rocksdb-4.4/include
+#ROCKDB_NEW_INCLUDE_PATH=-I/data/dbengine/rocksdb-4.4/include
+ROCKDB_NEW_INCLUDE_PATH=-I/data/dbengine/rocksdb/include
 #librocksdb-4.4.so 
 
 REDIS_INCLUDE_PATH=-I/data/dbengine/hiredis-0.13.3
@@ -161,7 +162,7 @@ db_movies_leveldb: doc/movies/db_movies_leveldb.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/movies/db_movies_leveldb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrt
 
 db_movies_rocksdb: doc/movies/db_movies_rocksdb.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/movies/db_movies_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb-4.4 -lrt
+	$(CXX) doc/movies/db_movies_rocksdb.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lrocksdb-4.8 -lrt -lzstd
 
 db_humangenome_terark_index: doc/humangenome/db_humangenome_terark_index.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/humangenome/db_humangenome_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lterark-db-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.8.0 -ltbb

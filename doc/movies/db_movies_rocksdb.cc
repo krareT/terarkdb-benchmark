@@ -103,12 +103,20 @@ static int FLAGS_threads = 1;
 static int FLAGS_value_size = 100;
 
 static enum rocksdb::CompressionType FLAGS_compression_type =
-    rocksdb::kSnappyCompression;
+      // rocksdb::kSnappyCompression;
+      rocksdb::kZSTDNotFinalCompression;
+
+int FLAGS_compression_level = -1;
+uint32_t FLAGS_compression_max_dict_bytes = 0;
+//uint32_t FLAGS_compression_max_dict_bytes = 676457349;
+//uint32_t FLAGS_compression_max_dict_bytes = 350000000;
+//uint32_t FLAGS_compression_max_dict_bytes = 100000000;
+//uint32_t FLAGS_compression_max_dict_bytes = 2 * 1024 * 1024;
+
+int FLAGS_block_size = 4 * 1024;
 
 static int FLAGS_min_level_to_compress = 0;
-
 static int FLAGS_num_levels = 7;
-
 
 
 // Arrange to generate values that shrink to this fraction of
@@ -463,6 +471,7 @@ class Benchmark {
   }
 
   ~Benchmark() {
+    db_->CompactRange(rocksdb::CompactRangeOptions(), nullptr, nullptr); 
     delete db_;
   }
 
@@ -815,11 +824,16 @@ class Benchmark {
     rocksdb::BlockBasedTableOptions block_based_options;
     block_based_options.index_type = rocksdb::BlockBasedTableOptions::kBinarySearch;
     block_based_options.block_cache = cache_;
+    block_based_options.block_size = FLAGS_block_size;
     block_based_options.filter_policy = filter_policy_;
     options.table_factory.reset(
 		    NewBlockBasedTableFactory(block_based_options));
   
     options.compression = FLAGS_compression_type;
+    options.compression_opts.level = FLAGS_compression_level;
+    options.compression_opts.max_dict_bytes = FLAGS_compression_max_dict_bytes;
+
+
     if (FLAGS_min_level_to_compress >= 0) {
       assert(FLAGS_min_level_to_compress <= FLAGS_num_levels);
       options.compression_per_level.resize(FLAGS_num_levels);
