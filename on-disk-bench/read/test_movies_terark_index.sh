@@ -1,60 +1,39 @@
-nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readrandom_multi_terark_index_100_mem64g_mappopulate_16g_1g_fill_sync_read_sync_thread_8 2 > nohup.out &
+nohup dstat -tcmd -D sdc --output /home/panfengfeng/trace_log/on-disk/movies/readrandom2_terark_index_100_95_mem8g_mappopulate_256m_128m_details_fill_unsync_read_unsync_zipThreads_8_details_readnum_40000000_loop1_ifstream_new_2 2 > nohup.out &
 
 file=/datainssd/publicdata/movies/movies.txt
 record_num=7911684
-read_num=4000000
+read_num=40000000
 dirname=/experiment
+ratio=95
 
 rm -rf $dirname/*
 export TMPDIR=$dirname
+export DictZipBlobStore_zipThreads=8
+echo $TMPDIR
 cp ../../terarkschema/dbmeta_movies_index.json $dirname/dbmeta.json
 echo "####Now, running terarkdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export TerarkDB_WrSegCacheSizeMB=100
-../../db_movies_terark_index --benchmarks=fillrandom --num=$record_num --reads=$read_num --sync_index=1 --db=$dirname --resource_data=$file
-#exit
+../../db_movies_terark_index --benchmarks=fillrandom --num=$record_num --sync_index=1 --db=$dirname --resource_data=$file
 free -m
 date
 du -s -b $dirname
 echo "####terarkdb benchmark finish"
 
-#echo "####Now, running terarkdb benchmark"
-#export TMPDIR=$dirname
-#echo 3 > /proc/sys/vm/drop_caches
-#free -m
-#date
-#export TerarkDB_WrSegCacheSizeMB=100
-#../../db_movies_terark_index --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=1 --db=$dirname --resource_data=$file
-#free -m
-#date
-#echo "####terarkdb benchmark finish"
-#du -s -b $dirname
-
 echo "####Now, running terarkdb benchmark"
-export TMPDIR=$dirname
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export TerarkDB_WrSegCacheSizeMB=100
+export DictZipBlobStore_zipThreads=8
 ../../db_movies_terark_index --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=1 --db=$dirname --threads=8 --resource_data=$file
+#../../db_movies_terark_index --benchmarks=readrandom,readrandom,readrandom,readrandom,readrandom,readrandom,readrandom,readrandom,readrandom,readrandom --num=$record_num --reads=$read_num --sync_index=1 --db=$dirname --threads=8 --resource_data=$file --read_ratio=$ratio
 free -m
 date
 echo "####terarkdb benchmark finish"
 du -s -b $dirname
-
-#echo "####Now, running terarkdb benchmark"
-#export TMPDIR=$dirname
-#echo 3 > /proc/sys/vm/drop_caches
-#free -m
-#date
-#export TerarkDB_WrSegCacheSizeMB=100
-#../../db_movies_terark_index --benchmarks=readrandom --num=$record_num --reads=$read_num --sync_index=1 --db=$dirname --threads=16 --resource_data=$file
-#free -m
-#date
-#echo "####terarkdb benchmark finish"
-#du -s -b $dirname
 
 dstatpid=`ps aux | grep dstat | awk '{if($0 !~ "grep"){print $2}}'`
 for i in $dstatpid
