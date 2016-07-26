@@ -4,6 +4,7 @@
 
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sstream>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -133,6 +134,8 @@ static int FLAGS_bloom_bits = -1;
 
 // read write percent
 static double FLAGS_read_write_percent = 100.0;
+static double FLAGS_write_new_record_percent = 80.0;
+static double FLAGS_read_old_record_percent = 50.0;
 
 // If true, do not destroy the existing database.  If you set this
 // flag and also specify a benchmark that wants a fresh database, that
@@ -438,7 +441,7 @@ class Benchmark {
     PrintHeader();
     std::cout << " Run() " << std::endl;
 
-    std::ifstream ifs("/datainssd/publicdata/movies/keys");
+    std::ifstream ifs("/data/publicdata/movies/keys");
     std::string str;
     std::string key1;
     std::string key2;
@@ -550,7 +553,7 @@ class Benchmark {
         // num_threads++;  // Add extra thread for writing
         // method = &Benchmark::ReadWhileWriting;
         // method = &Benchmark::ReadWhileWritingNew;
-        method = &Benchmark::ReadWhileWritingNew2;
+        method = &Benchmark::ReadWhileWritingNew4;
         Random rand(1000);
         rand.Shuffle(shuff, FLAGS_threads);
       } else if (name == Slice("readwritedel")) {
@@ -827,35 +830,11 @@ class Benchmark {
   void ReadSequential(ThreadState* thread) {
     fprintf(stderr, "ReadSequential not supported\n");
     return;
-/*
-    Iterator* iter = db_->NewIterator(ReadOptions());
-    int i = 0;
-    int64_t bytes = 0;
-    for (iter->SeekToFirst(); i < reads_ && iter->Valid(); iter->Next()) {
-      bytes += iter->key().size() + iter->value().size();
-      thread->stats.FinishedSingleOp();
-      ++i;
-    }
-    delete iter;
-    thread->stats.AddBytes(bytes);
-*/
   }
 
   void ReadReverse(ThreadState* thread) {
     fprintf(stderr, "ReadReverse not supported\n");
     return;
-/*
-    Iterator* iter = db_->NewIterator(ReadOptions());
-    int i = 0;
-    int64_t bytes = 0;
-    for (iter->SeekToLast(); i < reads_ && iter->Valid(); iter->Prev()) {
-      bytes += iter->key().size() + iter->value().size();
-      thread->stats.FinishedSingleOp();
-      ++i;
-    }
-    delete iter;
-    thread->stats.AddBytes(bytes);
-*/
   }
 
   void ReadRandom(ThreadState* thread) {
@@ -877,55 +856,27 @@ class Benchmark {
 		  shuffr[i] = i;
 	  thread->rand.Shuffle(shuffr, FLAGS_num);
 
-	  //struct timespec one, two, three, four;
-	  // struct timeval one, two, three, four;
-	  long long keytime = 0;
-	  long long indextime = 0;
-	  long long valuetime = 0;
-
 	  int found = 0;
 	  size_t indexId = 0;
 	  for (size_t i = 0; i < reads_; ++i) {
-//		  clock_gettime(CLOCK_MONOTONIC, &one);
 		  int k = shuffr[i];
 		  fstring key(allkeys_.at(k));
-//		  clock_gettime(CLOCK_MONOTONIC, &two);
-//		  tab->indexSearchExactNoLock(indexId, key, &idvec, ctxr.get());
 		  tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
-//		  clock_gettime(CLOCK_MONOTONIC, &three);
-//		  gettimeofday(&three, NULL);
 		  for (auto recId : idvec) {
-//			 tab->selectColgroupsNoLock(recId, colgroups, &cgDataVec, ctxr.get());
 			 tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
 		  }
-//		  clock_gettime(CLOCK_MONOTONIC, &four);
 		  if(idvec.size() > 0)
 			  found++;
 		  thread->stats.FinishedSingleOp();
-//		  keytime += 1000000 * ( two.tv_sec - one.tv_sec ) + two.tv_usec - one.tv_usec;
-//		  indextime += 1000000 * ( three.tv_sec - two.tv_sec ) + three.tv_usec - two.tv_usec;
-//		  valuetime += 1000000 * ( four.tv_sec - three.tv_sec ) + four.tv_usec - three.tv_usec;
 	  }
 	  char msg[100];
 	  snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
 	  thread->stats.AddMessage(msg);
-	  printf("keytime %lld, indextime %lld, valuetime %lld\n", keytime, indextime, valuetime);
   }
 
   void ReadMissing(ThreadState* thread) {
     fprintf(stderr, "ReadMissing not supported\n");
     return;
-/*
-    ReadOptions options;
-    std::string value;
-    for (int i = 0; i < reads_; i++) {
-      char key[100];
-      const int k = thread->rand.Next() % FLAGS_num;
-      snprintf(key, sizeof(key), "%016d.", k);
-      db_->Get(options, key, &value);
-      thread->stats.FinishedSingleOp();
-    }
-*/
   }
 
   void ReadHot(ThreadState* thread) {
@@ -946,49 +897,11 @@ class Benchmark {
   void SeekRandom(ThreadState* thread) {
     fprintf(stderr, "SeekRandom not supported\n");
     return;
-/*
-    ReadOptions options;
-    std::string value;
-    int found = 0;
-    for (int i = 0; i < reads_; i++) {
-      Iterator* iter = db_->NewIterator(options);
-      char key[100];
-      const int k = thread->rand.Next() % FLAGS_num;
-      snprintf(key, sizeof(key), "%016d", k);
-      iter->Seek(key);
-      if (iter->Valid() && iter->key() == key) found++;
-      delete iter;
-      thread->stats.FinishedSingleOp();
-    }
-    char msg[100];
-    snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
-    thread->stats.AddMessage(msg);
-*/
   }
 
   void DoDelete(ThreadState* thread, bool seq) {
     fprintf(stderr, "DoDelete not supported\n");
     return;
-/*
-    RandomGenerator gen;
-    WriteBatch batch;
-    Status s;
-    for (int i = 0; i < num_; i += entries_per_batch_) {
-      batch.Clear();
-      for (int j = 0; j < entries_per_batch_; j++) {
-        const int k = seq ? i+j : (thread->rand.Next() % FLAGS_num);
-        char key[100];
-        snprintf(key, sizeof(key), "%016d", k);
-        batch.Delete(key);
-        thread->stats.FinishedSingleOp();
-      }
-      s = db_->Write(write_options_, &batch);
-      if (!s.ok()) {
-        fprintf(stderr, "del error: %s\n", s.ToString().c_str());
-        exit(1);
-      }
-    }
-*/
   }
 
   void DeleteSeq(ThreadState* thread) {
@@ -1150,18 +1063,16 @@ class Benchmark {
 	  std::string key2;
 
 	  TestRow recRow;
-	  // struct timeval one, two, three, four;
 	  struct timespec start, end;
-	  long long readtime = 0;
-	  long long writetime = 0;
-	  long long timeuse = 0;
+          long long readtime = 0;
+          long long writetime = 0;
+          long long timeuse = 0;
 
 	  clock_gettime(CLOCK_MONOTONIC, &start);
 	
 	  for (int i=0; i<FLAGS_reads; i++) {
 		  if (shuffrw[i] == 1) {
 			  // read
-			  // gettimeofday(&one, NULL);
 			  int k = shuffr[i];
 			  fstring key(allkeys_.at(k));
 			  tab->indexSearchExact(indexId, key, &idvec, ctxrw.get());
@@ -1172,11 +1083,8 @@ class Benchmark {
 				  found++;
 			  readn ++;
 			  thread->stats.FinishedSingleOp();
-			  // gettimeofday(&two, NULL);
-			  // readtime += 1000000 * ( two.tv_sec - one.tv_sec ) + two.tv_usec - one.tv_usec;
 		  } else {
 			  // write
-			  // gettimeofday(&three, NULL);
 			  while(getline(ifs, str) && avg != 0) {
 				  fstring fstr(str);
 				  if (fstr.startsWith("product/productId:")) {
@@ -1217,7 +1125,6 @@ class Benchmark {
 					  rowBuilder << recRow;
 					  fstring binRow(rowBuilder.begin(), rowBuilder.tell());
 
-					  // if (ctxrw->insertRow(binRow) < 0) { // non unique index
 					  if (ctxrw->upsertRow(binRow) < 0) { // unique index
 						  printf("Insert failed: %s\n", ctxrw->errMsg.c_str());
 						  exit(-1);
@@ -1228,8 +1135,6 @@ class Benchmark {
 					  break;
 				  }
 			  }
-			 // gettimeofday(&four, NULL);
-			 // writetime += 1000000 * ( four.tv_sec - three.tv_sec ) + four.tv_usec - three.tv_usec;
 		  }
 		  if((i+1)%80000 == 0) {
 			clock_gettime(CLOCK_MONOTONIC, &end);
@@ -1243,8 +1148,6 @@ class Benchmark {
 	  time(&now);
 	  timenow = localtime(&now);
 	  printf("readnum %lld, writenum %lld, avg %lld, offset %d, time %s, readtime %lld, writetime %lld\n", readn, writen, copyavg, offset, asctime(timenow), readtime/1000, writetime/1000);
-	//  printf("readnum %lld, writenum %lld, avg %lld, offset %d\n", readn, writen, copyavg, offset, asctime(timenow));
-	//  printf(" %dth finshed time %s\n\n", ++finished, asctime(timenow));
   }
 }
 
@@ -1270,7 +1173,6 @@ class Benchmark {
 	  std::string key2;
 
 	  TestRow recRow;
-	  // struct timeval one, two, three, four;
 	  struct timespec start, end;
 	  long long readtime = 0;
 	  long long writetime = 0;
@@ -1283,7 +1185,6 @@ class Benchmark {
 	      double rdd = rdi / double(INT32_MAX);
 		  if (rdd < percent) {
 			  // read
-			  // gettimeofday(&one, NULL);
 			  size_t k = thread->rand.Next() % allkeys_.size();
 			  fstring key(allkeys_.at(k));
 			  ctxrw->indexSearchExact(indexId, key, &idvec);
@@ -1293,13 +1194,9 @@ class Benchmark {
 			  if(idvec.size() > 0)
 				  found++;
 			  readn++;
-			  //if(i >= 30000000 && i < 35000000)
-				  thread->stats.FinishedSingleOp();
-			  // gettimeofday(&two, NULL);
-			  // readtime += 1000000 * ( two.tv_sec - one.tv_sec ) + two.tv_usec - one.tv_usec;
+			  thread->stats.FinishedSingleOp();
 		  } else {
 			  // write
-			  // gettimeofday(&three, NULL);
 			  while(getline(ifs, str)) {
 				  fstring fstr(str);
 				  if (fstr.startsWith("product/productId:")) {
@@ -1345,8 +1242,7 @@ class Benchmark {
 						  continue;
 					  }
 					  writen++;
-			  		  //if(i >= 30000000 && i < 35000000)
-					  	thread->stats.FinishedSingleOp();
+					  thread->stats.FinishedSingleOp();
 					  break;
 				  }
 			  }
@@ -1354,8 +1250,6 @@ class Benchmark {
 				ifs.clear();
 	  			ifs.seekg(0, std::ios::beg);
 			  }
-			 // gettimeofday(&four, NULL);
-			 // writetime += 1000000 * ( four.tv_sec - three.tv_sec ) + four.tv_usec - three.tv_usec;
 		  }
 		  if((i+1)%80000 == 0) {
 			clock_gettime(CLOCK_MONOTONIC, &end);
@@ -1370,6 +1264,323 @@ class Benchmark {
 	  timenow = localtime(&now);
 	  printf("readnum %lld, writenum %lld, time %s, readtime %lld, writetime %lld\n", readn, writen, asctime(timenow), readtime/1000, writetime/1000);
   }
+
+void ReadWhileWritingNew4(ThreadState* thread) {
+	int64_t readold = 0;
+	int64_t readnew = 0;
+	int64_t writenadd = 0;
+	int64_t writenupdate = 0;
+	valvec<valvec<byte> > cgDataVec;
+	valvec<llong> idvec;
+	valvec<size_t> colgroups;
+	DbContextPtr ctxrw = tab->createDbContext();
+	ctxrw->syncIndex = FLAGS_sync_index;
+	for (size_t i = tab->getIndexNum(); i < tab->getColgroupNum(); i++) {
+		colgroups.push_back(i);
+	}
+	int found = 0;
+	size_t indexId = 0;
+	terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+	terark::AutoFree<char> szPath;
+	asprintf(&szPath.p, "%s.%d", FLAGS_resource_data, thread->tid);
+	std::ifstream ifs(szPath.p);
+	std::string str;
+	std::string key1;
+	std::string key2;
+
+	TestRow recRow;
+	struct timespec start, end;
+	long long readtime = 0;
+	long long writetime = 0;
+	long long totaltime = 0;
+	double percent = FLAGS_read_write_percent / 100.0;
+	double percenr = FLAGS_read_old_record_percent / 100.0;
+	double percentw = FLAGS_write_new_record_percent / 100.0;
+	long long newrecord = 1;
+	std::string record;
+	std::stringstream recordstreamo;
+	recordstreamo << newrecord;
+	recordstreamo >> record;
+
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	int i = 0;
+	while(1) {
+		size_t rdi = thread->rand.Next();
+		double rdd = rdi / double(INT32_MAX);
+		if (rdd < percent) {
+			size_t k = thread->rand.Next() % allkeys_.size();
+			size_t rdir = thread->rand.Next();
+			double rddr = rdir / double(INT32_MAX);
+			if (rddr < percenr) {
+				fstring key(allkeys_.at(k));
+				ctxrw->indexSearchExact(indexId, key, &idvec);
+				for (auto recId : idvec) {
+					ctxrw->selectColgroups(recId, colgroups, &cgDataVec);
+				}
+				if(idvec.size() > 0)
+					found++;
+				readold++;
+			} else {
+				std::string merge = allkeys_.at(k) + " " + record;
+				fstring key(merge);
+				ctxrw->indexSearchExact(indexId, key, &idvec);
+				for (auto recId : idvec) {
+					ctxrw->selectColgroups(recId, colgroups, &cgDataVec);
+				}
+				if(idvec.size() > 0)
+					found++;
+				readnew++;
+			}
+			thread->stats.FinishedSingleOp();
+		} else {
+			size_t rdiw = thread->rand.Next();
+			double rddw = rdiw / double(INT32_MAX);
+			if (rddw < percentw) {   // add new record
+				while(getline(ifs, str)) {
+					fstring fstr(str);
+					if (fstr.startsWith("product/productId:")) {
+						key1 = str.substr(19);
+						continue;
+					}
+					if (fstr.startsWith("review/userId:")) {
+						key2 = str.substr(15);
+						continue;
+					}
+					if (fstr.startsWith("review/profileName:")) {
+						recRow.profileName = str.substr(20);
+						continue;
+					}
+					if (fstr.startsWith("review/helpfulness:")) {
+						char* pos2 = NULL;
+						recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
+						recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+						continue;
+					}
+					if (fstr.startsWith("review/score:")) {
+						recRow.score = lcast(fstr.substr(14));
+						continue;
+					}
+					if (fstr.startsWith("review/time:")) {
+						recRow.time = lcast(fstr.substr(13));
+						continue;
+					}
+					if (fstr.startsWith("review/summary:")) {
+						recRow.summary = str.substr(16);
+						continue;
+					}
+					if (fstr.startsWith("review/text:")) {
+						recRow.text = str.substr(13);
+						recRow.product_userId = key1 + " " + key2 + " " + record;
+						rowBuilder.rewind();
+						rowBuilder << recRow;
+						fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+						if (ctxrw->upsertRow(binRow) < 0) { // unique index
+							printf("Insert failed: %s\n", ctxrw->errMsg.c_str());
+							continue;
+						}
+						writenadd++;
+						thread->stats.FinishedSingleOp();
+						break;
+					}
+				}
+			} else {   // update origin record
+				while(getline(ifs, str)) {
+					fstring fstr(str);
+					if (fstr.startsWith("product/productId:")) {
+						key1 = str.substr(19);
+						continue;
+					}
+					if (fstr.startsWith("review/userId:")) {
+						key2 = str.substr(15);
+						continue;
+					}
+					if (fstr.startsWith("review/profileName:")) {
+						recRow.profileName = str.substr(20);
+						continue;
+					}
+					if (fstr.startsWith("review/helpfulness:")) {
+						char* pos2 = NULL;
+						recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
+						recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+						continue;
+					}
+					if (fstr.startsWith("review/score:")) {
+						recRow.score = lcast(fstr.substr(14));
+						continue;
+					}
+					if (fstr.startsWith("review/time:")) {
+						recRow.time = lcast(fstr.substr(13));
+						continue;
+					}
+					if (fstr.startsWith("review/summary:")) {
+						recRow.summary = str.substr(16);
+						continue;
+					}
+					if (fstr.startsWith("review/text:")) {
+						recRow.text = str.substr(13);
+						recRow.product_userId = key1 + " " + key2;
+
+						rowBuilder.rewind();
+						rowBuilder << recRow;
+						fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+						if (ctxrw->upsertRow(binRow) < 0) { // unique index
+							printf("Insert failed: %s\n", ctxrw->errMsg.c_str());
+							continue;
+						}
+						writenupdate++;
+						thread->stats.FinishedSingleOp();
+						break;
+					}
+				}
+			}
+			if(ifs.eof()) {
+				ifs.clear();
+				ifs.seekg(0, std::ios::beg);
+				newrecord ++;
+				std::stringstream recordstream;
+				recordstream << newrecord;
+				recordstream >> record;
+			}
+		}
+		i++;
+		if((i+1)%1000 == 0) {
+			clock_gettime(CLOCK_MONOTONIC, &end);
+			long long timeuse = 1000000000LL * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+			totaltime += timeuse;
+			printf("i %d thread %d current qps %0.2f, total qps %0.2f, timeuse %f totaltime %f readold %lld readnew %lld writeadd %lld writeupdate %lld\n", i, thread->tid, 1000.0/(timeuse/1000000000.0), i/(totaltime/1000000000.0), timeuse/1000000000.0, totaltime/1000000000.0, readold, readnew, writenadd, writenupdate);
+			clock_gettime(CLOCK_MONOTONIC, &start);
+		}
+
+	}
+	time_t now;
+	struct tm *timenow;
+	time(&now);
+	timenow = localtime(&now);
+}
+
+
+  void ReadWhileWritingNew3(ThreadState* thread) {
+          int64_t readn = 0;
+          int64_t writen = 0;
+          valvec<valvec<byte> > cgDataVec;
+          valvec<llong> idvec;
+          valvec<size_t> colgroups;
+          DbContextPtr ctxrw = tab->createDbContext();
+          ctxrw->syncIndex = FLAGS_sync_index;
+          for (size_t i = tab->getIndexNum(); i < tab->getColgroupNum(); i++) {
+                colgroups.push_back(i);
+          }
+          int found = 0;
+          size_t indexId = 0;
+          terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+          terark::AutoFree<char> szPath;
+          asprintf(&szPath.p, "%s.%d", FLAGS_resource_data, thread->tid);
+          std::ifstream ifs(szPath.p);
+          std::string str;
+          std::string key1;
+          std::string key2;
+
+          TestRow recRow;
+          struct timespec start, end;
+          long long readtime = 0;
+          long long writetime = 0;
+          long long totaltime = 0;
+          double percent = FLAGS_read_write_percent / 100.0;
+
+          clock_gettime(CLOCK_MONOTONIC, &start);
+          int i = 0;
+          while(1) {
+              size_t rdi = thread->rand.Next();
+              double rdd = rdi / double(INT32_MAX);
+                  if (rdd < percent) {
+			                        size_t k = thread->rand.Next() % allkeys_.size();
+                          fstring key(allkeys_.at(k));
+                          ctxrw->indexSearchExact(indexId, key, &idvec);
+                          for (auto recId : idvec) {
+                                  ctxrw->selectColgroups(recId, colgroups, &cgDataVec);
+                          }
+                          if(idvec.size() > 0)
+                                  found++;
+                          readn++;
+			  thread->stats.FinishedSingleOp();
+		 } else {
+			                         while(getline(ifs, str)) {
+                                  fstring fstr(str);
+                                  if (fstr.startsWith("product/productId:")) {
+                                          key1 = str.substr(19);
+                                          continue;
+                                  }
+                                  if (fstr.startsWith("review/userId:")) {
+                                          key2 = str.substr(15);
+                                          continue;
+                                  }
+                                  if (fstr.startsWith("review/profileName:")) {
+                                          recRow.profileName = str.substr(20);
+                                          continue;
+                                  }
+                                  if (fstr.startsWith("review/helpfulness:")) {
+                                          char* pos2 = NULL;
+                                          recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
+                                          recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+                                          continue;
+                                  }
+                                  if (fstr.startsWith("review/score:")) {
+                                          recRow.score = lcast(fstr.substr(14));
+                                          continue;
+                                  }
+                                  if (fstr.startsWith("review/time:")) {
+                                          recRow.time = lcast(fstr.substr(13));
+                                          continue;
+                                  }
+                                  if (fstr.startsWith("review/summary:")) {
+                                          recRow.summary = str.substr(16);
+                                          continue;
+                                  }
+                                  if (fstr.startsWith("review/text:")) {
+                                          recRow.text = str.substr(13);
+                                          recRow.product_userId = key1 + " " + key2;
+
+                                          rowBuilder.rewind();
+                                          rowBuilder << recRow;
+					                                           fstring binRow(rowBuilder.begin(), rowBuilder.tell());
+
+                                          if (ctxrw->upsertRow(binRow) < 0) { // unique index
+                                                  printf("Insert failed: %s\n", ctxrw->errMsg.c_str());
+                                                  continue;
+                                          }
+                                          writen++;
+                                                thread->stats.FinishedSingleOp();
+                                          break;
+                                  }
+                          }
+                          if(ifs.eof()) {
+                                ifs.clear();
+                                ifs.seekg(0, std::ios::beg);
+                          }
+                  }
+                  i++;
+                  if((i+1)%1000 == 0) {
+                        clock_gettime(CLOCK_MONOTONIC, &end);
+                        long long timeuse = 1000000000LL * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+                        totaltime += timeuse;
+                        if(totaltime/1000000000.0 > 14400) {
+                                printf("i %d thread %d current qps %0.2f, total qps %0.2f, timeuse %f totaltime %f\n", i, thread->tid, 1000.0/(timeuse/1000000000.0), i/(totaltime/1000000000.0), timeuse/1000000000.0, totaltime/1000000000.0);
+				 break;
+                        }
+                        printf("i %d thread %d current qps %0.2f, total qps %0.2f, timeuse %f totaltime %f\n", i, thread->tid, 1000.0/(timeuse/1000000000.0), i/(totaltime/1000000000.0), timeuse/1000000000.0, totaltime/1000000000.0);
+                        clock_gettime(CLOCK_MONOTONIC, &start);
+                  }
+
+          }
+          time_t now;
+          struct tm *timenow;
+          time(&now);
+          timenow = localtime(&now);
+          printf("readnum %lld, writenum %lld, time %s, readtime %lld, writetime %lld\n", readn, writen, asctime(timenow), readtime/1000, writetime/1000);
+  }
+
 
    void ReadWhileWriting(ThreadState* thread) {
        if (thread->tid > 0) {
@@ -1442,21 +1653,11 @@ class Benchmark {
   void Compact(ThreadState* thread) {
     fprintf(stderr, "Compact not supported\n");
     return;
-/*
-    db_->CompactRange(NULL, NULL);
-*/
   }
 
   void PrintStats(const char* key) {
     fprintf(stderr, "PrintStats not supported\n");
     return;
-/*
-    std::string stats;
-    if (!db_->GetProperty(key, &stats)) {
-      stats = "(failed)";
-    }
-    fprintf(stdout, "\n%s\n", stats.c_str());
-*/
   }
 
   static void WriteToFile(void* arg, const char* buf, int n) {
@@ -1516,6 +1717,10 @@ int main(int argc, char** argv) {
       FLAGS_db = argv[i] + 5;
     } else if (sscanf(argv[i], "--read_ratio=%lf%c", &d, &junk) == 1) {
       FLAGS_read_write_percent = d;
+    } else if (sscanf(argv[i], "--read_old_ratio=%lf%c", &d, &junk) == 1) {
+	FLAGS_read_old_record_percent = d;
+    } else if (sscanf(argv[i], "--write_ratio=%lf%c", &d, &junk) == 1) {
+	FLAGS_write_new_record_percent = d;
     } else if (strncmp(argv[i], "--resource_data=", 16) == 0) {
       FLAGS_resource_data = argv[i] + 16;
     } else {
