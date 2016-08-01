@@ -1,0 +1,43 @@
+﻿{
+	"RowSchema": {
+		"columns" : {
+			"cur_title"      	: { "type" : "strzero"  },
+			"cur_id"    	      	: { "type" : "strzero" },
+			"cur_namespace"       	: { "type" : "strzero" },
+			"cur_text"      	: { "type" : "strzero"  },
+			"cur_comment"       	: { "type" : "strzero"  },
+			"cur_user"              : { "type" : "strzero"  },
+			"cur_user_text"     	: { "type" : "strzero" },
+			"cur_timestamp"         : { "type" : "strzero" },
+			"cur_restrictions"      : { "type" : "strzero" },
+			"cur_counter"         	: { "type" : "strzero" },
+			"cur_is_redirect"       : { "type" : "strzero" },
+			"cur_minor_edit"        : { "type" : "strzero" },
+			"cur_random"         	: { "type" : "strzero" },
+			"cur_touched"         	: { "type" : "strzero" },
+			"inverse_timestamp"   	: { "type" : "strzero" }
+		}
+	},
+	"ColumnGroups": {
+		"str34": {
+			"fields": [ "cur_id","cur_namespace","cur_text","cur_comment","cur_user","cur_user_text","cur_timestamp","cur_restrictions","cur_counter","cur_is_redirect","cur_minor_edit","cur_random","cur_touched","inverse_timestamp"],
+			"inplaceUpdatable": false,
+			"nltDelims": " \\t,.:?<",
+			"minFragLen": 8, "maxFragLen": 100,
+			"dictZipSampleRatio": 0.07,
+			"dictZipLocalMatch": true,
+			"mmapPopulate" : true,
+			"useFastZip": true
+		}
+	},
+	"MaxWrSegSize" 		: "1G",
+	"MinMergeSegNum"	: 3,
+	"TableIndex" : [
+		{
+		   	"fields": "cur_title",
+		   	"ordered" : true,
+			"unique" : true,
+			"nltNestLevel": 2
+	   	}
+	]
+}
