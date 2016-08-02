@@ -1076,8 +1076,8 @@ namespace leveldb {
 					}
 					if (writen == 14) {
 						recRow.inverse_timestamp = str;
-						cursor->set_key(cursor, recRow.cur_title);
-						cursor->set_value(cursor, recRow.cur_id, recRow.cur_namespace, recRow.cur_text, recRow.cur_comment, recRow.cur_user, recRow.cur_user_text, recRow.cur_timestamp, recRow.cur_restrictions, recRow.cur_counter, recRow.cur_is_redirect, recRow.cur_minor_edit, recRow.cur_random, recRow.cur_touched, recRow.inverse_timestamp);
+						cursor->set_key(cursor, recRow.cur_title.c_str());
+						cursor->set_value(cursor, recRow.cur_id.c_str(), recRow.cur_namespace.c_str(), recRow.cur_text.c_str(), recRow.cur_comment.c_str(), recRow.cur_user.c_str(), recRow.cur_user_text.c_str(), recRow.cur_timestamp.c_str(), recRow.cur_restrictions.c_str(), recRow.cur_counter.c_str(), recRow.cur_is_redirect.c_str(), recRow.cur_minor_edit.c_str(), recRow.cur_random.c_str(), recRow.cur_touched.c_str(), recRow.inverse_timestamp.c_str());
 						int ret = cursor->insert(cursor);
 						if (ret != 0) {
 							fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
@@ -1601,8 +1601,8 @@ namespace leveldb {
 							}
 							if (writen == 14) {
 								recRow.inverse_timestamp = str;
-								cursor->set_key(cursor, recRow.cur_title);
-								cursor->set_value(cursor, recRow.cur_id, recRow.cur_namespace, recRow.cur_text, recRow.cur_comment, recRow.cur_user, recRow.cur_user_text, recRow.cur_timestamp, recRow.cur_restrictions, recRow.cur_counter, recRow.cur_is_redirect, recRow.cur_minor_edit, recRow.cur_random, recRow.cur_touched, recRow.inverse_timestamp);
+								cursor->set_key(cursor, recRow.cur_title.c_str());
+								cursor->set_value(cursor, recRow.cur_id.c_str(), recRow.cur_namespace.c_str(), recRow.cur_text.c_str(), recRow.cur_comment.c_str(), recRow.cur_user.c_str(), recRow.cur_user_text.c_str(), recRow.cur_timestamp.c_str(), recRow.cur_restrictions.c_str(), recRow.cur_counter.c_str(), recRow.cur_is_redirect.c_str(), recRow.cur_minor_edit.c_str(), recRow.cur_random.c_str(), recRow.cur_touched.c_str(), recRow.inverse_timestamp.c_str());
 								int ret = cursor->insert(cursor);
 								if (ret != 0) {
 									fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
