@@ -1,9 +1,9 @@
 ﻿{
 	"RowSchema": {
 		"columns" : {
-			"cur_title"      	: { "type" : "strzero"  },
 			"cur_id"    	      	: { "type" : "strzero" },
 			"cur_namespace"       	: { "type" : "strzero" },
+			"cur_title"      	: { "type" : "strzero"  },
 			"cur_text"      	: { "type" : "strzero"  },
 			"cur_comment"       	: { "type" : "strzero"  },
 			"cur_user"              : { "type" : "strzero"  },

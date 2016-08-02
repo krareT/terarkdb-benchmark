@@ -149,6 +149,12 @@ db_bench_redis: doc/bench/db_bench_redis.o $(LIBOBJECTS) $(TESTUTIL)
 db_bench_terark_index: doc/bench/db_bench_terark_index.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/bench/db_bench_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lterark-db-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.8.0 -ltbb
 
+db_wikipedia_terark_index: doc/wikipedia/db_wikipedia_terark_index.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/wikipedia/db_wikipedia_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lterark-db-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.8.0 -ltbb -lrt
+
+db_wikipedia_wiredtiger_overwrite: doc/wikipedia/db_wikipedia_wiredtiger_overwrite.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/wikipedia/db_wikipedia_wiredtiger_overwrite.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.8.0 -lwiredtiger_snappy -lboost_system -lboost_filesystem -lrt
+
 db_movies_terark_index: doc/movies/db_movies_terark_index.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/movies/db_movies_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lterark-db-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.8.0 -ltbb -lrt
 
