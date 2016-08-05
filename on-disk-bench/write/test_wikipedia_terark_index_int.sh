@@ -1,19 +1,19 @@
 #nohup dstat -tcm --output terarkdb_wiredtiger_test_500M_3 2 > nohup.out &
 
 file=/data/publicdata/wikipedia/datahandle/testwikipedia
-record_num=60
+record_num=45
 dirname=/experiment/terarkdb
 
 rm -rf $dirname/*
 export TMPDIR=$dirname
 echo $TMPDIR
-cp ../../terarkschema/dbmeta_wikipedia_index.json $dirname/dbmeta.json
+cp ../../terarkschema/dbmeta_wikipedia_index_int.json $dirname/dbmeta.json
 echo "####Now, running terarkdb benchmark"
 echo 3 > /proc/sys/vm/drop_caches
 free -m
 date
 export TerarkDB_WrSegCacheSizeMB=500
-../../db_wikipedia_terark_index --benchmarks=fillrandom --num=$record_num --sync_index=1 --db=$dirname --resource_data=$file
+../../db_wikipedia_terark_index_int --benchmarks=fillrandom --num=$record_num --sync_index=1 --db=$dirname --resource_data=$file
 free -m
 date
 du -s -b $dirname

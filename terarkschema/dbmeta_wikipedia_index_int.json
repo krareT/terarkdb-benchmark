@@ -1,0 +1,67 @@
+﻿{
+	"RowSchema": {
+		"columns" : {
+			"cur_id"    	      	: { "type" : "int32",
+										"colstore": {
+                							"dictZipSampleRatio": 0.02
+            							} 
+									},
+			"cur_namespace"       	: { "type" : "int32", 
+										"colstore": {
+             							   "dictZipSampleRatio": 0.02
+            							}
+									},
+			"cur_title"      	: { "type" : "strzero"  },
+			"cur_text"      	: { "type" : "strzero"  },
+			"cur_comment"       	: { "type" : "strzero"  },
+			"cur_user"              : { "type" : "uint64",
+									 	"colstore": {
+                                           "dictZipSampleRatio": 0.02
+                                        }
+									  },
+			"cur_user_text"     	: { "type" : "strzero" },
+			"cur_timestamp"         : { "type" : "strzero" },
+			"cur_restrictions"      : { "type" : "strzero" },
+			"cur_counter"         	: { "type" : "int32",
+										"colstore": {
+ 							               "dictZipSampleRatio": 0.02
+            							}
+									 },
+			"cur_is_redirect"       : { "type" : "int32",
+										"colstore": {
+             						   		"dictZipSampleRatio": 0.02
+            							}
+									 },
+			"cur_minor_edit"        : { "type" : "int32",
+										"colstore": {
+							                "dictZipSampleRatio": 0.02
+            							}
+									 },
+			"cur_random"         	: { "type" : "strzero" },
+			"cur_touched"         	: { "type" : "strzero" },
+			"inverse_timestamp"   	: { "type" : "strzero" }
+		}
+	},
+	"ColumnGroups": {
+		"str34": {
+			"fields": [ "cur_text","cur_comment","cur_user_text","cur_timestamp","cur_restrictions","cur_random","cur_touched","inverse_timestamp"],
+			"inplaceUpdatable": false,
+			"nltDelims": " \\t,.:?<",
+			"minFragLen": 8, "maxFragLen": 100,
+			"dictZipSampleRatio": 0.02,
+			"dictZipLocalMatch": true,
+			"mmapPopulate" : true,
+			"useFastZip": true
+		}
+	},
+	"MaxWrSegSize" 		: "1G",
+	"MinMergeSegNum"	: 3,
+	"TableIndex" : [
+		{
+		   	"fields": "cur_title",
+		   	"ordered" : true,
+			"unique" : true,
+			"nltNestLevel": 2
+	   	}
+	]
+}
