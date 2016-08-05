@@ -60,7 +60,7 @@
 		{
 		   	"fields": "cur_title",
 		   	"ordered" : true,
-			"unique" : true,
+			"unique" : false,
 			"nltNestLevel": 2
 	   	}
 	]
