@@ -4,39 +4,30 @@
 
 #include <sys/types.h>
 #include <sys/time.h>
-#include <sstream>
+#include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "db/db_impl.h"
-#include "db/version_set.h"
-#include "leveldb/cache.h"
-#include "leveldb/db.h"
-#include "leveldb/env.h"
-#include "leveldb/write_batch.h"
-#include "port/port.h"
+#include <sstream>
+#include <vector>
+
+#include <iostream>
+#include <fstream>  
+#include <string.h>  
+
+#include <unistd.h> 
+#include <errno.h> /* For ETIMEDOUT */
 #include "util/crc32c.h"
 #include "util/histogram.h"
 #include "util/mutexlock.h"
 #include "util/random.h"
 #include "util/testutil.h"
+#include "port/port.h"
+#include "wiredtiger.h"
 
-#include <iostream>  
-#include <fstream>  
-#include <string.h>  
-#include <string>  
-
-//#include "stdafx.h"
-#include <terark/db/db_table.hpp>
-#include <terark/io/MemStream.hpp>
-#include <terark/io/DataIO.hpp>
-#include <terark/io/RangeStream.hpp>
-#include <terark/lcast.hpp>
 #include <terark/util/autofree.hpp>
 #include <terark/util/fstrvec.hpp>
-
-using namespace terark;
-using namespace db;
+#include <terark/fstring.hpp>
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -61,37 +52,52 @@ using namespace db;
 //      sstables    -- Print sstable info
 //      heapprofile -- Dump a heap profile (if supported by this port)
 static const char* FLAGS_benchmarks =
-"fillseq,"
-"deleteseq,"
-"fillseq,"
-"deleterandom,"
-"fillrandom,"
-"deleteseq,"
-"fillrandom,"
-"deleterandom,"
+#ifdef  SYMAS_CONFIG
 "fillseqsync,"
 "fillrandsync,"
-"fillseq,"
 "fillseqbatch,"
-"fillrandom,"
 "fillrandbatch,"
+"fillrandom,"
 "overwrite,"
 "readrandom,"
-#if 0
-"readrandom,"  // Extra run to allow previous compactions to quiesce
-#endif
 "readseq,"
 "readreverse,"
-#if 0
-"compact,"
+#else
+#ifdef  BENCH_EXT
+"fillseq,"
+"deleteseq,"
+"fillseq,"
+"deleterandom,"
+"fillrandom,"
+"deleteseq,"
+"fillrandom,"
+"deleterandom,"
+#endif
+"fillseq,"
+"fillsync,"
+"fillrandom,"
+"overwrite,"
+"readrandom,"
+"readrandom,"  // Extra run to allow previous compactions to quiesce
+"readseq,"
+"readreverse,"
 "readrandom,"
 "readseq,"
 "readreverse,"
 "fill100K,"
+#ifdef  BENCH_EXT
+"fillseq,"
+"readhot,"
+"readrandomsmall,"
+"readrandomsmall,"
+"seekrandom,"
+"readwhilewriting,"
+"compact,"
 "crc32c,"
 "snappycomp,"
 "snappyuncomp,"
 "acquireload,"
+#endif
 #endif
 ;
 
@@ -112,10 +118,7 @@ static int FLAGS_value_size = 100;
 static double FLAGS_compression_ratio = 0.5;
 
 // Print histogram of operation timings
-//static bool FLAGS_histogram = false;
 static bool FLAGS_histogram = true;
-
-static bool FLAGS_sync_index = true;
 
 // Number of bytes to buffer in memtable before compacting
 // (initialized to default value by "main")
@@ -123,7 +126,8 @@ static int FLAGS_write_buffer_size = 0;
 
 // Number of bytes to use as a cache of uncompressed data.
 // Negative means use default settings.
-static int FLAGS_cache_size = -1;
+// static int FLAGS_cache_size = -1;
+static long FLAGS_cache_size = -1;
 
 // Maximum number of files to keep open at the same time (use default if == 0)
 static int FLAGS_open_files = 0;
@@ -132,19 +136,27 @@ static int FLAGS_open_files = 0;
 // Negative means use default settings.
 static int FLAGS_bloom_bits = -1;
 
+// Use LSM tree.  Changed by --use_lsm=0
+static bool FLAGS_use_lsm = true;
+
+// If true, do not destroy the existing database.  If you set this
+// flag and also specify a benchmark that wants a fresh database, that
+// benchmark will fail.
+static bool FLAGS_use_existing_db = false;
+
+// Stagger starting point of reads for sequential (or reverse).
+static bool FLAGS_stagger = false;
+
+// Stagger starting point of reads for sequential (or reverse).
+static int FLAGS_max_compact_wait = 1200;
+
 // read write percent
 static double FLAGS_read_write_percent = 100.0;
 static double FLAGS_write_new_record_percent = 80.0;
 static double FLAGS_read_old_record_percent = 50.0;
 
-// If true, do not destroy the existing database.  If you set this
-// flag and also specify a benchmark that wants a fresh database, that
-// benchmark will fail.
-static bool FLAGS_use_existing_db = true;
-
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
-static const char* FLAGS_db_table = NULL;
 static const char* FLAGS_resource_data = NULL;
 
 static int *shuff = NULL;
@@ -152,6 +164,38 @@ static int *shuff = NULL;
 namespace leveldb {
 
 	namespace {
+
+		// Helper for quickly generating random data.
+		class RandomGenerator {
+			private:
+				std::string data_;
+				int pos_;
+
+			public:
+				RandomGenerator() {
+					// We use a limited amount of data over and over again and ensure
+					// that it is larger than the compression window (32KB), and also
+					// large enough to serve all typical value sizes we want to write.
+					Random rnd(301);
+					std::string piece;
+					while (data_.size() < 1048576) {
+						// Add a short fragment that is as compressible as specified
+						// by FLAGS_compression_ratio.
+						test::CompressibleString(&rnd, FLAGS_compression_ratio, 100, &piece);
+						data_.append(piece);
+					}
+					pos_ = 0;
+				}
+
+				Slice Generate(int len) {
+					if (pos_ + len > data_.size()) {
+						pos_ = 0;
+						assert(len < data_.size());
+					}
+					pos_ += len;
+					return Slice(data_.data() + pos_ - len, len);
+				}
+		};
 
 		static Slice TrimSpace(Slice s) {
 			int start = 0;
@@ -305,66 +349,70 @@ namespace leveldb {
 			Random rand;         // Has different seeds for different threads
 			Stats stats;
 			SharedState* shared;
+			WT_SESSION *session;
 
-			ThreadState(int index)
+			ThreadState(int index, WT_CONNECTION *conn)
 				: tid(index),
 				rand(1000 + index) {
+					conn->open_session(conn, NULL, NULL, &session);
+					assert(session != NULL);
 				}
+			~ThreadState() {
+				session->close(session, NULL);
+			}
 		};
 
 		struct TestRow {
-			int32_t cur_id;
-			int32_t cur_namespace;
+			std::string cur_id;
+			std::string cur_namespace;
 			std::string cur_title;
 			std::string cur_text;
 			std::string cur_comment;
-			uint64_t cur_user; 
+			std::string cur_user;
 			std::string cur_user_text;
 			std::string cur_timestamp;
 			std::string cur_restrictions;
-			int32_t	cur_counter;
-			int32_t cur_is_redirect;
-			int32_t cur_minor_edit;
+			std::string cur_counter;
+			std::string cur_is_redirect;
+			std::string cur_minor_edit;
 			std::string cur_random;
 			std::string cur_touched;
 			std::string inverse_timestamp;
-
-			DATA_IO_LOAD_SAVE(TestRow,
-					&cur_id
-					&cur_namespace
-					&Schema::StrZero(cur_title)
-					&Schema::StrZero(cur_text)
-					&Schema::StrZero(cur_comment)
-					&cur_user
-					&Schema::StrZero(cur_user_text)
-					&Schema::StrZero(cur_timestamp)
-					&Schema::StrZero(cur_restrictions)
-					&cur_counter
-					&cur_is_redirect
-					&cur_minor_edit
-					&Schema::StrZero(cur_random)
-					&Schema::StrZero(cur_touched)
-					&Schema::StrZero(inverse_timestamp)
-					)
 		};
 
 	}  // namespace
 
 	class Benchmark {
 		private:
-			CompositeTablePtr tab;
-
-			fstrvec allkeys_;
-
+			WT_CONNECTION *conn_;
+			std::string uri_;
+			std::string urii_;
+			int db_num_;
 			int num_;
 			int value_size_;
 			int entries_per_batch_;
-			WriteOptions write_options_;
+			int sync_;
 			int reads_;
 			int heap_counter_;
 
+			terark::fstrvec allkeys_;
+
 			void PrintHeader() {
-				fprintf(stdout, "NarkDB Test Begins!");
+				const int kKeySize = 16;
+				PrintEnvironment();
+				fprintf(stdout, "Keys:       %d bytes each\n", kKeySize);
+				fprintf(stdout, "Values:     %d bytes each (%d bytes after compression)\n",
+						FLAGS_value_size,
+						static_cast<int>(FLAGS_value_size * FLAGS_compression_ratio + 0.5));
+				fprintf(stdout, "Entries:    %d\n", num_);
+				fprintf(stdout, "RawSize:    %.1f MB (estimated)\n",
+						((static_cast<int64_t>(kKeySize + FLAGS_value_size) * num_)
+						 / 1048576.0));
+				fprintf(stdout, "FileSize:   %.1f MB (estimated)\n",
+						(((kKeySize + FLAGS_value_size * FLAGS_compression_ratio) * num_)
+						 / 1048576.0));
+				PrintWarnings();
+				fprintf(stdout, "------------------------------------------------\n");
 			}
 
 			void PrintWarnings() {
@@ -389,10 +437,12 @@ namespace leveldb {
 			}
 
 			void PrintEnvironment() {
-				fprintf(stdout, "LevelDB:    version %d.%d\n",
-						kMajorVersion, kMinorVersion);
-				fprintf(stderr, "LevelDB:    version %d.%d\n",
-						kMajorVersion, kMinorVersion);
+				int wtmaj, wtmin, wtpatch;
+				const char *wtver = wiredtiger_version(&wtmaj, &wtmin, &wtpatch);
+				fprintf(stdout, "WiredTiger:    version %s, lib ver %d, lib rev %d patch %d\n",
+						wtver, wtmaj, wtmin, wtpatch);
+				fprintf(stderr, "WiredTiger:    version %s, lib ver %d, lib rev %d patch %d\n",
+						wtver, wtmaj, wtmin, wtpatch);
 
 #if defined(__linux)
 				time_t now = time(NULL);
@@ -427,10 +477,9 @@ namespace leveldb {
 
 		public:
 			Benchmark()
-				: tab(NULL),
-
-				num_(FLAGS_num),
+				: num_(FLAGS_num),
 				value_size_(FLAGS_value_size),
+				db_num_(0),
 				entries_per_batch_(1),
 				reads_(FLAGS_reads < 0 ? FLAGS_num : FLAGS_reads),
 				heap_counter_(0) {
@@ -442,23 +491,24 @@ namespace leveldb {
 						}
 					}
 					if (!FLAGS_use_existing_db) {
-						DestroyDB(FLAGS_db, Options());
+						for (int i = 0; i < files.size(); i++) {
+							std::string file_name(FLAGS_db);
+							file_name += "/";
+							file_name += files[i];
+							Env::Default()->DeleteFile(file_name.c_str());
+						}
 					}
 				}
 
 			~Benchmark() {
-				tab->safeStopAndWaitForCompress();
-				tab = NULL;
 			}
 
 			void Run() {
 				PrintHeader();
 				std::cout << " Run() " << std::endl;
 
-				std::ifstream ifs("/data/publicdata/movies/keys");
+				std::ifstream ifs("/datainssd/publicdata/movies/keys");
 				std::string str;
-				std::string key1;
-				std::string key2;
 
 				while(getline(ifs, str)) {
 					allkeys_.push_back(str);
@@ -481,14 +531,12 @@ namespace leveldb {
 						benchmarks = sep + 1;
 					}
 
-					printf("benchmark name %s\n", name.data());
-
-					// Reset parameters that may be overriddden bwlow
+					// Reset parameters that may be overriddden below
 					num_ = FLAGS_num;
 					reads_ = (FLAGS_reads < 0 ? FLAGS_num : FLAGS_reads);
 					value_size_ = FLAGS_value_size;
 					entries_per_batch_ = 1;
-					write_options_ = WriteOptions();
+					sync_ = false;
 
 					void (Benchmark::*method)(ThreadState*) = NULL;
 					bool fresh_db = false;
@@ -497,14 +545,18 @@ namespace leveldb {
 					if (name == Slice("fillseq")) {
 						fresh_db = true;
 						method = &Benchmark::WriteSeq;
-					} else if (name == Slice("fillseqbatch")) {
-						fresh_db = true;
-						entries_per_batch_ = 1000;
-						method = &Benchmark::WriteSeq;
+#ifdef SYMAS_CONFIG
 					} else if (name == Slice("fillrandbatch")) {
 						fresh_db = true;
 						entries_per_batch_ = 1000;
 						method = &Benchmark::WriteRandom;
+					} else if (name == Slice("fillseqbatch")) {
+#else
+					} else if (name == Slice("fillbatch")) {
+#endif
+						fresh_db = true;
+						entries_per_batch_ = 1000;
+						method = &Benchmark::WriteSeq;
 					} else if (name == Slice("fillrandom")) {
 						fresh_db = true;
 						method = &Benchmark::WriteRandom;
@@ -515,21 +567,23 @@ namespace leveldb {
 					} else if (name == Slice("overwrite")) {
 						fresh_db = false;
 						method = &Benchmark::WriteRandom;
+#ifdef SYMAS_CONFIG
 					} else if (name == Slice("fillseqsync")) {
-						fresh_db = true;
-#if 1
 						num_ /= 1000;
-						if (num_<10) num_=10;
-#endif
-						write_options_.sync = true;
+						if (num_ < 10)
+							num_ = 10;
+						fresh_db = true;
+						sync_ = true;
 						method = &Benchmark::WriteSeq;
 					} else if (name == Slice("fillrandsync")) {
-						fresh_db = true;
-#if 1
-						num_ /= 1000;
-						if (num_<10) num_=10;
+#else
+					} else if (name == Slice("fillsync")) {
 #endif
-						write_options_.sync = true;
+						num_ /= 1000;
+						if (num_ < 10)
+							num_ = 10;
+						fresh_db = true;
+						sync_ = true;
 						method = &Benchmark::WriteRandom;
 					} else if (name == Slice("fill100K")) {
 						fresh_db = true;
@@ -556,8 +610,8 @@ namespace leveldb {
 					} else if (name == Slice("deleterandom")) {
 						method = &Benchmark::DeleteRandom;
 					} else if (name == Slice("readwhilewriting")) {
-						// num_threads++;  // Add extra thread for writing
-						method = &Benchmark::ReadWhileWritingNew4;
+						//num_threads++;  // Add extra thread for writing
+						method = &Benchmark::ReadWhileWritingNew3;
 						Random rand(1000);
 						rand.Shuffle(shuff, FLAGS_threads);
 					} else if (name == Slice("readwritedel")) {
@@ -568,6 +622,10 @@ namespace leveldb {
 						method = &Benchmark::Crc32c;
 					} else if (name == Slice("acquireload")) {
 						method = &Benchmark::AcquireLoad;
+					} else if (name == Slice("snappycomp")) {
+						method = &Benchmark::SnappyCompress;
+					} else if (name == Slice("snappyuncomp")) {
+						method = &Benchmark::SnappyUncompress;
 					} else if (name == Slice("heapprofile")) {
 						HeapProfile();
 					} else if (name == Slice("stats")) {
@@ -584,23 +642,62 @@ namespace leveldb {
 						if (FLAGS_use_existing_db) {
 							/*do nothing*/
 						} else {
-							tab = NULL;
+							if (conn_ != NULL) {
+								conn_->close(conn_, NULL);
+								conn_ = NULL;
+							}
+							std::vector<std::string> files;
+							Env::Default()->GetChildren(FLAGS_db, &files);
+							if (!FLAGS_use_existing_db) {
+								for (int i = 0; i < files.size(); i++) {
+									std::string file_name(FLAGS_db);
+									file_name += "/";
+									file_name += files[i];
+									Env::Default()->DeleteFile(file_name.c_str());
+								}
+							}
 							Open();
 						}
+					} else if (FLAGS_use_existing_db) {
+						/*
+						 * We get here if we don't want to use a fresh db and
+						 * don't want to skip this benchmark.  We just want to
+						 * resue the DB that already exists for the current benchmark.
+						 */
+						if (conn_ != NULL) {
+							conn_->close(conn_, NULL);
+							conn_ = NULL;
+						}
+						Open();
+						fprintf(stderr, "Reusing existing DB %s\n",uri_.c_str());
 					}
 
 					struct timespec start, end;
 					clock_gettime(CLOCK_MONOTONIC, &start);
+
 					if (method != NULL) {
-						printf("RunBenchmark %s\n", name.data());
 						RunBenchmark(num_threads, name, method);
+#ifdef SYMAS_CONFIG
+						if (method == &Benchmark::WriteSeq ||
+								method == &Benchmark::WriteRandom) {
+							char cmd[200];
+							std::string test_dir;
+							Env::Default()->GetTestDirectory(&test_dir);
+							sprintf(cmd, "du %s", test_dir.c_str());
+							system(cmd);
+						}
+#endif
 					}
+
 					clock_gettime(CLOCK_MONOTONIC, &end);
-					long long timeuse = 1000000000LL * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
-					printf("RunBenchmark total time is : %lld \n", timeuse/1000000000LL);
-					tab->syncFinishWriting();
+					long long timeuse = 1000000000 * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
+					printf("RunBenchmark total time is : %lld \n", timeuse/1000000000);
 				}
-				allkeys_.erase_all(); 
+				allkeys_.erase_all();
+				if (conn_ != NULL) {
+					conn_->close(conn_, NULL);
+					conn_ = NULL;
+				}
 			}
 
 		private:
@@ -652,7 +749,7 @@ namespace leveldb {
 					arg[i].bm = this;
 					arg[i].method = method;
 					arg[i].shared = &shared;
-					arg[i].thread = new ThreadState(i);
+					arg[i].thread = new ThreadState(i, conn_);
 					arg[i].thread->shared = &shared;
 					Env::Default()->StartThread(ThreadBody, &arg[i]);
 				}
@@ -715,13 +812,128 @@ namespace leveldb {
 				if (ptr == NULL) exit(1); // Disable unused variable warning.
 			}
 
+			void SnappyCompress(ThreadState* thread) {
+				RandomGenerator gen;
+				Slice input = gen.Generate(4096);
+				int64_t bytes = 0;
+				int64_t produced = 0;
+				bool ok = true;
+				std::string compressed;
+				while (ok && bytes < 1024 * 1048576) {  // Compress 1G
+					ok = port::Snappy_Compress(input.data(), input.size(), &compressed);
+					produced += compressed.size();
+					thread->stats.FinishedSingleOp();
+					bytes += input.size();
+				}
 
+				if (!ok) {
+					thread->stats.AddMessage("(snappy failure)");
+				} else {
+					char buf[100];
+					snprintf(buf, sizeof(buf), "(output: %.1f%%)",
+							(produced * 100.0) / bytes);
+					thread->stats.AddMessage(buf);
+					thread->stats.AddBytes(bytes);
+				}
+			}
+
+			void SnappyUncompress(ThreadState* thread) {
+				RandomGenerator gen;
+				Slice input = gen.Generate(4096);
+				std::string compressed;
+				bool ok = port::Snappy_Compress(input.data(), input.size(), &compressed);
+				int64_t bytes = 0;
+				char* uncompressed = new char[input.size()];
+				while (ok && bytes < 1024 * 1048576) {  // Compress 1G
+					ok =  port::Snappy_Uncompress(compressed.data(), compressed.size(),
+							uncompressed);
+					thread->stats.FinishedSingleOp();
+					bytes += input.size();
+				}
+				delete[] uncompressed;
+
+				if (!ok) {
+					thread->stats.AddMessage("(snappy failure)");
+				} else {
+					thread->stats.AddBytes(bytes);
+				}
+			}
+
+			/* Start Wired Tiger modified section. */
 			void Open() {
-				assert(tab == NULL);
-				std::cout << "Create database " << FLAGS_db << std::endl;
+#define SMALL_CACHE 10*1024*1024
+				std::stringstream config;
+				config.str("");
+				if (!FLAGS_use_existing_db) {
+					config << "create";
+				}
+				if (FLAGS_cache_size > 0)
+					config << ",cache_size=" << FLAGS_cache_size;
+				config << ",log=(enabled,recover=on)";
+				config << ",checkpoint=(log_size=64MB,wait=60)";
+				/* TODO: Translate write_buffer_size - maybe it's chunk size?
+				   options.write_buffer_size = FLAGS_write_buffer_size;
+				   */
+#ifndef SYMAS_CONFIG
+				config << ",extensions=[libwiredtiger_snappy.so]";
+#endif
+				//config << ",verbose=[lsm]";
+				Env::Default()->CreateDir(FLAGS_db);
+				wiredtiger_open(FLAGS_db, NULL, config.str().c_str(), &conn_);
+				assert(conn_ != NULL);
 
-				tab = CompositeTable::createTable(FLAGS_db_table);
-				tab->load(FLAGS_db);
+				WT_SESSION *session;
+				conn_->open_session(conn_, NULL, NULL, &session);
+				assert(session != NULL);
+
+				char uri[100];
+				snprintf(uri, sizeof(uri), "%s:dbbench_wt-%d", 
+						FLAGS_use_lsm ? "lsm" : "table", db_num_);
+				uri_ = uri;
+
+				if (!FLAGS_use_existing_db) {
+					// Create tuning options and create the data file
+					config.str("");
+					config << "key_format=S,value_format=iiSSQSSSiiiSS";
+					config << ",columns=[cur_title, cur_id, cur_namespace, cur_text, cur_comment, cur_user, cur_user_text, cur_timestamp, cur_restrictions, cur_counter, cur_is_redirect, cur_minor_edit, cur_random, cur_touched, inverse_timestamp]";
+					config << ",prefix_compression=true";
+					config << ",checksum=off";
+
+					if (FLAGS_cache_size < SMALL_CACHE && FLAGS_cache_size > 0) {
+						config << ",internal_page_max=4kb";
+						config << ",leaf_page_max=4kb";
+						config << ",memory_page_max=" << FLAGS_cache_size;
+					} else {
+						config << ",internal_page_max=16kb";
+						config << ",leaf_page_max=16kb";
+						if (FLAGS_cache_size > 0) {
+							long memmax = FLAGS_cache_size * 0.75;
+							// int memmax = FLAGS_cache_size * 0.75;
+							config << ",memory_page_max=" << memmax;
+						}
+					}
+					if (FLAGS_use_lsm) {
+						config << ",lsm=(";
+						if (FLAGS_cache_size > SMALL_CACHE)
+							config << ",chunk_size=" << FLAGS_write_buffer_size;
+						if (FLAGS_bloom_bits > 0)
+							config << ",bloom_bit_count=" << FLAGS_bloom_bits;
+						else if (FLAGS_bloom_bits == 0)
+							config << ",bloom=false";
+						config << ")";
+					}
+#ifndef SYMAS_CONFIG
+					config << ",block_compressor=snappy";
+#endif
+					fprintf(stderr, "Creating %s with config %s\n",uri_.c_str(), config.str().c_str());
+					int ret = session->create(session, uri_.c_str(), config.str().c_str());
+					if (ret != 0) {
+						fprintf(stderr, "create error: %s\n", wiredtiger_strerror(ret));
+						exit(1);
+					}
+
+					session->close(session, NULL);
+				} 
 			}
 
 			void WriteSeq(ThreadState* thread) {
@@ -733,20 +945,35 @@ namespace leveldb {
 			}
 
 			void DoWrite(ThreadState* thread, bool seq) {
-				DbContextPtr ctxw;
-				ctxw = tab->createDbContext();
-				ctxw->syncIndex = FLAGS_sync_index;
-
 				if (num_ != FLAGS_num) {
 					char msg[100];
 					snprintf(msg, sizeof(msg), "(%d ops)", num_);
 					thread->stats.AddMessage(msg);
 				}
 
+				std::stringstream txn_config;
+				txn_config.str("");
+				txn_config << "isolation=snapshot";
+				if (sync_)
+					txn_config << ",sync=full";
+				else
+					txn_config << ",sync=none";
 
-				terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
+				WT_CURSOR *cursor;
+				std::stringstream cur_config;
+				cur_config.str("");
+				cur_config << "overwrite";
+				if (seq && FLAGS_threads == 1)
+					cur_config << ",bulk=true";
+
+				int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
+				if (ret != 0) {
+					fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+					exit(1);
+				}
+
 				std::ifstream ifs(FLAGS_resource_data);  
-				std::string str;
+				std::string str; 
 
 				int64_t avg = FLAGS_num/FLAGS_threads;
 				int64_t copyavg = avg;
@@ -778,106 +1005,93 @@ namespace leveldb {
 				while(getline(ifs, str) && avg != 0) {
 					linenumber++;
 					if (writen == 0) {
-						receow.cur_id = lcast(str);
-						// std::cout << "str " << recRow.cur_id << std::endl;
+						recRow.cur_id = lcast(str);
 						writen++;
 						continue;
 					}
 					if (writen == 1) {
 						recRow.cur_namespace = lcast(str);
-						// std::cout << "str " << recRow.cur_namespace << std::endl;
 						writen++;
 						continue;
 					}
 					if (writen == 2) {
 						recRow.cur_title = str;
-						// std::cout << "str " << recRow.cur_title << std::endl;
 						writen++;
 						continue;
 					}
 					if (writen == 3) {
 						recRow.cur_text = str;
-						// std::cout << "str " << recRow.cur_text << std::endl;
 						writen++;
 						continue;
 					}
 					if (writen == 4) {
 						recRow.cur_comment = str;
-						// std::cout << "str " << recRow.cur_comment << std::endl;
 						writen++;
 						continue;
 					}
 					if (writen == 5) {
 						recRow.cur_user = lcast(str);
-						// std::cout << "str " << recRow.cur_user << std::endl;
 						writen++;
 						continue;
 					}
 					if (writen == 6) {
 						recRow.cur_user_text = str;
-						// std::cout << "str " << recRow.cur_user_text << std::endl;
 						writen++;
 						continue;
 					}
 					if (writen == 7) {
 						recRow.cur_timestamp = str;
-						// std::cout << "str " << recRow.cur_timestamp << std::endl;
 						writen++;
 						continue;
 					}
 					if (writen == 8) {
 						recRow.cur_restrictions = str;
-						// std::cout << "str " << recRow.cur_restrictions << std::endl;
 						writen++;
 						continue;
 					}
 					if (writen == 9) {
 						recRow.cur_counter = lcast(str);
-						// std::cout << "str " << recRow.cur_counter << std::endl;
 						writen++;
 						continue;
 					}
 					if (writen == 10) {
 						recRow.cur_is_redirect = lcast(str);
-						// std::cout << "str " << recRow.cur_is_redirect << std::endl;
 						writen++;
 						continue;
 					}
 					if (writen == 11) {
 						recRow.cur_minor_edit = lcast(str);
-						// std::cout << "str " << recRow.cur_minor_edit << std::endl;
 						writen++;
 						continue;
 					}
 					if (writen == 12) {
 						recRow.cur_random = str;
-						// std::cout << "str " << recRow.cur_random << std::endl;
 						writen++;
 						continue;
 					}
 					if (writen == 13) {
 						recRow.cur_touched = str;
-						// std::cout << "str " << recRow.cur_touched << std::endl;
 						writen++;
 						continue;
 					}
 					if (writen == 14) {
 						recRow.inverse_timestamp = str;
-						// std::cout << "str " << recRow.inverse_timestamp << std::endl;
-						rowBuilder.rewind();
-						rowBuilder << recRow;
-						fstring binRow(rowBuilder.begin(), rowBuilder.tell());
-						if (ctxw->upsertRow(binRow) < 0) { // unique index
-							printf("Insert failed: %s\n", ctxw->errMsg.c_str());
-							exit(-1);	
+						cursor->set_key(cursor, recRow.cur_title.c_str());
+						cursor->set_value(cursor, recRow.cur_id.c_str(), recRow.cur_namespace.c_str(), recRow.cur_text.c_str(), recRow.cur_comment.c_str(), recRow.cur_user.c_str(), recRow.cur_user_text.c_str(), recRow.cur_timestamp.c_str(), recRow.cur_restrictions.c_str(), recRow.cur_counter.c_str(), recRow.cur_is_redirect.c_str(), recRow.cur_minor_edit.c_str(), recRow.cur_random.c_str(), recRow.cur_touched.c_str(), recRow.inverse_timestamp.c_str());
+						int ret = cursor->insert(cursor);
+						if (ret != 0) {
+							fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+							exit(1);
 						}
+
 						thread->stats.FinishedSingleOp();
-						avg--;
+						avg --;
 						writen = 0;
 						recordnumber++;
 						continue;
 					}
 				}
+				cursor->close(cursor);
 				time_t now;
 				struct tm *timenow;
 				time(&now);
@@ -892,21 +1106,33 @@ namespace leveldb {
 
 			void ReadReverse(ThreadState* thread) {
 				fprintf(stderr, "ReadReverse not supported\n");
-				return;
+				return;	
 			}
 
 			void ReadRandom(ThreadState* thread) {
-				valvec<byte> keyHit, val;
-				valvec<valvec<byte> > cgDataVec;
-				valvec<llong> idvec;
-				valvec<size_t> colgroups;
-				DbContextPtr ctxr;
-				ctxr = tab->createDbContext();
-				ctxr->syncIndex = FLAGS_sync_index;
-				// std::cout << " tab->getIndexNum() " << tab->getIndexNum() << " tab->getColgroupNum() " << tab->getColgroupNum() << std::endl;
-				for (size_t i = tab->getIndexNum(); i < tab->getColgroupNum(); i++) {
-					colgroups.push_back(i);
+				WT_CURSOR *cursor;
+
+				const char*  wcur_id;
+				const char*  wcur_namespace;
+				const char*  wcur_text;
+				const char*  wcur_comment;
+				const char*  wcur_user;
+				const char*  wcur_user_text;
+				const char*  wcur_timestamp;
+				const char*  wcur_restrictions;
+				const char*  wcur_counter;
+				const char*  wcur_is_redirect;
+				const char*  wcur_minor_edit;
+				const char*  wcur_random;
+				const char*  wcur_touched;
+				const char*  winverse_timestamp;
+
+				int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
+				if (ret != 0) {
+					fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+					exit(1);
 				}
+				int found = 0;
 
 				int *shuffr = NULL;
 				shuffr = (int *)malloc(FLAGS_num * sizeof(int));
@@ -914,21 +1140,19 @@ namespace leveldb {
 					shuffr[i] = i;
 				thread->rand.Shuffle(shuffr, FLAGS_num);
 
-				int found = 0;
-				size_t indexId = 0;
-				for (size_t i = 0; i < reads_; ++i) {
+				for (int i = 0; i < reads_; i++) {
 					int k = shuffr[i];
-					fstring key(allkeys_.at(k));
-					tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
-					for (auto recId : idvec) {
-						tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
-					}
-					if(idvec.size() > 0)
+					std::string key = allkeys_.str(k);
+					cursor->set_key(cursor, key.c_str());
+					if (cursor->search(cursor) == 0) {
 						found++;
+						ret = cursor->get_value(cursor, &wcur_id, &wcur_namespace, &wcur_text, &wcur_comment, &wcur_user, &wcur_user_text, &wcur_timestamp, &wcur_restrictions, &wcur_counter, &wcur_is_redirect, &wcur_minor_edit, &wcur_random, &wcur_touched, &winverse_timestamp);
+					}
 					thread->stats.FinishedSingleOp();
 				}
+				cursor->close(cursor);
 				char msg[100];
-				snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
+				snprintf(msg, sizeof(msg), "(%d found) %d", found, FLAGS_num);
 				thread->stats.AddMessage(msg);
 			}
 
@@ -938,28 +1162,75 @@ namespace leveldb {
 			}
 
 			void ReadHot(ThreadState* thread) {
-				valvec<byte> val;
-				llong recId;
-
-				DbContextPtr ctxr;
-				ctxr = tab->createDbContext();
-				ctxr->syncIndex = FLAGS_sync_index;
-				const int range = (FLAGS_num + 99) / 100;
-				for (int i = 0; i < reads_; i++) {
-					recId = thread->rand.Next() % range;
-					ctxr->getValue(recId, &val);
-					thread->stats.FinishedSingleOp();
-				}
+				fprintf(stderr, "ReadHot not supported\n");
+				return;
 			}
 
 			void SeekRandom(ThreadState* thread) {
-				fprintf(stderr, "SeekRandom not supported\n");
-				return;
+				const char *ckey;
+				WT_CURSOR *cursor;
+				int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
+				if (ret != 0) {
+					fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+					exit(1);
+				}
+				int found = 0;
+				for (int i = 0; i < reads_; i++) {
+					char key[100];
+					const int k = thread->rand.Next() % FLAGS_num;
+					snprintf(key, sizeof(key), "%016d", k);
+					cursor->set_key(cursor, key);
+					if(cursor->search(cursor) == 0) {
+						found++;
+					}
+					thread->stats.FinishedSingleOp();
+				}
+				cursor->close(cursor);
+				char msg[100];
+				snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
+				thread->stats.AddMessage(msg);
 			}
 
 			void DoDelete(ThreadState* thread, bool seq) {
-				fprintf(stderr, "DoDelete not supported\n");
-				return;
+				const char *ckey;
+				int64_t bytes = 0;
+				WT_CURSOR *cursor;
+				int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
+				if (ret != 0) {
+					fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+					exit(1);
+				}
+				std::stringstream txn_config;
+				txn_config.str("");
+				txn_config << "isolation=snapshot";
+				if (sync_)
+					txn_config << ",sync=full";
+				else
+					txn_config << ",sync=none";
+				for (int i = 0; i < num_; i += entries_per_batch_) {
+					for (int j = 0; j < entries_per_batch_; j++) {
+#ifdef RAND_SHUFFLE
+						int k = seq ? i+j : shuff[i+j];
+#else
+						int k = seq ? i+j : (thread->rand.Next() % FLAGS_num);
+#endif
+						char key[100];
+						snprintf(key, sizeof(key), "%016d", k);
+						if (k == 0)
+							continue; /* Wired Tiger does not support 0 keys. */
+						cursor->set_key(cursor, key);
+						if ((ret = cursor->remove(cursor)) != 0) {
+							if (FLAGS_threads == 1 || ret != WT_NOTFOUND) {
+								fprintf(stderr, "del error: key %s %s\n", key, wiredtiger_strerror(ret));
+								exit(1);
+							}
+						}
+						thread->stats.FinishedSingleOp();
+						bytes += strlen(key);
+					}
+				}
+				cursor->close(cursor);
+				thread->stats.AddBytes(bytes);
 			}
 
 			void DeleteSeq(ThreadState* thread) {
@@ -976,111 +1247,98 @@ namespace leveldb {
 					ReadRandom(thread);
 				} else if (thread->tid % 3 == 1) { // write
 					int64_t num = 0;
-					terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
-					DbContextPtr ctxw;
-					ctxw = tab->createDbContext();
-					ctxw->syncIndex = FLAGS_sync_index;
-
 					while(true) {
-						std::ifstream ifs(FLAGS_resource_data);  
-						std::string str;  
-						std::string key1;  
-						std::string key2;  
+						WT_CURSOR *cursor;
+						std::stringstream cur_config;
+						cur_config.str("");
+						cur_config << "overwrite";
 
+						int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
+						if (ret != 0) {
+							fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+							exit(1);
+						}
+
+						std::ifstream ifs(FLAGS_resource_data);
+						std::string str;
+						std::string key1;
+						std::string key2;
 						TestRow recRow;
 
 						while(getline(ifs, str)) {
-							fstring fstr(str);
-							if (fstr.startsWith("product/productId:")) {
+							if (str.find("product/productId:") == 0) {
 								key1 = str.substr(19);
 							}
-							if (fstr.startsWith("review/userId:")) {
+							if (str.find("review/userId:") == 0) {
 								key2 = str.substr(15);
 							}
-							if (fstr.startsWith("review/profileName:")) {
+							if (str.find("review/profileName:") == 0) {
 								recRow.profileName = str.substr(20);
 							}
-							if (fstr.startsWith("review/helpfulness:")) {
+							if (str.find("review/helpfulness:") == 0) {
 								char* pos2 = NULL;
-								recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
+								recRow.helpfulness1 = strtol(str.data()+20, &pos2, 10);
 								recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
 							}
-							if (fstr.startsWith("review/score:")) {
-								recRow.score = lcast(fstr.substr(14));
+							if (str.find("review/score:") == 0) {
+								recRow.score = atol(str.substr(14).c_str());
 							}
-							if (fstr.startsWith("review/time:")) {
-								recRow.time = lcast(fstr.substr(13));
+							if (str.find("review/time:") == 0) {
+								recRow.time = atol(str.substr(13).c_str());
 							}
-							if (fstr.startsWith("review/summary:")) {
+							if (str.find("review/summary:") == 0) {
 								recRow.summary = str.substr(16);
 							}
-							if (fstr.startsWith("review/text:")) {
+							if (str.find("review/text:") == 0) {
 								recRow.text = str.substr(13);
-								recRow.product_userId = key1 + " " + key2; 
-
-								rowBuilder.rewind();
-								rowBuilder << recRow;
-								fstring binRow(rowBuilder.begin(), rowBuilder.tell());
-
-								if (ctxw->insertRow(binRow) < 0) {
-									printf("Insert failed: %s\n", ctxw->errMsg.c_str());
-									exit(-1);	
+								recRow.product_userId = key1 + " " + key2;
+								cursor->set_key(cursor, recRow.product_userId.c_str());
+								cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
+								int ret = cursor->insert(cursor);
+								if (ret != 0) {
+									fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+									exit(1);
 								}
 								num ++;
 							}
-
 							MutexLock l(&thread->shared->mu);
 							if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
 								printf("extra write operations number %d\n", num);
+								cursor->close(cursor);
 								return;
 							}
 						}
 					}
 				} else {  // del
-					valvec<byte> keyHit, val;
-					valvec<llong> idvec;
-					DbContextPtr ctxr;
-					ctxr = tab->createDbContext();
-					ctxr->syncIndex = FLAGS_sync_index;
 					int64_t num = 0;
+					WT_CURSOR *cursor;
+					int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, NULL, &cursor);
+					if (ret != 0) {
+						fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+						exit(1);
+					}
 
-					size_t indexId = 0;
 					while(true) {
 						const int k = thread->rand.Next() % FLAGS_num;
-						fstring key(allkeys_.at(k));
-						tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
-						for (auto recId : idvec) {
-							ctxr->removeRow(recId);	
-						}
+						cursor->set_key(cursor, allkeys_.at(k));
+						ret = cursor->remove(cursor);
 						num ++;
 						MutexLock l(&thread->shared->mu);
 						if (thread->shared->num_done + 2*FLAGS_threads/3 >= thread->shared->num_initialized) {
 							printf("extra del operations number %d\n", num);
-							return;
+							break;
 						}
 					}
+					cursor->close(cursor);
 				}
 */
 			}
 
-
 			void ReadWhileWritingNew4(ThreadState* thread) {
 /*
-				int64_t readold = 0;
-				int64_t readnew = 0;
-				int64_t writenadd = 0;
-				int64_t writenupdate = 0;
-				valvec<valvec<byte> > cgDataVec;
-				valvec<llong> idvec;
-				valvec<size_t> colgroups;
-				DbContextPtr ctxrw = tab->createDbContext();
-				ctxrw->syncIndex = FLAGS_sync_index;
-				for (size_t i = tab->getIndexNum(); i < tab->getColgroupNum(); i++) {
-					colgroups.push_back(i);
-				}
+				int64_t readn = 0;
+				int64_t writen = 0;
 				int found = 0;
-				size_t indexId = 0;
-				terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
 				terark::AutoFree<char> szPath;
 				asprintf(&szPath.p, "%s.%d", FLAGS_resource_data, thread->tid);
 				std::ifstream ifs(szPath.p);
@@ -1089,193 +1347,130 @@ namespace leveldb {
 				std::string key2;
 
 				TestRow recRow;
+				// struct timeval one, two, three, four;
 				struct timespec start, end;
 				long long readtime = 0;
 				long long writetime = 0;
-				long long totaltime = 0;
-				double percent = FLAGS_read_write_percent / 100.0;
-				double percenr = FLAGS_read_old_record_percent / 100.0;
-				double percentw = FLAGS_write_new_record_percent / 100.0;
-				long long newrecord = 1;
-				std::string record;
-				std::stringstream recordstreamo;
-				recordstreamo << newrecord;
-				recordstreamo >> record;
+				const double percent = FLAGS_read_write_percent / 100.0;
+
+				const char*  wprofileName;
+				uint32_t whelpfulness1;
+				uint32_t whelpfulness2;
+				uint32_t wscore;
+				uint32_t wtime;
+				const char* wsummary;
+				const char* wtext;
+
+				WT_CURSOR *cursor;
+				std::stringstream cur_config;
+				cur_config.str("");
+				cur_config << "overwrite";
+				int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
+				if (ret != 0) {
+					fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+					exit(1);
+				}
+
 
 				clock_gettime(CLOCK_MONOTONIC, &start);
-				int i = 0;
-				while(1) {
+
+				for (int i=0; i<FLAGS_reads; i++) {
 					size_t rdi = thread->rand.Next();
 					double rdd = rdi / double(INT32_MAX);
 					if (rdd < percent) {
+						// read
+						// gettimeofday(&one, NULL);
 						size_t k = thread->rand.Next() % allkeys_.size();
-						size_t rdir = thread->rand.Next();
-						double rddr = rdir / double(INT32_MAX);
-						if (rddr < percenr) {
-							fstring key(allkeys_.at(k));
-							ctxrw->indexSearchExact(indexId, key, &idvec);
-							for (auto recId : idvec) {
-								ctxrw->selectColgroups(recId, colgroups, &cgDataVec);
-							}
-							if(idvec.size() > 0)
-								found++;
-							readold++;
-						} else {
-							std::string merge = allkeys_.at(k) + " " + record;
-							fstring key(merge);
-							ctxrw->indexSearchExact(indexId, key, &idvec);
-							for (auto recId : idvec) {
-								ctxrw->selectColgroups(recId, colgroups, &cgDataVec);
-							}
-							if(idvec.size() > 0)
-								found++;
-							readnew++;
+						std::string key = allkeys_.str(k);
+						cursor->set_key(cursor, key.c_str());
+						if (cursor->search(cursor) == 0) {
+							found++;
+							ret = cursor->get_value(cursor, &wprofileName, &whelpfulness1, &whelpfulness2, &wscore, &wtime, &wsummary, &wtext);
 						}
+
+						readn++;
 						thread->stats.FinishedSingleOp();
+						// gettimeofday(&two, NULL);
+						// readtime += 1000000 * ( two.tv_sec - one.tv_sec ) + two.tv_usec - one.tv_usec;
 					} else {
-						size_t rdiw = thread->rand.Next();
-						double rddw = rdiw / double(INT32_MAX);
-						if (rddw < percentw) {   // add new record
-							while(getline(ifs, str)) {
-								fstring fstr(str);
-								if (fstr.startsWith("product/productId:")) {
-									key1 = str.substr(19);
-									continue;
-								}
-								if (fstr.startsWith("review/userId:")) {
-									key2 = str.substr(15);
-									continue;
-								}
-								if (fstr.startsWith("review/profileName:")) {
-									recRow.profileName = str.substr(20);
-									continue;
-								}
-								if (fstr.startsWith("review/helpfulness:")) {
-									char* pos2 = NULL;
-									recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
-									recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
-									continue;
-								}
-								if (fstr.startsWith("review/score:")) {
-									recRow.score = lcast(fstr.substr(14));
-									continue;
-								}
-								if (fstr.startsWith("review/time:")) {
-									recRow.time = lcast(fstr.substr(13));
-									continue;
-								}
-								if (fstr.startsWith("review/summary:")) {
-									recRow.summary = str.substr(16);
-									continue;
-								}
-								if (fstr.startsWith("review/text:")) {
-									recRow.text = str.substr(13);
-									recRow.product_userId = key1 + " " + key2 + " " + record;
-									rowBuilder.rewind();
-									rowBuilder << recRow;
-									fstring binRow(rowBuilder.begin(), rowBuilder.tell());
-
-									if (ctxrw->upsertRow(binRow) < 0) { // unique index
-										printf("Insert failed: %s\n", ctxrw->errMsg.c_str());
-										continue;
-									}
-									writenadd++;
-									thread->stats.FinishedSingleOp();
-									break;
-								}
+						// write
+						// gettimeofday(&three, NULL);
+						while(getline(ifs, str)) {
+							terark::fstring fstr(str);
+							if (fstr.startsWith("product/productId:")) {
+								key1 = str.substr(19);
+								continue;
 							}
-						} else {   // update origin record
-							while(getline(ifs, str)) {
-								fstring fstr(str);
-								if (fstr.startsWith("product/productId:")) {
-									key1 = str.substr(19);
-									continue;
-								}
-								if (fstr.startsWith("review/userId:")) {
-									key2 = str.substr(15);
-									continue;
-								}
-								if (fstr.startsWith("review/profileName:")) {
-									recRow.profileName = str.substr(20);
-									continue;
-								}
-								if (fstr.startsWith("review/helpfulness:")) {
-									char* pos2 = NULL;
-									recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
-									recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
-									continue;
-								}
-								if (fstr.startsWith("review/score:")) {
-									recRow.score = lcast(fstr.substr(14));
-									continue;
-								}
-								if (fstr.startsWith("review/time:")) {
-									recRow.time = lcast(fstr.substr(13));
-									continue;
-								}
-								if (fstr.startsWith("review/summary:")) {
-									recRow.summary = str.substr(16);
-									continue;
-								}
-								if (fstr.startsWith("review/text:")) {
-									recRow.text = str.substr(13);
-									recRow.product_userId = key1 + " " + key2;
+							if (fstr.startsWith("review/userId:")) {
+								key2 = str.substr(15);
+								continue;
+							}
+							if (fstr.startsWith("review/profileName:")) {
+								recRow.profileName = str.substr(20);
+								continue;
+							}
+							if (fstr.startsWith("review/helpfulness:")) {
+								char* pos2 = NULL;
+								recRow.helpfulness1 = strtol(fstr.data()+20, &pos2, 10);
+								recRow.helpfulness2 = strtol(pos2+1, NULL, 10);
+								continue;
+							}
+							if (fstr.startsWith("review/score:")) {
+								recRow.score = atol(str.substr(14).c_str());
+								continue;
+							}
+							if (fstr.startsWith("review/time:")) {
+								recRow.time = atol(str.substr(13).c_str());
+								continue;
+							}
+							if (fstr.startsWith("review/summary:")) {
+								recRow.summary = str.substr(16);
+								continue;
+							}
+							if (fstr.startsWith("review/text:")) {
+								recRow.text = str.substr(13);
+								recRow.product_userId = key1 + " " + key2;
 
-									rowBuilder.rewind();
-									rowBuilder << recRow;
-									fstring binRow(rowBuilder.begin(), rowBuilder.tell());
-
-									if (ctxrw->upsertRow(binRow) < 0) { // unique index
-										printf("Insert failed: %s\n", ctxrw->errMsg.c_str());
-										continue;
-									}
-									writenupdate++;
-									thread->stats.FinishedSingleOp();
-									break;
+								cursor->set_key(cursor, recRow.product_userId.c_str());
+								cursor->set_value(cursor, recRow.profileName.c_str(), recRow.helpfulness1, recRow.helpfulness2, recRow.score, recRow.time, recRow.summary.c_str(), recRow.text.c_str());
+								ret = cursor->insert(cursor);
+								if (ret != 0) {
+									fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+									exit(1);
 								}
+
+								writen++;
+								thread->stats.FinishedSingleOp();
+								break;
 							}
 						}
 						if(ifs.eof()) {
 							ifs.clear();
 							ifs.seekg(0, std::ios::beg);
-							newrecord ++;
-							std::stringstream recordstream;
-							recordstream << newrecord;
-							recordstream >> record;
 						}
+						// gettimeofday(&four, NULL);
+						// writetime += 1000000 * ( four.tv_sec - three.tv_sec ) + four.tv_usec - three.tv_usec;
 					}
-					i++;
-					if((i+1)%1000 == 0) {
+					if((i+1)%80000 == 0) {
 						clock_gettime(CLOCK_MONOTONIC, &end);
 						long long timeuse = 1000000000LL * ( end.tv_sec - start.tv_sec ) + end.tv_nsec -start.tv_nsec;
-						totaltime += timeuse;
-						printf("i %d thread %d current qps %0.2f, total qps %0.2f, timeuse %f totaltime %f readold %lld readnew %lld writeadd %lld writeupdate %lld\n", i, thread->tid, 1000.0/(timeuse/1000000000.0), i/(totaltime/1000000000.0), timeuse/1000000000.0, totaltime/1000000000.0, readold, readnew, writenadd, writenupdate);
+						printf("i %d thread %d current qps %0.2f, timeuse %f\n", i, thread->tid, 80000.0/(timeuse/1000000000.0), timeuse/1000000000.0);
 						clock_gettime(CLOCK_MONOTONIC, &start);
 					}
-
 				}
+				cursor->close(cursor);
 				time_t now;
 				struct tm *timenow;
 				time(&now);
 				timenow = localtime(&now);
+				printf("readnum %lld, writenum %lld, time %s, readtime %lld, writetime %lld\n", readn, writen, asctime(timenow), readtime/1000, writetime/1000);
 */
 			}
-
 
 			void ReadWhileWritingNew3(ThreadState* thread) {
 				int64_t readn = 0;
 				int64_t writen = 0;
-				valvec<valvec<byte> > cgDataVec;
-				valvec<llong> idvec;
-				valvec<size_t> colgroups;
-				DbContextPtr ctxrw = tab->createDbContext();
-				ctxrw->syncIndex = FLAGS_sync_index;
-				for (size_t i = tab->getIndexNum(); i < tab->getColgroupNum(); i++) {
-					colgroups.push_back(i);
-				}
 				int found = 0;
-				size_t indexId = 0;
-				terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
 				terark::AutoFree<char> szPath;
 				asprintf(&szPath.p, "%s.%d", FLAGS_resource_data, thread->tid);
 				std::ifstream ifs(szPath.p);
@@ -1286,7 +1481,33 @@ namespace leveldb {
 				long long readtime = 0;
 				long long writetime = 0;
 				long long totaltime = 0;
-				double percent = FLAGS_read_write_percent / 100.0;
+				const double percent = FLAGS_read_write_percent / 100.0;
+
+				const char*  wcur_id;
+				const char*  wcur_namespace;
+				const char*  wcur_text;
+				const char*  wcur_comment;
+				const char*  wcur_user;
+				const char*  wcur_user_text;
+				const char*  wcur_timestamp;
+				const char*  wcur_restrictions;
+				const char*  wcur_counter;
+				const char*  wcur_is_redirect;
+				const char*  wcur_minor_edit;
+				const char*  wcur_random;
+				const char*  wcur_touched;
+				const char*  winverse_timestamp;
+
+				WT_CURSOR *cursor;
+				std::stringstream cur_config;
+				cur_config.str("");
+				cur_config << "overwrite";
+				int ret = thread->session->open_cursor(thread->session, uri_.c_str(), NULL, cur_config.str().c_str(), &cursor);
+				if (ret != 0) {
+					fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+					exit(1);
+				}
+
 
 				clock_gettime(CLOCK_MONOTONIC, &start);
 				int i = 0;
@@ -1297,13 +1518,12 @@ namespace leveldb {
 					if (rdd < percent) {
 						// read
 						size_t k = thread->rand.Next() % allkeys_.size();
-						fstring key(allkeys_.at(k));
-						ctxrw->indexSearchExact(indexId, key, &idvec);
-						for (auto recId : idvec) {
-							ctxrw->selectColgroups(recId, colgroups, &cgDataVec);
-						}
-						if(idvec.size() > 0)
+						std::string key = allkeys_.str(k);
+						cursor->set_key(cursor, key.c_str());
+						if (cursor->search(cursor) == 0) {
 							found++;
+							ret = cursor->get_value(cursor, &wcur_id, &wcur_namespace, &wcur_text, &wcur_comment, &wcur_user, &wcur_user_text, &wcur_timestamp, &wcur_restrictions, &wcur_counter, &wcur_is_redirect, &wcur_minor_edit, &wcur_random, &wcur_touched, &winverse_timestamp);
+						}
 						readn++;
 						thread->stats.FinishedSingleOp();
 					} else {
@@ -1381,14 +1601,14 @@ namespace leveldb {
 							}
 							if (writen == 14) {
 								recRow.inverse_timestamp = str;
-								rowBuilder.rewind();
-								rowBuilder << recRow;
-								fstring binRow(rowBuilder.begin(), rowBuilder.tell());
-								if (ctxrw->upsertRow(binRow) < 0) { // unique index
-									printf("Insert failed: %s\n", ctxrw->errMsg.c_str());
-									exit(-1);
+								cursor->set_key(cursor, recRow.cur_title.c_str());
+								cursor->set_value(cursor, recRow.cur_id.c_str(), recRow.cur_namespace.c_str(), recRow.cur_text.c_str(), recRow.cur_comment.c_str(), recRow.cur_user.c_str(), recRow.cur_user_text.c_str(), recRow.cur_timestamp.c_str(), recRow.cur_restrictions.c_str(), recRow.cur_counter.c_str(), recRow.cur_is_redirect.c_str(), recRow.cur_minor_edit.c_str(), recRow.cur_random.c_str(), recRow.cur_touched.c_str(), recRow.inverse_timestamp.c_str());
+								int ret = cursor->insert(cursor);
+								if (ret != 0) {
+									fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
+									exit(1);
 								}
-								
+
 								writen = 0;
 								thread->stats.FinishedSingleOp();
 								break;
@@ -1398,9 +1618,9 @@ namespace leveldb {
 							ifs.clear();
 							ifs.seekg(0, std::ios::beg);
 						}
-					}	
+					}
 					i++;
-					if(i%1000 == 0) {
+					if((i+1)%1000 == 0) {
 						clock_gettime(CLOCK_MONOTONIC, &end);
 						long long timeuse = 1000000000LL * ( end.tv_sec - start.tv_sec ) + end.tv_nsec - start.tv_nsec;
 						totaltime += timeuse;
@@ -1408,51 +1628,114 @@ namespace leveldb {
 						clock_gettime(CLOCK_MONOTONIC, &start);
 					}
 				}
+				cursor->close(cursor);
 			}
 
+
 			void Compact(ThreadState* thread) {
-				fprintf(stderr, "Compact not supported\n");
-				return;
+				/*
+				 * TODO: It probably makes sense to run multiple compacts in parallel
+				 * if there are multiple LSM trees. The code to do that involves
+				 * opening multiple session handles (and possibly multiple threads), so
+				 * don't do that for now.
+				 */
+				WT_CURSOR *md_cursor;
+				int exact, ret;
+				const char *key;
+				char buf[100]; // For the timeout.
+
+				if (!FLAGS_use_lsm)
+					return ;
+
+				if ((ret = thread->session->open_cursor(
+								thread->session, "metadata:", NULL, NULL, &md_cursor)) != 0) {
+					fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+					exit(1);
+				}
+				md_cursor->set_key(md_cursor, "lsm:");
+				for (ret = md_cursor->search_near(md_cursor, &exact);
+						ret == 0; ret = md_cursor->next(md_cursor)) {
+					/* If the initial search result is behind, move our cursor forwards */
+					if (exact == -1) {
+						ret = md_cursor->next(md_cursor);
+						exact = 1;
+					}
+					ret = md_cursor->get_key(md_cursor, &key);
+					if (ret != 0 || strncmp(key, "lsm:", 4) != 0)
+						break;
+
+					// TODO: track how long we've been waiting if there are multiple
+					// LSM trees to compact.
+					snprintf(buf, 100, "timeout=%d", FLAGS_max_compact_wait);
+					// Run a compact on this LSM.
+					if ((ret = thread->session->compact(thread->session, key, buf)) != 0 &&
+							ret != ETIMEDOUT) {
+						fprintf(stderr, "compact error: %s\n", wiredtiger_strerror(ret));
+						exit(1);
+					}
+				}
+				md_cursor->close(md_cursor);
 			}
 
 			void PrintStats(const char* key) {
-				fprintf(stderr, "PrintStats not supported\n");
-				return;
+				/* TODO: Implement two different cases based on input string. */
+				const char *ckey, *cvalue;
+				WT_CURSOR *cursor;
+				std::stringstream suri;
+				suri.str("");
+				suri << "statistics:" << uri_;
+				WT_SESSION *session;
+				conn_->open_session(conn_, NULL, NULL, &session);
+				int ret = session->open_cursor(session, suri.str().c_str(), NULL, NULL, &cursor);
+				if (ret != 0) {
+					fprintf(stderr, "open_cursor error: %s\n", wiredtiger_strerror(ret));
+					exit(1);
+				}
+
+				const char *desc, *pvalue;
+				uint64_t value;
+				while(cursor->next(cursor) == 0 &&
+						cursor->get_value(cursor, &desc, &pvalue, &value) == 0)
+					printf("\t%s=%s\n", desc, pvalue);
+				session->close(session, NULL);
 			}
 
-			static void WriteToFile(void* arg, const char* buf, int n) {
-				reinterpret_cast<WritableFile*>(arg)->Append(Slice(buf, n));
-			}
+			/* Only used by HeapProfile.
+			   static void WriteToFile(void* arg, const char* buf, int n) {
+			   reinterpret_cast<WritableFile*>(arg)->Append(Slice(buf, n));
+			   }
+			   */
 
 			void HeapProfile() {
-				char fname[100];
-				snprintf(fname, sizeof(fname), "%s/heap-%04d", FLAGS_db, ++heap_counter_);
-				WritableFile* file;
-				Status s = Env::Default()->NewWritableFile(fname, &file);
-				if (!s.ok()) {
-					fprintf(stderr, "%s\n", s.ToString().c_str());
-					return;
-				}
-				bool ok = port::GetHeapProfile(WriteToFile, file);
-				delete file;
-				if (!ok) {
-					fprintf(stderr, "heap profiling not supported\n");
-					Env::Default()->DeleteFile(fname);
-				}
+				fprintf(stderr, "heap profiling not supported\n");
+				/*
+				   char fname[100];
+				   snprintf(fname, sizeof(fname), "%s/heap-%04d", FLAGS_db, ++heap_counter_);
+				   WritableFile* file;
+				   Status s = Env::Default()->NewWritableFile(fname, &file);
+				   if (!s.ok()) {
+				   fprintf(stderr, "%s\n", s.ToString().c_str());
+				   return;
+				   }
+				   bool ok = port::GetHeapProfile(WriteToFile, file);
+				   delete file;
+				   if (!ok) {
+				   fprintf(stderr, "heap profiling not supported\n");
+				   Env::Default()->DeleteFile(fname);
+				   }
+				   */
 			}
 	};
 
 }  // namespace leveldb
 
 int main(int argc, char** argv) {
-	FLAGS_write_buffer_size = leveldb::Options().write_buffer_size;
-	FLAGS_open_files = leveldb::Options().max_open_files;
 	std::string default_db_path;
-	std::string default_db_table;
 
 	for (int i = 1; i < argc; i++) {
 		double d;
 		int n;
+		long size;
 		char junk;
 		if (leveldb::Slice(argv[i]).starts_with("--benchmarks=")) {
 			FLAGS_benchmarks = argv[i] + strlen("--benchmarks=");
@@ -1461,18 +1744,34 @@ int main(int argc, char** argv) {
 		} else if (sscanf(argv[i], "--histogram=%d%c", &n, &junk) == 1 &&
 				(n == 0 || n == 1)) {
 			FLAGS_histogram = n;
+		} else if (sscanf(argv[i], "--use_lsm=%d%c", &n, &junk) == 1 &&
+				(n == 0 || n == 1)) {
+			FLAGS_use_lsm = n;
 		} else if (sscanf(argv[i], "--use_existing_db=%d%c", &n, &junk) == 1 &&
 				(n == 0 || n == 1)) {
 			FLAGS_use_existing_db = n;
-		} else if (sscanf(argv[i], "--sync_index=%d%c", &n, &junk) == 1 &&
-				(n == 0 || n == 1)) {
-			FLAGS_sync_index = n;
+		} else if (sscanf(argv[i], "--max_compact_wait=%d%c", &n, &junk) == 1) {
+			FLAGS_max_compact_wait = n;
 		} else if (sscanf(argv[i], "--num=%d%c", &n, &junk) == 1) {
 			FLAGS_num = n;
 		} else if (sscanf(argv[i], "--reads=%d%c", &n, &junk) == 1) {
 			FLAGS_reads = n;
+		} else if (sscanf(argv[i], "--stagger=%d%c", &n, &junk) == 1 &&
+				(n == 0 || n == 1)) {
+			FLAGS_stagger = n;
 		} else if (sscanf(argv[i], "--threads=%d%c", &n, &junk) == 1) {
 			FLAGS_threads = n;
+		} else if (sscanf(argv[i], "--value_size=%d%c", &n, &junk) == 1) {
+			FLAGS_value_size = n;
+		} else if (sscanf(argv[i], "--write_buffer_size=%d%c", &n, &junk) == 1) {
+			FLAGS_write_buffer_size = n;
+		} else if (sscanf(argv[i], "--cache_size=%ld%c", &size, &junk) == 1) {
+			std::cout << "cache_size " << size << std::endl;
+			FLAGS_cache_size = size;
+		} else if (sscanf(argv[i], "--bloom_bits=%d%c", &n, &junk) == 1) {
+			FLAGS_bloom_bits = n;
+		} else if (sscanf(argv[i], "--open_files=%d%c", &n, &junk) == 1) {
+			FLAGS_open_files = n;
 		} else if (strncmp(argv[i], "--db=", 5) == 0) {
 			FLAGS_db = argv[i] + 5;
 		} else if (sscanf(argv[i], "--read_ratio=%lf%c", &d, &junk) == 1) {
@@ -1496,11 +1795,6 @@ int main(int argc, char** argv) {
 		FLAGS_db = default_db_path.c_str();
 	}
 
-	if (FLAGS_db_table == NULL) {
-		default_db_table += "DfaDbTable";
-		FLAGS_db_table = default_db_table.c_str();
-	}
-
 	if (FLAGS_resource_data == NULL) {
 		fprintf(stderr, "Please input the resource data file\n");
 		exit(-1);
@@ -1512,6 +1806,6 @@ int main(int argc, char** argv) {
 
 	leveldb::Benchmark benchmark;
 	benchmark.Run();
-	fprintf(stdout, "db wikipedia terark completed\n");
+	fprintf(stdout, "db wikipedia wiredtiger completed\n");
 	return 0;
 }
