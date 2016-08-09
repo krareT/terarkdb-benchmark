@@ -27,6 +27,7 @@
 
 #include <terark/util/autofree.hpp>
 #include <terark/util/fstrvec.hpp>
+#include <terark/lcast.hpp>
 #include <terark/fstring.hpp>
 
 // Comma-separated list of operations to run in the specified order
