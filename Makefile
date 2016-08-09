@@ -158,8 +158,8 @@ db_wikipedia_terark_index_int: doc/wikipedia/db_wikipedia_terark_index_int.o $(L
 db_wikipedia_wiredtiger_overwrite_string: doc/wikipedia/db_wikipedia_wiredtiger_overwrite_string.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/wikipedia/db_wikipedia_wiredtiger_overwrite_string.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.8.0 -lwiredtiger_snappy -lboost_system -lboost_filesystem -lrt
 
-db_wikipedia_wiredtiger_overwrite_int: doc/wikipedia/db_wikipedia_wiredtiger_overwrite_int.o $(LIBOBJECTS) $(TESTUTIL)
-	$(CXX) doc/wikipedia/db_wikipedia_wiredtiger_overwrite_int.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lwiredtiger-2.8.0 -lwiredtiger_snappy -lboost_system -lboost_filesystem -lrt
+db_wikikedia_wiredtiger_overwrite_int: doc/wikipedia/db_wikipedia_wiredtiger_overwrite_int.o $(LIBOBJECTS) $(TESTUTIL)
+	$(CXX) doc/wikipedia/db_wikipedia_wiredtiger_overwrite_int.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lterark-db-g++-5.3-r -lwiredtiger-2.8.0 -lwiredtiger_snappy -lboost_system -lboost_filesystem -lrt
 
 db_movies_terark_index: doc/movies/db_movies_terark_index.o $(LIBOBJECTS) $(TESTUTIL)
 	$(CXX) doc/movies/db_movies_terark_index.o $(LIBOBJECTS) $(TESTUTIL) -o $@ $(LDFLAGS) -lterark-fsa_all-g++-5.3-r -lterark-db-g++-5.3-r -lboost_system -lboost_filesystem -lwiredtiger-2.8.0 -ltbb -lrt

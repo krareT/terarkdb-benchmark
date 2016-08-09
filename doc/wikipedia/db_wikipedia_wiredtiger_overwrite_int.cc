@@ -25,10 +25,20 @@
 #include "port/port.h"
 #include "wiredtiger.h"
 
+#include <iostream>
+#include <fstream>
+#include <string.h>
+#include <string>
+
+#include <terark/db/db_table.hpp>
+#include <terark/io/MemStream.hpp>
+#include <terark/io/DataIO.hpp>
+#include <terark/io/RangeStream.hpp>
+#include <terark/lcast.hpp>
 #include <terark/util/autofree.hpp>
 #include <terark/util/fstrvec.hpp>
-#include <terark/lcast.hpp>
-#include <terark/fstring.hpp>
+
+using namespace terark;
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -364,21 +374,21 @@ namespace leveldb {
 		};
 
 		struct TestRow {
-			std::string cur_id;
-			std::string cur_namespace;
-			std::string cur_title;
-			std::string cur_text;
-			std::string cur_comment;
-			std::string cur_user;
-			std::string cur_user_text;
-			std::string cur_timestamp;
-			std::string cur_restrictions;
-			std::string cur_counter;
-			std::string cur_is_redirect;
-			std::string cur_minor_edit;
-			std::string cur_random;
-			std::string cur_touched;
-			std::string inverse_timestamp;
+            int32_t cur_id;
+            int32_t cur_namespace;
+            std::string cur_title;
+            std::string cur_text;
+            std::string cur_comment;
+            uint64_t cur_user;
+            std::string cur_user_text;
+            std::string cur_timestamp;
+            std::string cur_restrictions;
+            int32_t cur_counter;
+            int32_t cur_is_redirect;
+            int32_t cur_minor_edit;
+            std::string cur_random;
+            std::string cur_touched;
+            std::string inverse_timestamp;
 		};
 
 	}  // namespace
@@ -1078,7 +1088,7 @@ namespace leveldb {
 					if (writen == 14) {
 						recRow.inverse_timestamp = str;
 						cursor->set_key(cursor, recRow.cur_title.c_str());
-						cursor->set_value(cursor, recRow.cur_id.c_str(), recRow.cur_namespace.c_str(), recRow.cur_text.c_str(), recRow.cur_comment.c_str(), recRow.cur_user.c_str(), recRow.cur_user_text.c_str(), recRow.cur_timestamp.c_str(), recRow.cur_restrictions.c_str(), recRow.cur_counter.c_str(), recRow.cur_is_redirect.c_str(), recRow.cur_minor_edit.c_str(), recRow.cur_random.c_str(), recRow.cur_touched.c_str(), recRow.inverse_timestamp.c_str());
+						cursor->set_value(cursor, recRow.cur_id, recRow.cur_namespace, recRow.cur_text.c_str(), recRow.cur_comment.c_str(), recRow.cur_user, recRow.cur_user_text.c_str(), recRow.cur_timestamp.c_str(), recRow.cur_restrictions.c_str(), recRow.cur_counter, recRow.cur_is_redirect, recRow.cur_minor_edit, recRow.cur_random.c_str(), recRow.cur_touched.c_str(), recRow.inverse_timestamp.c_str());
 						int ret = cursor->insert(cursor);
 						if (ret != 0) {
 							fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
@@ -1603,7 +1613,7 @@ namespace leveldb {
 							if (writen == 14) {
 								recRow.inverse_timestamp = str;
 								cursor->set_key(cursor, recRow.cur_title.c_str());
-								cursor->set_value(cursor, recRow.cur_id.c_str(), recRow.cur_namespace.c_str(), recRow.cur_text.c_str(), recRow.cur_comment.c_str(), recRow.cur_user.c_str(), recRow.cur_user_text.c_str(), recRow.cur_timestamp.c_str(), recRow.cur_restrictions.c_str(), recRow.cur_counter.c_str(), recRow.cur_is_redirect.c_str(), recRow.cur_minor_edit.c_str(), recRow.cur_random.c_str(), recRow.cur_touched.c_str(), recRow.inverse_timestamp.c_str());
+								cursor->set_value(cursor, recRow.cur_id, recRow.cur_namespace, recRow.cur_text.c_str(), recRow.cur_comment.c_str(), recRow.cur_user, recRow.cur_user_text.c_str(), recRow.cur_timestamp.c_str(), recRow.cur_restrictions.c_str(), recRow.cur_counter, recRow.cur_is_redirect, recRow.cur_minor_edit, recRow.cur_random.c_str(), recRow.cur_touched.c_str(), recRow.inverse_timestamp.c_str());
 								int ret = cursor->insert(cursor);
 								if (ret != 0) {
 									fprintf(stderr, "set error: %s\n", wiredtiger_strerror(ret));
