@@ -905,7 +905,7 @@ namespace leveldb {
 				if (!FLAGS_use_existing_db) {
 					// Create tuning options and create the data file
 					config.str("");
-					config << "key_format=S,value_format=iiSSQSSSiiiSS";
+					config << "key_format=S,value_format=iiSSQSSSiiiSSS";
 					config << ",columns=[cur_title, cur_id, cur_namespace, cur_text, cur_comment, cur_user, cur_user_text, cur_timestamp, cur_restrictions, cur_counter, cur_is_redirect, cur_minor_edit, cur_random, cur_touched, inverse_timestamp]";
 					config << ",prefix_compression=true";
 					config << ",checksum=off";

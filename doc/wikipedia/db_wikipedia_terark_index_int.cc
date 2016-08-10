@@ -778,7 +778,7 @@ namespace leveldb {
 				while(getline(ifs, str) && avg != 0) {
 					linenumber++;
 					if (writen == 0) {
-						receow.cur_id = lcast(str);
+						recRow.cur_id = lcast(str);
 						// std::cout << "str " << recRow.cur_id << std::endl;
 						writen++;
 						continue;
