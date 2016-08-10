@@ -455,7 +455,7 @@ namespace leveldb {
 				PrintHeader();
 				std::cout << " Run() " << std::endl;
 
-				std::ifstream ifs("/data/publicdata/movies/keys");
+				std::ifstream ifs("/experiment/wikipedia/keysnorepeat");
 				std::string str;
 				std::string key1;
 				std::string key2;
