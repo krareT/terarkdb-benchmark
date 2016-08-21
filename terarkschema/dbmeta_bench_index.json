@@ -16,8 +16,8 @@
                         "useFastZip": true
                 }
         },
-	"ReadonlyDataMemSize" : "1G",
-	"MaxWrSegSize" : "1G",
+	"ReadonlyDataMemSize" : "128M",
+	"MaxWrSegSize" : "128M",
 	"TableIndex" : [
 		{ "fields": "key"  , "ordered" : true }
 	]

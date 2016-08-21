@@ -28,6 +28,7 @@
 #include <thread>
 
 using namespace terark;
+using namespace db;
 
 // Comma-separated list of operations to run in the specified order
 //   Actual benchmarks:
@@ -154,7 +155,7 @@ class RandomGenerator {
     // large enough to serve all typical value sizes we want to write.
     Random rnd(301);
     std::string piece;
-	size_t maxSize = TERARK_IF_DEBUG(1, 256) * 1024*1024;
+    size_t maxSize = TERARK_IF_DEBUG(1, 256) * 1024*1024;
     while (data_.size() < maxSize) {
       // Add a short fragment that is as compressible as specified
       // by FLAGS_compression_ratio.
@@ -574,11 +575,6 @@ class Benchmark {
 
       if (fresh_db) {
         if (FLAGS_use_existing_db) {
-/*
-          fprintf(stdout, "%-12s : skipped (--use_existing_db is true)\n",
-                  name.ToString().c_str());
-	  method = NULL;
-*/
         } else {
           tab = NULL;
           Open();
@@ -799,7 +795,7 @@ class Benchmark {
 
 			if (ctxw->insertRow(binRow) < 0) {
 				printf("Insert failed: %s\n", ctxw->errMsg.c_str());
-			//	exit(-1);
+				exit(-1);
 			}
 
 			bytes += value_size_ + strlen(key);
@@ -813,43 +809,19 @@ class Benchmark {
   void ReadSequential(ThreadState* thread) {
     fprintf(stderr, "ReadSequential not supported\n");
     return;
-/*
-    Iterator* iter = db_->NewIterator(ReadOptions());
-    int i = 0;
-    int64_t bytes = 0;
-    for (iter->SeekToFirst(); i < reads_ && iter->Valid(); iter->Next()) {
-      bytes += iter->key().size() + iter->value().size();
-      thread->stats.FinishedSingleOp();
-      ++i;
-    }
-    delete iter;
-    thread->stats.AddBytes(bytes);
-*/
   }
 
   void ReadReverse(ThreadState* thread) {
     fprintf(stderr, "ReadReverse not supported\n");
     return;
-/*
-    Iterator* iter = db_->NewIterator(ReadOptions());
-    int i = 0;
-    int64_t bytes = 0;
-    for (iter->SeekToLast(); i < reads_ && iter->Valid(); iter->Prev()) {
-      bytes += iter->key().size() + iter->value().size();
-      thread->stats.FinishedSingleOp();
-      ++i;
-    }
-    delete iter;
-    thread->stats.AddBytes(bytes);
-*/
   }
 
   void ReadRandom(ThreadState* thread) {
-	  terark::valvec<terark::byte> keyHit, val;
-	  terark::valvec<terark::llong> idvec;
+	  valvec<byte> keyHit, val;
+	  valvec<llong> idvec;
 	  valvec<valvec<byte> > cgDataVec;
 	  valvec<size_t> colgroups;
-	  terark::db::DbContextPtr ctxr;
+	  DbContextPtr ctxr;
 	  ctxr = tab->createDbContext();
 	  ctxr->syncIndex = FLAGS_sync_index;
 
@@ -859,8 +831,6 @@ class Benchmark {
 
 	  int found = 0;
 	  size_t indexId = 0;
-	  terark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
-	  const terark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
 	  for (size_t i = 0; i < reads_; ++i) {
 		  const int k = thread->rand.Next() % FLAGS_num;
 		  char keybuf[24];
@@ -868,7 +838,6 @@ class Benchmark {
 		  terark::fstring key(keybuf, keylen);
 		  tab->indexSearchExact(indexId, key, &idvec, ctxr.get());
 		  for (auto recId : idvec) {
-			  // tab->selectOneColumn(recId, 1, &val, ctxr.get());
 			  tab->selectColgroups(recId, colgroups, &cgDataVec, ctxr.get());
 		  }
 		  thread->stats.FinishedSingleOp();
@@ -886,116 +855,42 @@ class Benchmark {
   void ReadMissing(ThreadState* thread) {
     fprintf(stderr, "ReadMissing not supported\n");
     return;
-/*
-    ReadOptions options;
-    std::string value;
-    for (int i = 0; i < reads_; i++) {
-      char key[100];
-      const int k = thread->rand.Next() % FLAGS_num;
-      snprintf(key, sizeof(key), "%016d.", k);
-      db_->Get(options, key, &value);
-      thread->stats.FinishedSingleOp();
-    }
-*/
   }
 
   void ReadHot(ThreadState* thread) {
-    
-    terark::valvec<terark::byte> keyHit, val;
-    terark::valvec<terark::llong> idvec;
-    const int range = (FLAGS_num + 99) / 100;
-/*    
-    for (size_t indexId = 0; indexId < tab->getIndexNum(); ++indexId) {
-		  terark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
-		  const terark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
-		  std::string keyData;
-		  for (size_t i = 0; i < reads_; ++i) {
-			  const int k = thread->rand.Next() % range;
-			  char key[100];
-			  // printf("indexId %d\n", indexId);
-			  switch (indexId) {
-				  default:
-					  assert(0);
-					  break;
-				  case 0:
-			  		  snprintf(key, sizeof(key), "%016d", k);
-					  keyData = key;
-					  break;
-			  }
-			  idvec.resize(0);
-			  terark::llong recId;
-			  int ret = indexIter->seekLowerBound(keyData, &recId, &keyHit);
-			  if (ret == 0) { // found exact key
-				  idvec.push_back(recId);
-				  int hasNext; // int as bool
-				  while ((hasNext = indexIter->increment(&recId, &keyHit))
-						  && terark::fstring(keyHit) == keyData) {
-					  assert(recId < tab->numDataRows());
-					  idvec.push_back(recId);
-				  }
-				  if (hasNext)
-					  idvec.push_back(recId);
-			  }
-		//	  printf("seekLowerBound(%s)=%d\n", indexSchema.toJsonStr(keyData).c_str(), ret);
-			  for (size_t i = 0; i < idvec.size(); ++i) {
-				  recId = idvec[i];
-				  tab->selectOneColumn(recId, 1, &val, ctx.get());
-			  }
-      			  thread->stats.FinishedSingleOp();
-		  }
-	  }
-*/
+    fprintf(stderr, "ReadHot not supported\n");
+    return;
    }
 
   void SeekRandom(ThreadState* thread) {
     fprintf(stderr, "SeekRandom not supported\n");
     return;
-/*
-    ReadOptions options;
-    std::string value;
-    int found = 0;
-    for (int i = 0; i < reads_; i++) {
-      Iterator* iter = db_->NewIterator(options);
-      char key[100];
-      const int k = thread->rand.Next() % FLAGS_num;
-      snprintf(key, sizeof(key), "%016d", k);
-      iter->Seek(key);
-      if (iter->Valid() && iter->key() == key) found++;
-      delete iter;
-      thread->stats.FinishedSingleOp();
-    }
-    char msg[100];
-    snprintf(msg, sizeof(msg), "(%d of %d found)", found, num_);
-    thread->stats.AddMessage(msg);
-*/
   }
 
   void DoDelete(ThreadState* thread, bool seq) {
-	  terark::valvec<terark::byte> keyHit, val;
-	  terark::valvec<terark::llong> idvec;
-	  terark::db::DbContextPtr ctxr;
+	  valvec<byte> keyHit, val;
+	  valvec<llong> idvec;
+	  DbContextPtr ctxr;
 	  ctxr = tab->createDbContext();
 	  ctxr->syncIndex = FLAGS_sync_index;
 
 	  int found = 0;
 	  size_t indexId = 0;
-	  terark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
-	  const terark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
+	  IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId, ctxr.get());
 	  for (size_t i = 0; i < reads_; ++i) {
 		  const int k = thread->rand.Next() % FLAGS_num;
 		  char keybuf[24];
 		  int  keylen = snprintf(keybuf, sizeof(keybuf), "%016d", k);
 		  idvec.resize(0);
-		  terark::fstring key(keybuf, keylen);
-		  terark::llong recId;
-	  // std::cout << "ReadRandom thread id " << thread->tid << " i "<< i << std::endl;
+		  fstring key(keybuf, keylen);
+		  llong recId;
 		  int ret = indexIter->seekLowerBound(key, &recId, &keyHit);
 		  if (ret == 0) { // found exact key
 			  do {
 				  assert(recId < tab->numDataRows());
 				  idvec.push_back(recId);
 			  } while (indexIter->increment(&recId, &keyHit)
-						&& terark::fstring(keyHit) == key);
+						&& fstring(keyHit) == key);
 		  }
 		  for (size_t i = 0; i < idvec.size(); ++i) {
 			  recId = idvec[i];
@@ -1034,7 +929,7 @@ class Benchmark {
 	  valvec<valvec<byte> > cgDataVec;
 	  valvec<llong> idvec;
 	  valvec<size_t> colgroups;
-	  terark::db::DbContextPtr ctxrw;
+	  DbContextPtr ctxrw;
           ctxrw = tab->createDbContext();
           ctxrw->syncIndex = FLAGS_sync_index;
 	  RandomGenerator gen;
@@ -1045,8 +940,6 @@ class Benchmark {
 
 	  size_t indexId = 0;
 	  TestRow recRow;
-	  terark::db::IndexIteratorPtr indexIter = tab->createIndexIterForward(indexId);
-	  const terark::db::Schema& indexSchema = tab->getIndexSchema(indexId);
 
           terark::NativeDataOutput<terark::AutoGrownMemIO> rowBuilder;
 
@@ -1056,7 +949,7 @@ class Benchmark {
 		  int  keylen = snprintf(keybuf, sizeof(keybuf), "%016d", k);
 
 		  if (shuffrw[i] == 1) {
-			  terark::fstring key(keybuf, keylen);
+			  fstring key(keybuf, keylen);
 			  tab->indexSearchExact(indexId, key, &idvec, ctxrw.get());
 			  for (auto recId : idvec) {
 				tab->selectColgroups(recId, colgroups, &cgDataVec, ctxrw.get());
